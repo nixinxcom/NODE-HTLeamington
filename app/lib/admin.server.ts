@@ -12,7 +12,7 @@ function init() {
       credential: hasSa
         ? cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string))
         : applicationDefault(),
-      projectId: process.env.FIREBASE_PROJECT_ID, // opcional pero recomendable
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, // opcional pero recomendable
     });
   }
 }

@@ -9,8 +9,7 @@ const API = "https://firestore.googleapis.com/v1";
 const DB = "(default)";
 
 const PROJECT_ID =
-  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
-  process.env.FIREBASE_PROJECT_ID;
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
 const API_KEY =
   process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||

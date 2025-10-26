@@ -2,7 +2,7 @@
 // Drop-in REST helpers para Firestore v1 (documents)
 // Requiere FIREBASE_PROJECT_ID en el entorno.
 
-const PROJECT_ID = process.env.FIREBASE_PROJECT_ID as string;
+const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID as string;
 if (!PROJECT_ID) {
   // No lanzamos excepción aquí para no romper el build;
   // los métodos fallarán con mensaje claro si se invocan sin PROJECT_ID.

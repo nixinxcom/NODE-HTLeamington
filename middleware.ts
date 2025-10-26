@@ -22,7 +22,7 @@ const IGNORED_PREFIXES = [
 ]
 
 // === NUEVO: configuración para Firestore REST (fail-open si no hay envs) ===
-const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID
+const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
 const SETTINGS_DOC = process.env.NEXT_PUBLIC_SETTINGS_DOC_PATH || 'settings/default'
 
 // elige locale por Accept-Language solo para la raíz
