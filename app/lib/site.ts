@@ -7,15 +7,10 @@ const requireEnv = (v: string | undefined, name: string) => {
 };
 
 export function siteOrigin(): string {
-  const fallback =
-    process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
-
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? fallback;
+  const base = process.env.NEXT_PUBLIC_PROD_SITE_URL ?? "http://localhost:3000";
 
   const selected: string = IS_PROD
-    ? requireEnv(process.env.NEXT_PUBLIC_PROD_ORIGIN, 'NEXT_PUBLIC_PROD_ORIGIN')
+    ? requireEnv(process.env.NEXT_PUBLIC_PROD_SITE_URL, 'NEXT_PUBLIC_PROD_SITE_URL')
     : base;
 
   return selected.replace(/\/$/, '');

@@ -36,7 +36,6 @@ export async function loadBrandingSSR(locale?: string): Promise<Branding> {
 /** Path informativo (por compat/logs) */
 export async function getBrandingDocPath(): Promise<string> {
   return (
-    process.env.BRANDING_DOC_PATH ||
     process.env.NEXT_PUBLIC_BRANDING_DOC_PATH ||
     'branding/default'
   );

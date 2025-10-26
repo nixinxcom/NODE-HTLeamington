@@ -203,7 +203,7 @@ export type PageMetaInput = {
 
 /** Fallbacks/constantes (seguras si no hay envs) */
 const FALLBACK_BASE =
-  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_PROD_SITE_URL || "http://localhost:3000";
 export const METADATA_BASE = new URL(FALLBACK_BASE);
 
 export const SITE_NAME = process.env.SITE_NAME || "Your Brand";

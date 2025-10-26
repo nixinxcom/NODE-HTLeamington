@@ -32,7 +32,7 @@ const mergePreferFS = (a: any, b: any): any => {
 };
 
 const DEFAULT_PATH =
-  process.env.SETTINGS_DOC_PATH ||
+  process.env.NEXT_PUBLIC_SETTINGS_DOC_PATH ||
   'settings/default';
 
 const isValidDocPath = (p: string) => p.split('/').filter(Boolean).length % 2 === 0;

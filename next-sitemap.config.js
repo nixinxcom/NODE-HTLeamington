@@ -16,7 +16,6 @@ const settings = (() => {
 function resolveSiteUrl() {
   const envUrl =
     process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
     '';
 
   const normEnv = envUrl
