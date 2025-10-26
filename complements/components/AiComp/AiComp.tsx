@@ -301,7 +301,7 @@ export default function AiComp(props: AiCompProps) {
   }, [scrollToBottom]);
 
   // ===== carga de agent (Firestore) + assets (Storage) =====
-  const AGENT_ID = process.env.NEXT_PUBLIC_AGENT_ID || 'default';
+  const AGENT_ID = process.env.NEXT_PUBLIC_AGENT_ID || "default";
   useEffect(() => {
     (async () => {
       let merged: AgentCfg = {

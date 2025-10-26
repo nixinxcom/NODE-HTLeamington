@@ -8,7 +8,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import s from './admin.module.css';
 import FM from '../i18n/FM';
 
-const AGENT_ID = process.env.NEXT_PUBLIC_AGENT_ID || 'default';
+const AGENT_ID = process.env.NEXT_PUBLIC_AGENT_ID || "default";
 
 type Item = {
   id?: string;

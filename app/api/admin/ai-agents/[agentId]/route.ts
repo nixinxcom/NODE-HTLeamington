@@ -14,7 +14,7 @@ import { isAllowedAdminHardPlus } from '@/app/lib/authz';
 import { isAllowedSuperadminHard } from '@/app/lib/authz';
 
 // Si no pasas agentId en la URL, usamos este:
-const ENV_AGENT_ID = process.env.AGENT_ID || 'default';
+const ENV_AGENT_ID = process.env.NEXT_PUBLIC_AGENT_ID || "default";
 
 /* --------------------------------- shape utils -------------------------------- */
 function normalizeOnRead(input: any) {

@@ -86,7 +86,7 @@ export async function GET(
   ctx: { params: Promise<AgentParams> }
 ) {
   const { agentId } = await ctx.params; // 👈 en Next 15 params puede ser Promise
-  const effectiveId = agentId ?? process.env.AGENT_ID ?? "default";
+  const effectiveId = agentId ?? process.env.NEXT_PUBLIC_AGENT_ID ?? "default";
 
   const url = new URL(req.url);
   const locale = toShortLocale(url.searchParams.get("locale") || DEFAULT_LOCALE_SHORT);
