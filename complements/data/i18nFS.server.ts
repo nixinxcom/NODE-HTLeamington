@@ -52,7 +52,7 @@ async function fetchDocREST(projectId: string, apiKey: string, coll: string, id:
  */
 export async function getI18nEffectiveServer(locale: string) {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const apiKey    = process.env.FIREBASE_API_KEY;
+  const apiKey    = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   const I18N_COLL = process.env.NEXT_PUBLIC_I18N_COLL || "i18n_global";
   if (!projectId || !apiKey || !locale) return {};
   const shortId = (locale.split("-")[0] || "").trim(); // "en"

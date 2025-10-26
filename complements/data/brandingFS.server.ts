@@ -32,7 +32,7 @@ export async function loadBrandingGlobalServer(): Promise<
   Partial<BrandingFS> | undefined
 > {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!;
-  const apiKey = process.env.FIREBASE_API_KEY!;
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY!;
   const path = process.env.NEXT_PUBLIC_BRANDING_DOC_PATH || "branding/default";
   const [coll, doc] = path.split("/");
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${coll}/${doc}?key=${apiKey}`;
