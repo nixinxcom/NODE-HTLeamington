@@ -14,7 +14,7 @@ import { getI18nEffectiveServer } from "@/complements/data/i18nFS.server";
 /** Firestore REST (SSR-safe) */
 async function loadDocFS(coll: string, id: string): Promise<any> {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  const apiKey = process.env.FIREBASE_API_KEY;
   if (!projectId || !apiKey) return undefined;
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${coll}/${encodeURIComponent(
     id
