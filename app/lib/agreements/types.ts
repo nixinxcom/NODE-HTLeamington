@@ -36,8 +36,8 @@ export type LicenseInfo = {
 export interface Agreement {
   BrandName: string;
   LegalName: string;
-  admins: string[];      // correos
-  domain: string;        // p.ej. "patronbarandgrill.com"
+  admins: string[];
+  domain: string;
   faculties: Faculties;
   license: LicenseInfo;
   createdAt?: Timestamp;

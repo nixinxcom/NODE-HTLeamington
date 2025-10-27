@@ -8,6 +8,7 @@ const HARDCODED_SUPERADMINS: string[] = [
 ];
 
 const HARDCODED_ADMINS: string[] = [
+  // 'admin@patronbarandgrill.com',
   // agrega correos admin (no superadmin) si los necesitas
 ];
 

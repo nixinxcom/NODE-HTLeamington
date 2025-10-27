@@ -1,4 +1,3 @@
-// app/publicaciones/layout.tsx
 'use client';
 import { useParams } from 'next/navigation';
 import AdminGuard from '@/complements/admin/AdminGuard';
