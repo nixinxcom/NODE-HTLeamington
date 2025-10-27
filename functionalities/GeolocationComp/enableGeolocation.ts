@@ -56,28 +56,3 @@ export default function enableGeolocation(props: Props) {
     }
   );
 }
-
-/* ─────────────────────────────────────────────────────────
-DOC: Habilitar geolocalización — functionalities/GeolocationComp/enableGeolocation.ts
-QUÉ HACE:
-  Comprueba permisos de geolocalización y solicita la posición actual, devolviendo estado
-  (granted/denied/prompt), coords y/o error.
-
-API / EXPORTS / RUTA:
-  — export type GeoStatus = "granted"|"denied"|"prompt"
-  — export interface GeoResult {
-      status: GeoStatus; coords?: { lat:number; lng:number; accuracy?:number }; error?: string
-    }
-  — export async function enableGeolocation(opts?: PositionOptions): Promise<GeoResult>
-
-USO (ejemplo completo):
-  const { status, coords, error } = await enableGeolocation({ enableHighAccuracy:true, timeout:10000 });
-
-NOTAS CLAVE:
-  — CSR: solo en navegador; requiere https (o localhost).
-  — UX: manejar estados “denied” con instrucciones; fallback manual (ingresar ubicación).
-  — Privacidad: solicitar solo cuando aporta valor; no almacenar coordenadas sin consentimiento.
-
-DEPENDENCIAS:
-  Navigator.geolocation · Permissions API (opcional)
-────────────────────────────────────────────────────────── */

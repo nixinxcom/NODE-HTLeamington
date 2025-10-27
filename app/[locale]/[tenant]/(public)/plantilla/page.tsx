@@ -4,6 +4,7 @@ import { pageMeta } from "@/app/lib/seo/pages";
 import { getEffectiveMetaServer, metaRecordToNext, deepMerge } from "@/app/lib/seo/meta.server";
 import HomePublicPage from "./HomePublicPage";
 import s from "./page.module.css";
+import { siteOrigin } from "@/app/lib/site"; // ⬅️ NUEVO: origen dinámico (host:puerto)
 
 // helper: seeds por ruta+locale
 function pickLocale(
@@ -32,7 +33,7 @@ export async function generateMetadata(
     "twitter:card": "summary_large_image",
     "og:image": "/og/og-default.jpg",
     canonical: "/plantilla",
-    metadataBase: new URL(process.env.NEXT_PUBLIC_PROD_SITE_URL || "http://localhost:3000"),
+    metadataBase: new URL(siteOrigin()), // ⬅️ CAMBIO: sin hardcode, toma host/puerto reales
   };
 
   // deepMerge acepta 2 args → en dos pasos

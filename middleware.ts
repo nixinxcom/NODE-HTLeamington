@@ -184,10 +184,16 @@ export async function middleware(req: NextRequest) {
       const rest = afterLocale.join('/')
       url.pathname = `/${locale}/${tenant}${rest ? `/${rest}` : ''}`
       // REWRITE (no cambia la URL visible)
-      return NextResponse.rewrite(url)
+      const reqHeaders = new Headers(req.headers);
+      reqHeaders.set('x-tenant', tenant);
+      reqHeaders.set('x-locale', locale);
+      return NextResponse.rewrite(url, { request: { headers: reqHeaders } });
     }
 
-    return NextResponse.next()
+    const reqHeaders = new Headers(req.headers);
+    reqHeaders.set('x-tenant', tenant);
+    reqHeaders.set('x-locale', locale);
+    return NextResponse.next({ request: { headers: reqHeaders } });
   }
 
   // === Sin locale visible: decide locale y redirige a /{locale}/… (URL limpia, sin tenant) ===
