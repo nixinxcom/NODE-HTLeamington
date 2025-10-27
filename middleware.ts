@@ -21,7 +21,22 @@ const IGNORED_PREFIXES = [
   '/manifest.webmanifest',
 ]
 
-// === NUEVO: configuración para Firestore REST (fail-open si no hay envs) ===
+// === NUEVO: tenant por host (puedes moverlo a ENV/DB si quieres) ===
+const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT || 'nixinx'
+const TENANT_BY_HOST: Record<string, string> = {
+  'localhost:3000': 'nixinx',
+  'localhost:3001': 'nixinx',
+  'localhost:3002': 'elpatron',
+  'patronbarandgrill.com': 'elpatron',
+  'www.patronbarandgrill.com': 'elpatron',
+  // agrega aquí más dominios/puertos → tenant
+}
+function getTenantForHost(req: NextRequest) {
+  const host = (req.headers.get('host') || '').toLowerCase()
+  return TENANT_BY_HOST[host] || DEFAULT_TENANT
+}
+
+// === Firestore REST (tu lógica existente) ===
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
 const SETTINGS_DOC = process.env.NEXT_PUBLIC_SETTINGS_DOC_PATH || 'settings/default'
 
@@ -33,24 +48,27 @@ function pickLocale(req: NextRequest): typeof LOCALES[number] {
   return DEFAULT_LOCALE
 }
 
-// === NUEVO: helpers de path ===
+// paths helpers
 function isI18nPath(pathname: string) {
   const first = pathname.split('/').filter(Boolean)[0]
   return (LOCALES as readonly string[]).includes(first ?? '')
 }
+
+// ⚠️ Ajustado para soportar opcionalmente el segmento {tenant}
 function isAdminOrWip(pathname: string) {
   const segs = pathname.split('/').filter(Boolean)
-  const first = segs[0]
-  const second = segs[1] ?? ''
-  return (LOCALES as readonly string[]).includes(first ?? '') && (second === 'admin' || second === 'wip')
+  if (!segs.length) return false
+  // segs[0] = locale; segs[1] puede ser admin|wip o tenant
+  const s1 = segs[1]?.toLowerCase()
+  const s2 = segs[2]?.toLowerCase()
+  return (s1 === 'admin' || s1 === 'wip' || s2 === 'admin' || s2 === 'wip')
 }
+
 function looksLikeAgentApi(pathname: string) {
-  // Cubre /api/ai, /api/assistant, /api/agent, /api/agents, /api/ai-agents, etc.
   if (!pathname.startsWith('/api')) return false
   return /\/api\/(ai(\b|\/)|assistant\b|agent(s)?\b|ai-agents\b)/.test(pathname)
 }
 
-// === NUEVO: lectura ligera a Firestore REST ===
 async function fetchSettingsDoc(): Promise<any | null> {
   if (!FIREBASE_PROJECT_ID) return null
   const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/${encodeURIComponent(SETTINGS_DOC)}`
@@ -63,7 +81,6 @@ async function fetchSettingsDoc(): Promise<any | null> {
   }
 }
 
-// Firestore REST -> extrae boolean navegando por fields.mapValue.fields...booleanValue
 function readBool(doc: any, path: string[], defaultValue: boolean | null): boolean | null {
   try {
     let node = doc?.fields
@@ -81,7 +98,6 @@ function readBool(doc: any, path: string[], defaultValue: boolean | null): boole
 
 async function websiteEnabled(): Promise<boolean> {
   const doc = await fetchSettingsDoc()
-  // Primero intenta faculties.website, luego website (raíz). Fail-open = true
   const v1 = readBool(doc, ['faculties','website'], null)
   const v2 = readBool(doc, ['website'], null)
   const value = v1 ?? v2
@@ -90,7 +106,6 @@ async function websiteEnabled(): Promise<boolean> {
 
 async function agentEnabled(): Promise<boolean> {
   const doc = await fetchSettingsDoc()
-  // Soporta settings.agentAI (boolean) o settings.agentAI.enabled (nested)
   const v1 = readBool(doc, ['agentAI'], null)
   const v2 = readBool(doc, ['agentAI','enabled'], null)
   const value = v1 ?? v2
@@ -100,8 +115,7 @@ async function agentEnabled(): Promise<boolean> {
 export async function middleware(req: NextRequest) {
   const { pathname, search, hash } = req.nextUrl
 
-  // === NUEVO: normalización de prefijos con locales largos → cortos
-  // Soporta /en-US/*, /es-MX/*, /fr-CA/* y los redirige a /en/*, /es/*, /fr/*
+  // normalización /en-US → /en (tu lógica)
   const segs = pathname.split('/').filter(Boolean)
   const first = (segs[0] || '').toLowerCase()
   const LONG_TO_SHORT: Record<string, typeof LOCALES[number]> = {
@@ -119,7 +133,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // === NUEVO: Apagado de endpoints del Agente por settings.agentAI ===
+  // APIs (incluye kill-switch del agente)
   if (pathname.startsWith('/api')) {
     if (looksLikeAgentApi(pathname)) {
       const on = await agentEnabled()
@@ -130,18 +144,16 @@ export async function middleware(req: NextRequest) {
         })
       }
     }
-    // Resto de /api no se toca
     return NextResponse.next()
   }
 
-  // ignorar rutas públicas/estáticas/especiales
+  // estáticos/ignorados
   if (IGNORED_PREFIXES.some(p => pathname.startsWith(p)) || PUBLIC_FILE.test(pathname)) {
     return NextResponse.next()
   }
 
-  // === NUEVO: Kill-switch de sitio (redirige a /{locale}/wip) ===
+  // === Rutas con locale visible: kill-switch + multi-tenant rewrite ===
   if (isI18nPath(pathname)) {
-    // Ya trae locale
     if (!isAdminOrWip(pathname)) {
       const enabled = await websiteEnabled()
       if (!enabled) {
@@ -155,13 +167,33 @@ export async function middleware(req: NextRequest) {
         return res
       }
     }
+
+    // ⬇️ NUEVO: ocultar /{tenant} en la URL pública con rewrite interno
+    const tenant = getTenantForHost(req)
+    const parts = pathname.split('/').filter(Boolean)
+    const locale = parts[0]
+    const afterLocale = parts.slice(1) // puede estar vacío
+    const firstAfter = afterLocale[0]?.toLowerCase()
+
+    // si ya trae el tenant o es admin/wip, no reescribas
+    const alreadyHasTenant = firstAfter === tenant.toLowerCase()
+    const isAdminWip = firstAfter === 'admin' || firstAfter === 'wip'
+
+    if (!alreadyHasTenant && !isAdminWip) {
+      const url = req.nextUrl.clone()
+      const rest = afterLocale.join('/')
+      url.pathname = `/${locale}/${tenant}${rest ? `/${rest}` : ''}`
+      // REWRITE (no cambia la URL visible)
+      return NextResponse.rewrite(url)
+    }
+
     return NextResponse.next()
   }
 
-  // sin locale: decidir locale y aplicar redirección i18n (y kill-switch si está apagado)
+  // === Sin locale visible: decide locale y redirige a /{locale}/… (URL limpia, sin tenant) ===
   const locale = pathname === '/' ? pickLocale(req) : DEFAULT_LOCALE
 
-  // Si el sitio está apagado y no es admin/wip, mandar a /{locale}/wip
+  // kill-switch en destino
   const candidatePath = `/${locale}${pathname}`
   if (!isAdminOrWip(candidatePath)) {
     const enabled = await websiteEnabled()
@@ -176,13 +208,17 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // redirigir manteniendo query (?...) y hash (#...)
+  // redirección i18n (la inserción de {tenant} se hace luego vía rewrite en el bloque de arriba)
   const url = req.nextUrl.clone()
   url.pathname = `/${locale}${pathname}`
-  url.search = search // conserva ?gtm_debug/&c.
-  url.hash = hash     // conserva anclas
+  url.search = search
+  url.hash = hash
 
   const res = NextResponse.redirect(url)
   res.headers.set('Vary', 'Accept-Language')
   return res
+}
+
+export const config = {
+  matcher: ['/((?!_next|api|.*\\..*).*)'],
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import OriginalPage from '../../lib/CloudQueries/page';
+import OriginalPage from '../../../lib/CloudQueries/page';
 
 /**
  * Wrapper por locale que delega toda la UI/logic a app/lib/CloudQueries/page.

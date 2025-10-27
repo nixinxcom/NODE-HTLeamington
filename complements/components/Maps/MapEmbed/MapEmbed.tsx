@@ -40,7 +40,7 @@ function clamp(n: number, min: number, max: number) { return Math.min(max, Math.
 function wrap360(n: number) { return ((n % 360) + 360) % 360; }
 
 export default function MapEmbed({
-  apiKey = process.env.GOOGLE_NOT_RESTRICTED_API_KEY!,
+  apiKey = process.env.NEXT_PUBLIC_GOOGLE_NOT_RESTRICTED_API_KEY!,
   mode = 'view',
   lat, lng,
   zoom = 15, mapType = 'roadmap',

@@ -30,7 +30,7 @@ type Props = {
 };
 
 export default function MapGoogle({
-  apiKey = process.env.GOOGLE_MAPS_JS_API_KEY!,
+  apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_JS_API_KEY!,
   center,
   zoom = 14,
   markers = [],
@@ -95,49 +95,3 @@ export default function MapGoogle({
     </GoogleMap>
   );
 }
-
-/* ─────────────────────────────────────────────────────────
-DOC: MapGoogle — complements/components/Maps/MapGoogle/MapGoogle.tsx
-QUÉ HACE:
-  Wrapper de Google Maps JS API que renderiza mapa y marcadores, con callbacks.
-
-API / EXPORTS / RUTA:
-  — export interface GMarker { id:string; position:{lat:number;lng:number}; title?:string; icon?:string }
-  — export interface MapGoogleProps {
-      apiKey?: string; center?: {lat:number;lng:number}; zoom?: number;
-      markers?: GMarker[]; onMarkerClick?: (m:GMarker)=>void; className?: string; style?: React.CSSProperties
-    }
-  — export default function MapGoogle(p:MapGoogleProps): JSX.Element
-
-USO (ejemplo completo):
-  <MapGoogle center={{lat:42.053,lng:-82.6}} zoom={12} markers={[{id:"pbg",position:{lat:42.053,lng:-82.6},title:"El Patrón"}]} />
-
-NOTAS CLAVE:
-  — Cargar script JS API con key (NEXT_PUBLIC_GOOGLE_MAPS_JS_API_KEY).
-  — Idempotencia de instancia; limpiar listeners en unmount.
-  — Accesibilidad con overlays HTML cuando haga falta.
-
-DEPENDENCIAS:
-  Google Maps JS API · mapsconfig (opcional)
-────────────────────────────────────────────────────────── */
-
-/* ─────────────────────────────────────────────────────────
-DOC: USO — complements/components/Maps/MapGoogle/MapGoogle.tsx
-  "use client";
-  import MapGoogle from "@/complements/components/Maps/MapGoogle/MapGoogle";
-
-  export default function MapSection() {
-    return (
-      <MapGoogle
-        apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_JS_API_KEY} // string | opcional (si no se carga global)
-        center={{ lat:42.053, lng:-82.6 }}  // {lat,lng} | opcional
-        zoom={12}                            // number | opcional
-        markers={[
-          { id:"pbg", position:{ lat:42.053, lng:-82.6 }, title:"El Patrón" } // GMarker
-        ]}                                  // GMarker[] | opcional
-        onMarkerClick={(m)=>console.log(m)} // (m:GMarker)=>void | opcional
-        className="h-[400px] w-full rounded-xl"
-      />
-    );
-  }
-────────────────────────────────────────────────────────── */

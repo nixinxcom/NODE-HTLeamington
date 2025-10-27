@@ -239,12 +239,6 @@
         "purpose": "any"
       },
       {
-        "src": "/Icons/manifest_icons/icon-152x152.png",
-        "sizes": "152x152",
-        "type": "image/png",
-        "purpose": "any"
-      },
-      {
         "src": "/Icons/manifest_icons/icon-192x192.png",
         "sizes": "192x192",
         "type": "image/png",
