@@ -16,7 +16,7 @@ export default function SitesLayout({ children }: { children: React.ReactNode })
 
   // Locale normalizado (usar siempre este para montar el agente)
   const initialLocale = useMemo(
-    () => normalizeToSupported(params?.locale ?? 'es'),
+    () => normalizeToSupported(params?.locale ? process.env.NEXT_PUBLIC_DEFAULT_LOCALE : 'en'),
     [params?.locale]
   );
 

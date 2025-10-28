@@ -25,7 +25,7 @@
   "git": "git status && git add . && (git commit -m \"General Adjustments\" || echo No changes) && powershell -NoProfile -Command \"$b=(git rev-parse --abbrev-ref HEAD); git push -u origin $b\" && cls && next dev",
 
   "dev:nixinx": "npm run env:use:nixinx && next dev -p 3001",
-  "dev:elpatron": "node -e \"const fs=require('fs');fs.copyFileSync('.env.elpatron.local','.env.local');console.log('Using .env.elpatron.local -> .env.local');\" && next dev -p 3002",
+  "dev:elpatron": "node -e \"const fs=require('fs');fs.copyFileSync('.env.elpatronbarandgrill.local','.env.local');console.log('Using .env.elpatronbarandgrill.local -> .env.local');\" && next dev -p 3002",
   "dev:ht-windsor": "node -e \"const fs=require('fs');fs.copyFileSync('.env.hottacoswindsor.local','.env.local');console.log('Using .env.hottacoswindsor.local -> .env.local');\" && next dev -p 3003",
   "dev:ht-leamington": "node -e \"const fs=require('fs');fs.copyFileSync('.env.hottacosleamington.local','.env.local');console.log('Using .env.hottacosleamington.local -> .env.local');\" && next dev -p 3004",
 

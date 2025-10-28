@@ -21,19 +21,45 @@ const IGNORED_PREFIXES = [
   '/manifest.webmanifest',
 ]
 
-// === NUEVO: tenant por host (puedes moverlo a ENV/DB si quieres) ===
+// === NUEVO (no invasivo): tenant por host ===
 const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT || 'nixinx'
 const TENANT_BY_HOST: Record<string, string> = {
   'localhost:3000': 'nixinx',
   'localhost:3001': 'nixinx',
-  'localhost:3002': 'elpatron',
-  'patronbarandgrill.com': 'elpatron',
-  'www.patronbarandgrill.com': 'elpatron',
+  'nixinx.com': 'nixinx',
+  'www.nixinx.com': 'nixinx',
+
+  'localhost:3002': 'elpatronbarandgrill',
+  'patronbarandgrill.com': 'elpatronbarandgrill',
+  'www.patronbarandgrill.com': 'elpatronbarandgrill',
+
+  'localhost:3003': 'hottacosrestaurant',
+  'hottacosrestaurant.com': 'hottacosrestaurant',
+  'www.hottacosrestaurant.com': 'hottacosrestaurant',
+
+  'localhost:3004': 'hottacoswindsor',
+  'hottacosrestaurant.ca': 'hottacoswindsor',
+  'www.hottacosrestaurant.ca': 'hottacoswindsor',
   // agrega aquí más dominios/puertos → tenant
 }
 function getTenantForHost(req: NextRequest) {
   const host = (req.headers.get('host') || '').toLowerCase()
   return TENANT_BY_HOST[host] || DEFAULT_TENANT
+}
+
+// 🔒 Slugs de primer nivel que ya son "sitios" del cliente y
+//     NO deben recibir el prefijo {tenant} en la reescritura.
+const STATIC_TOP_LEVEL_SLUGS = new Set<string>([
+  'elpatronbarandgrill',
+  'hottacosrestaurant',
+  'hottacoswindsor',
+])
+
+// 🏠 Home por tenant (/{locale} → /{locale}/{homeDelTenant})
+const HOME_BY_TENANT: Record<string, string> = {
+  elpatronbarandgrill: 'elpatronbarandgrill',
+  hottacosrestaurant: 'hottacosrestaurant',
+  hottacoswindsor: 'hottacoswindsor',
 }
 
 // === Firestore REST (tu lógica existente) ===
@@ -168,32 +194,48 @@ export async function middleware(req: NextRequest) {
       }
     }
 
-    // ⬇️ NUEVO: ocultar /{tenant} en la URL pública con rewrite interno
+    // ⬇️ NUEVO: ocultar /{tenant} en la URL pública con reglas mínimas
     const tenant = getTenantForHost(req)
     const parts = pathname.split('/').filter(Boolean)
     const locale = parts[0]
     const afterLocale = parts.slice(1) // puede estar vacío
-    const firstAfter = afterLocale[0]?.toLowerCase()
+    const firstAfter = (afterLocale[0] || '').toLowerCase()
 
-    // si ya trae el tenant o es admin/wip, no reescribas
+    // 1) Home por tenant: /{locale} → /{locale}/{HOME_BY_TENANT[tenant]}
+    if (afterLocale.length === 0) {
+      const home = HOME_BY_TENANT[tenant]
+      if (home) {
+        const url = req.nextUrl.clone()
+        url.pathname = `/${locale}/${home}`
+        const reqHeaders = new Headers(req.headers)
+        reqHeaders.set('x-tenant', tenant)
+        reqHeaders.set('x-locale', locale)
+        return NextResponse.rewrite(url, { request: { headers: reqHeaders } })
+      }
+    }
+
+    // 2) Insertar {tenant} salvo que:
+    //    - ya esté presente
+    //    - sea admin/wip
+    //    - sea un slug estático de cliente (p.ej. elpatronbarandgrill)
     const alreadyHasTenant = firstAfter === tenant.toLowerCase()
     const isAdminWip = firstAfter === 'admin' || firstAfter === 'wip'
+    const isStaticClient = STATIC_TOP_LEVEL_SLUGS.has(firstAfter)
 
-    if (!alreadyHasTenant && !isAdminWip) {
+    if (!alreadyHasTenant && !isAdminWip && !isStaticClient) {
       const url = req.nextUrl.clone()
       const rest = afterLocale.join('/')
       url.pathname = `/${locale}/${tenant}${rest ? `/${rest}` : ''}`
-      // REWRITE (no cambia la URL visible)
-      const reqHeaders = new Headers(req.headers);
-      reqHeaders.set('x-tenant', tenant);
-      reqHeaders.set('x-locale', locale);
-      return NextResponse.rewrite(url, { request: { headers: reqHeaders } });
+      const reqHeaders = new Headers(req.headers)
+      reqHeaders.set('x-tenant', tenant)
+      reqHeaders.set('x-locale', locale)
+      return NextResponse.rewrite(url, { request: { headers: reqHeaders } })
     }
 
-    const reqHeaders = new Headers(req.headers);
-    reqHeaders.set('x-tenant', tenant);
-    reqHeaders.set('x-locale', locale);
-    return NextResponse.next({ request: { headers: reqHeaders } });
+    const reqHeaders = new Headers(req.headers)
+    reqHeaders.set('x-tenant', tenant)
+    reqHeaders.set('x-locale', locale)
+    return NextResponse.next({ request: { headers: reqHeaders } })
   }
 
   // === Sin locale visible: decide locale y redirige a /{locale}/… (URL limpia, sin tenant) ===
