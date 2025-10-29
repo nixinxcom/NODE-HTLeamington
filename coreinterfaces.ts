@@ -58,5 +58,6 @@ export interface iEnVars{
     STRIPE_DEV_PUBLIC_KEY?: string;
     STRIPE_DEV_SECRET_KEY?: string;
     STRIPE_WEBHOOK_SECRET: string;
+    NEXT_PUBLIC_FCM_VAPID_KEY?: string; // VAPID público (Web Push)
 }
 

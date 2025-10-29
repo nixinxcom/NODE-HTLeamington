@@ -17,7 +17,7 @@ export interface SettingsRecord {
     branding: boolean;
     styles: boolean;
     maps: boolean;
-    notifications: boolean;
+    notifications?: boolean;
     paypal?: boolean;
     stripe?: boolean;
     adsense?: boolean;
