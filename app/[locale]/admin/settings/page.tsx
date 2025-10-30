@@ -8,8 +8,9 @@ import SettingsTab from "@/complements/admin/SettingsTab";
 import FM from '@/complements/i18n/FM';
 import RDDInspectorTab from "@/complements/admin/RDDInspectorTab";
 import AgreementTab from '@/complements/admin/AgreementTab';
+import EnvWizard from '@/complements/admin/EnvWizard';
 
-const ALL_TABS = ['agreements', 'settings', 'metadatos', 'Formatted Messages', 'RDD Inspector'] as const;
+const ALL_TABS = ['environments', 'agreements', 'settings', 'metadatos', 'Formatted Messages', 'RDD Inspector'] as const;
 type TabKey = typeof ALL_TABS[number];
 
 function useQueryTab() {
@@ -54,7 +55,7 @@ export default function SettingsPage() {
                     : 'bg-transparent hover:bg-neutral-100 text-neutral-600 border border-transparent',
                 ].join(' ')}
               >
-                {t === 'agreements' ? 'Agreements' : t === 'settings' ? 'Settings' : t === 'metadatos' ? 'Metadatos' : t === 'Formatted Messages' ? 'Formatted Messages' : 'RDD Inspector'}
+                {t === 'environments' ? 'Environments' : t === 'agreements' ? 'Agreements' : t === 'settings' ? 'Settings' : t === 'metadatos' ? 'Metadatos' : t === 'Formatted Messages' ? 'Formatted Messages' : 'RDD Inspector'}
               </button>
             );
           })}
@@ -62,6 +63,13 @@ export default function SettingsPage() {
       </div>
 
       <section className="rounded-md border border-neutral-200 bg-black  p-4">
+
+        <div className={tab === 'environments' ? '' : 'hidden'}>
+          <h2 className="font-medium mb-2 text-white"><FM id="environments.section.title" defaultMessage="Sección de Variables de Entorno" /></h2>
+          <p className="text-sm text-neutral-600"><FM id="environments.section.description" defaultMessage="Aquí vá la configuración de las variables de entorno de la compañia." /></p>
+          <EnvWizard />
+        </div>
+
         <div className={tab === 'agreements' ? '' : 'hidden'}>
           <h2 className="font-medium mb-2 text-white"><FM id="agreements.section.title" defaultMessage="Sección de Contratacion" /></h2>
           <p className="text-sm text-neutral-600"><FM id="agreements.section.description" defaultMessage="Aquí vá la configuración del arreglo contractual con compañia." /></p>
