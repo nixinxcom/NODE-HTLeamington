@@ -1,4 +1,4 @@
-import { FbDB } from "@/app/lib/services/firebase";
+import { FbDB } from "../../app/lib/services/firebase";
 import { doc, setDoc, collection, addDoc, getDoc, updateDoc, deleteDoc, query, where, getDocs, serverTimestamp } from "firebase/firestore";
 
 interface iDocument {
@@ -173,37 +173,3 @@ async function FirestoreQueryFunc(Collection: string, criteria: iQueryCriteria[]
 }
 
 export { UseFirestoreFunc, FirestoreQueryFunc }
-
-/* ─────────────────────────────────────────────────────────
-DOC: Cloud Storage uploader — functionalities/CommonFunctions/UseCloudStorageFunc.tsx
-QUÉ HACE:
-  Sube archivos a Firebase Storage (o proveedor equivalente), generando nombres seguros (opcionalmente
-  conversión a .webp para imágenes) y devolviendo URLs públicas o paths.
-
-API / EXPORTS / RUTA:
-  — export type UploadInput = {
-      Files: Array<{ file: File; storaged_name?: string }>
-      path: string                               // carpeta destino (ej. "uploads/2025-08-29")
-      fileTypes: "Images"|"Documents"|"Multimedia"|"Any"
-      appName?: string
-      makePublic?: boolean                       // default: true
-      onProgress?: (pct:number, fileName:string)=>void
-    }
-  — export type UploadResult = { name:string; path:string; url:string; contentType?:string; size?:number }
-  — export async function UploadStorage(input: UploadInput): Promise<UploadResult[]>
-
-USO (ejemplo completo):
-  import { UploadStorage } from "@/functionalities/CommonFunctions/UseCloudStorageFunc";
-  const res = await UploadStorage({
-    Files: [{ file }], path:"uploads/eventos", fileTypes:"Images",
-    onProgress:(p)=>console.log(p)
-  });
-
-NOTAS CLAVE:
-  — Seguridad: validar tipos/tamaños en servidor/reglas; evitar sobreescrituras (nombres únicos).
-  — Rendimiento: subidas en paralelo con límite; manejar cancelación; usar resumable si aplica.
-  — Integración: alimentar a Firestore/DB con metadata de resultado.
-
-DEPENDENCIAS:
-  firebase/storage (o SDK correspondiente) · helpers de FilesUploaderComp
-────────────────────────────────────────────────────────── */

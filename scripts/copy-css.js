@@ -1,30 +1,32 @@
-import fs from 'fs';
-import path from 'path';
+// scripts/copy-css.js  (CommonJS)
+const fs = require("fs");
+const path = require("path");
 
-function copyModuleCSS(dir, base = dir) {
-  fs.readdirSync(dir, { withFileTypes: true }).forEach(entry => {
-    const fullPath = path.join(dir, entry.name);
+function ensureDir(p) {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+}
 
-    if (entry.isDirectory()) {
-      copyModuleCSS(fullPath, base); // recursivo
+function copyModuleCSS(srcDir, relFrom = srcDir) {
+  if (!fs.existsSync(srcDir)) return;
+  const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+  for (const e of entries) {
+    const full = path.join(srcDir, e.name);
+    if (e.isDirectory()) { copyModuleCSS(full, relFrom); continue; }
+    if (e.isFile() && e.name.endsWith(".module.css")) {
+      const rel = path.relative(relFrom, full);
+      const dest = path.join("dist", relFrom, rel);
+      ensureDir(path.dirname(dest));
+      fs.copyFileSync(full, dest);
+      console.log(`✅ Copiado módulo: ${full} → ${dest}`);
     }
-
-    if (entry.isFile() && entry.name.endsWith('.module.css')) {
-      const relative = path.relative(base, fullPath);
-      const destPath = path.join('dist', base, relative);
-      fs.mkdirSync(path.dirname(destPath), { recursive: true });
-      fs.copyFileSync(fullPath, destPath);
-      console.log(`✅ Copiado módulo: ${fullPath} → ${destPath}`);
-    }
-  });
+  }
 }
 
 function copyGlobalsCSS() {
-  const src = 'app/globals.css';
-  const dest = 'dist/app/globals.css';
-
+  const src = path.join("app", "globals.css");
+  const dest = path.join("dist", "app", "globals.css");
   if (fs.existsSync(src)) {
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    ensureDir(path.dirname(dest));
     fs.copyFileSync(src, dest);
     console.log(`✅ Copiado globals.css: ${src} → ${dest}`);
   } else {
@@ -32,8 +34,5 @@ function copyGlobalsCSS() {
   }
 }
 
-// Ejecutar ambos
-if (fs.existsSync('complements')) {
-  copyModuleCSS('complements');
-}
+if (fs.existsSync("complements")) copyModuleCSS("complements");
 copyGlobalsCSS();

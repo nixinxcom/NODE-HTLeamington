@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { envSchema, envMeta, type iEnvVars } from '@/app/lib/env';
-import { FbDB, FbAuth } from '@/app/lib/services/firebase';
+import { envSchema, envMeta, type iEnvVars } from '../../app/lib/env';
+import { FbDB, FbAuth } from '../../app/lib/services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { resolveTenantFromHost } from '@/app/lib/tenant/resolve';
+import { resolveTenantFromHost } from '../../app/lib/tenant/resolve';
 
 // En UI todo se maneja como string
 type EnvValues = Partial<Record<keyof iEnvVars, string>>;

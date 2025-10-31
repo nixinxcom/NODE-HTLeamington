@@ -29,31 +29,3 @@ export default function UpdateUserState ({UserState, keyPath, updatedValue, repl
     // console.log(deepClone)
     return deepClone;
 };
-
-/* ─────────────────────────────────────────────────────────
-DOC: Actualizar estado de usuario — functionalities/CommonFunctions/UpdateUserStateFunc.tsx
-QUÉ HACE:
-  Sincroniza eventos de autenticación con el AppContext y persistencia local (cookies/localStorage),
-  normalizando UserState y claims.
-
-API / EXPORTS / RUTA:
-  — export function updateUserState(input: {
-      user: { uid:string; email?:string|null; displayName?:string|null; photoURL?:string|null }
-      claims?: Record<string,any>
-      persist?: "none"|"local"|"session"|"cookie"       // default: "local"
-    }, actions: { setUser: (u:any)=>void; setLoading: (b:boolean)=>void; setError:(e:string|null)=>void }): void
-
-USO (ejemplo completo):
-  import { updateUserState } from "@/functionalities/CommonFunctions/UpdateUserStateFunc";
-  import { useApp } from "@/context/AppContext";
-  const { actions } = useApp();
-  updateUserState({ user, claims, persist:"local" }, actions);
-
-NOTAS CLAVE:
-  — Idempotencia: no duplicar writes si el UID no cambia.
-  — Seguridad: no persistir tokens; solo metadatos básicos; limpiar en signOut.
-  — i18n: puedes persistir prefs.locale junto con el usuario.
-
-DEPENDENCIAS:
-  "@/context/UserState" · "@/context/AppContext" · storage/cookies helpers
-────────────────────────────────────────────────────────── */
