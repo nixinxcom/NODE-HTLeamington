@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "declaration": true,
+    "emitDeclarationOnly": false,
+    "noEmit": false,
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": { "@/*": ["./*"] },
+    "skipLibCheck": true,
+    "isolatedModules": false
+  },
+  "include": [
+    "app/**/*",
+    "complements/**/*",
+    "context/**/*",
+    "index.ts"
+  ],
+  "exclude": ["node_modules", ".next", "dist"]
+}

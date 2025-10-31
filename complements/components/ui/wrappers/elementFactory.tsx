@@ -6,7 +6,12 @@ import { resolveComponentClasses } from './resolve';
 
 type Scheme = 'light' | 'dark';
 type RDDBaseProps = {
-  kind?: string; variant?: string; size?: string; state?: string; scheme?: Scheme; className?: string;
+  kind?: string;
+  variant?: string;
+  size?: string;
+  state?: string;
+  scheme?: Scheme;
+  className?: string;
 };
 
 export function makeElement<T extends keyof JSX.IntrinsicElements>(
@@ -14,7 +19,6 @@ export function makeElement<T extends keyof JSX.IntrinsicElements>(
   defaultKind?: string,
   baseFallback?: string
 ) {
-  // usamos any para Props y Ref dentro del forwardRef; hacia afuera exponemos un ForwardRef sólido
   const Comp = React.forwardRef<any, any>(function Wrapped(
     { kind, variant, size, state, scheme, className, ...rest }: RDDBaseProps & Record<string, any>,
     ref
@@ -47,3 +51,6 @@ export function toPascalCase(s: string) {
     .replace(/(^\w|[-_\s]\w)/g, (m) => m.replace(/[-_\s]/g, '').toUpperCase())
     .replace(/^\d+/, '');
 }
+
+// ✅ Soporta import default y nombrado
+export default makeElement;

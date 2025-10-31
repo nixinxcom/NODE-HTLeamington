@@ -1,6 +1,14 @@
+'use client';
+
+// Import local SOLO para crear wrappers dinámicos
+import _make from './elementFactory';
+
+// Re-exports públicos (sin crear colisiones)
 export { cx, useStylesRDD } from './utils';
 export { resolveComponentClasses } from './resolve';
+export { makeElement, toPascalCase } from './elementFactory';
 
+// Wrappers existentes (ya en archivos propios)
 export { BUTTON } from './Button';
 export { IMAGE } from './Image';
 export { A } from './A';
@@ -17,10 +25,8 @@ export { H6 } from './H6';
 export { default as LINK } from './Links';
 export { default as NEXTIMAGE } from './NextImage';
 
-export { makeElement, toPascalCase } from './elementFactory';
-import { makeElement } from './elementFactory';
-
-export const SPAN  = makeElement('span', 'span');
-export const SPAN1 = makeElement('span', 'span1');
-export const SPAN2 = makeElement('span', 'span2');
-export const DIV   = makeElement('div',  'surface');
+// Wrappers genéricos en MAYÚSCULAS (se distinguen de HTML nativo)
+export const SPAN  = _make('span', 'span');
+export const SPAN1 = _make('span', 'span1');
+export const SPAN2 = _make('span', 'span2');
+export const DIV   = _make('div',  'surface');
