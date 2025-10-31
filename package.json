@@ -1,6 +1,6 @@
 {
   "name": "@nixinx/core",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "private": false,
   "publishConfig": {
     "access": "restricted",
@@ -49,8 +49,10 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "require": "./dist/index.js"
-    },
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+  },
     "./styles/core-globals.css": "./dist/app/globals.css"
   },
   "sideEffects": [
