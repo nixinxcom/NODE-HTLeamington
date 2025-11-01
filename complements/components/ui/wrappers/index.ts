@@ -12,6 +12,7 @@ export { makeElement, toPascalCase } from './elementFactory';
 export { BUTTON } from './Button';
 export { IMAGE } from './Image';
 export { A } from './A';
+export { B } from './B';
 export { INPUT } from './Input';
 export { SELECT } from './Select';
 export { P } from './P';

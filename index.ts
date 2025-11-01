@@ -73,8 +73,6 @@ export { default as ReviewsRail } from "./complements/components/ReviewsRail/Rev
 export { default as RouteGuard } from "./complements/components/RouteGuard/RouteGuard";
 export { default as SliderComp } from "./complements/components/SliderComp/SliderCardComp";
 export { default as StripeLoaderComp } from "./complements/components/StripeLoaderComp/StripeLoaderComp";
-
-// StyleDesigner ya exportado arriba
 export { default as TableComp } from "./complements/components/TableComp/TableComp";
 export { default as ThemeToggle } from "./complements/components/ThemeToggle/ThemeToggle";
 
