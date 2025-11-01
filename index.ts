@@ -1,5 +1,4 @@
 'use client';
-
 // ────────────────────
 // Globals
 // ────────────────────
@@ -9,27 +8,23 @@
 // Wrappers
 // ────────────────────
 export * from "./complements/components/ui/wrappers";
-
 // ────────────────────
 // UIs
 // ────────────────────
 export { default as StyleDesigner } from "./complements/components/StyleDesigner/StyleDesigner";
 export { default as EnvWizard } from "./complements/admin/EnvWizard";
-
 // ────────────────────
 // Tabs
 // ────────────────────
 export { default as MetaTab } from "./complements/admin/MetaTab";
 export { default as FMsTab } from "./complements/admin/FMsTab";
 export { default as BrandingTab } from "./complements/admin/BrandingTab";
-
 // ────────────────────
 // Seeds TS
 // ────────────────────
 export { default as SeedStyles } from "./seeds/styles";
 export { default as SeedBranding } from "./seeds/branding";
 export { default as SeedSettings } from "./seeds/settings";
-
 // ────────────────────
 // Seeds JSON
 // ────────────────────
@@ -39,17 +34,16 @@ import metaSite from "./seeds/meta.site.json";
 export const SeedMetaGlobal = metaGlobal;
 export const SeedMetaPages = metaPages;
 export const SeedMetaSite = metaSite;
-
 // ────────────────────
 // Providers
 // ────────────────────
 export { default as Providers } from "./app/ui/providers";
-
 // ────────────────────
 // Interfaces
 // ────────────────────
 export * from "./coreinterfaces";
-
+export type { default as iSettings } from "./app/lib/settings/interface";
+export type { default as iBranding } from "./app/lib/branding/interface";
 // ────────────────────
 // App Components
 // ────────────────────
