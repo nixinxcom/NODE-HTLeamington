@@ -33,7 +33,8 @@
     "clean:deep": "node -e \"const fs=require('fs');for(const p of ['.next','.turbo','node_modules','dist']){try{fs.rmSync(p,{recursive:true,force:true});console.log('removed',p);}catch{}}\"",
     "publish:nixinx": "npm run clean:deep && npm install && npm run build:pkg && npm publish --access=restricted",
     "deploy:nixinx": "npm run clean:deep && npm install && npm run env:use:nixinx && npm run typecheck && npm run lint && npm run build:pkg && npm run _git:push && npm publish --access=restricted && npm run dev:nixinx",
-    "build:pkg": "tsc -p tsconfig.pkg.json && tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js"
+    "build:pkg": "tsc -p tsconfig.pkg.json && tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js",
+    "npm": "npm run git && npm version patch && npm run build:pkg && npm publish --access=restricted"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
