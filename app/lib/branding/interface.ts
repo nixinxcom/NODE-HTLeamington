@@ -1,4 +1,4 @@
-  // Acepta <FM /> o string por defecto; para datos serializables usa iBranding<string>
+  // Acepta <FM /> o string por defecto; para datos serializables usa iBranding<UIString>
   export type UIString = string | JSX.Element; // acepta <FM /> o string por defecto
   export interface Branch {
     name: UIString;

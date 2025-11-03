@@ -12,7 +12,9 @@ import { resolveFMToStrings } from '@/complements/utils/resolveFM';
 // ⛔️ Quitar este import (cliente):
 // import { getI18nEffective } from '@/complements/data/i18nFS';
 
-export type BrandingFS = iBranding<string>;
+type UIString = string | JSX.Element; // acepta <FM /> o string por defecto
+
+export type BrandingFS = iBranding<UIString>;
 
 const GLOBAL_PATH =
   process.env.NEXT_PUBLIC_BRANDING_DOC_PATH || 'branding/default';
@@ -37,7 +39,7 @@ export async function saveBrandingGlobal(partial: Partial<BrandingFS>) {
 // ---------- Effective (PWA): TSX+JSON (pres FM) → FS → resolver FM ----------
 export async function getBrandingEffectivePWA(
   locale: string
-): Promise<iBranding<string>> {
+): Promise<iBranding<UIString>> {
   const isServer = typeof window === 'undefined';
 
   let g: Partial<BrandingFS> | undefined;
@@ -68,8 +70,10 @@ export async function getBrandingEffectivePWA(
   // 2) FS pisa base (estructura global)
   const merged = deepMerge(base, g) as iBranding;
 
+  type UIString = string | JSX.Element; // acepta <FM /> o string por defecto
+
   // 3) Resolver <FM/> con el diccionario efectivo
-  return resolveFMToStrings<iBranding, iBranding<string>>(merged, dict)
+  return resolveFMToStrings<iBranding, iBranding<UIString>>(merged, dict)
 }
 
 // ---------- Admin RAW (si lo usas en UI; conserva <FM/>) ----------

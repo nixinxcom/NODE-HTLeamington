@@ -21,13 +21,15 @@ export interface AppThemeAPI {
   setSlot: (slot: "light" | "dark") => void;
 }
 
+type UIString = string | JSX.Element; // acepta <FM /> o string por defecto
+
 export interface iAppContext {
   // Locale global
   Locale: string;
   setLocale: (locale: string) => void;
   // Datos efectivos (única fuente de verdad: loaders FS > JSON > TSX)
-  Branding: iBranding<string>;
-  setBranding: React.Dispatch<React.SetStateAction<iBranding<string>>>;
+  Branding: iBranding<UIString>;
+  setBranding: React.Dispatch<React.SetStateAction<iBranding<UIString>>>;
   Settings: iSettings | undefined;
   setSettings: React.Dispatch<React.SetStateAction<iSettings | undefined>>;
   Styles: StylesDoc | undefined;
@@ -64,12 +66,12 @@ export interface iAppContext {
 /* ─────────────────────────────────────────────────────────
    Normalización liviana (para evitar nulls molestos)
    ───────────────────────────────────────────────────────── */
-function normalizeBranding(b?: iBranding<string> | null): iBranding<string> {
-  const safe = (b ?? ({} as iBranding<string>)) as any;
+function normalizeBranding(b?: iBranding<UIString> | null): iBranding<UIString> {
+  const safe = (b ?? ({} as iBranding<UIString>)) as any;
   if (safe.company) {
     safe.company = { ...safe.company, branches: safe.company.branches ?? [] };
   }
-  return safe as iBranding<string>;
+  return safe as iBranding<UIString>;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -80,7 +82,7 @@ const noop = () => {};
 const AppContext = createContext<iAppContext>({
   Locale: process.env.NEXT_PUBLIC_DEFAULT_LOCALE || "en",
   setLocale: noop,
-  Branding: {} as iBranding<string>,
+  Branding: {} as iBranding<UIString>,
   setBranding: noop as any,
   Settings: undefined,
   setSettings: noop as any,
@@ -117,12 +119,12 @@ const AppContext = createContext<iAppContext>({
 type ProviderProps = {
   children: React.ReactNode;
   initialLocale?: string;
-  initialBranding?: iBranding<string>;
+  initialBranding?: iBranding<UIString>;
   initialSettings?: iSettings;
   initialStyles?: StylesDoc;
   // compat (si alguien te los empaqueta juntos)
   initial?: {
-    branding?: iBranding<string>;
+    branding?: iBranding<UIString>;
     settings?: iSettings;
     styles?: StylesDoc;
     locale?: string;
@@ -149,7 +151,7 @@ export function ContextProvider({
 
 
   /* Datos efectivos */
-  const [Branding, setBranding] = useState<iBranding<string>>(
+  const [Branding, setBranding] = useState<iBranding<UIString>>(
     normalizeBranding(initial?.branding ?? initialBranding)
   );
   const [Settings, setSettings] = useState<iSettings | undefined>(
