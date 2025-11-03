@@ -82,6 +82,7 @@ export { default as ThemeToggle } from "./complements/components/ThemeToggle/The
 // Fuinctionalities
 export { default as AdminGuard } from "./complements/admin/AdminGuard";
 export { default as SuperAdminOnly } from "./complements/admin/SuperAdminOnly";
+export { default as FM } from "./complements/i18n/FM";
 
 // Final obligatorio
 export {};
