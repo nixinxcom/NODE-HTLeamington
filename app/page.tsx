@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
-import seedDicts from "@/app/[locale]/elpatronbarandgrill/i18n";
+import seedDicts from "@/app/[locale]/[tenant]/i18n";
 
 type Short = string; // p.ej. "es" | "en" | "fr"
 const SUPPORTED_SHORT = Object.keys(seedDicts) as Short[];

@@ -36,7 +36,6 @@ export default function HomePage() {
   const loc = typeof locale === 'string' ? locale : 'es';
 
   // ───────────────────── BRANDING DESDE CONTEXT ─────────────────────
-  const brand: string | undefined = Branding.company.brandName ? Branding.company.brandName : Branding.company.legalName;
   const maps: boolean = Settings?.faculties?.maps ?? false;
 
   const phone: string | undefined = Branding.company.phone;

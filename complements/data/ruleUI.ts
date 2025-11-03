@@ -3,7 +3,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { FbDB } from "@/app/lib/services/firebase";
 
 // i18n seed (para fallback) y seeds TSX
-import seedDicts from "@/app/[locale]/elpatronbarandgrill/i18n";
+import seedDicts from "@/app/[locale]/[tenant]/i18n";
 import * as brandingSeedTsx from "@/seeds/branding";
 import * as settingsSeedTsx from "@/seeds/settings";
 

@@ -8,7 +8,7 @@ import { normalizeRouteKey } from "@/app/lib/i18n/utils";
 import { toShortLocale, DEFAULT_LOCALE_SHORT } from '@/app/lib/i18n/locale';
 
 // Seeds TS (no JSON)
-import seedDicts from "@/app/[locale]/elpatronbarandgrill/i18n";
+import seedDicts from "@/app/[locale]/[tenant]/i18n";
 import { pickSeedDict } from "@/complements/data/ruleHelpers"; // elige exacto o base(lang)
 
 // ===================== Normalizador a corto =====================

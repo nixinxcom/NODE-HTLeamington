@@ -18,7 +18,7 @@ import {
   stringifyBrandingWithDict,
 } from "@/complements/data/brandingFS";
 
-import seedDicts from "@/app/[locale]/elpatronbarandgrill/i18n";
+import seedDicts from "@/app/[locale]/[tenant]/i18n";
 import { getI18nEffectiveServer } from "@/complements/data/i18nFS.server";
 
 type RouteParams = { scope: string };
