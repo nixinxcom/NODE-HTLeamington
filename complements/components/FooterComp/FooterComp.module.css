@@ -2,7 +2,7 @@
   background-color: var(--tw-bg-opacity, #ffffff);
   padding: 2rem 1rem;
   text-align: center;
-  color: var(--tw-text-opacity, theme('colors.text'));
+  color: var(--tw-text-opacity);
   font-family: theme('fontFamily.brand');
 }
 
