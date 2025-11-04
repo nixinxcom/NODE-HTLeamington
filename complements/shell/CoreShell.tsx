@@ -48,9 +48,9 @@ function fromRDD(): string | undefined {
 
 function labelOf(code: string): string {
   const v = code.toLowerCase();
-  if (v.startsWith('es')) return 'Español';
-  if (v.startsWith('fr')) return 'Français';
-  return 'English';
+  if (v.startsWith('es')) return 'es';
+  if (v.startsWith('fr')) return 'fr';
+  return 'en';
 }
 
 function buildLangs(): ILanguage[] {
@@ -65,7 +65,7 @@ function buildLangs(): ILanguage[] {
 export default function CoreShell({
   children,
   localMessages,
-  coreDefaultLocale = 'es',
+  coreDefaultLocale = 'en',
   showLocaleSwitcher = true,
 }: CoreShellProps) {
   const pathname = usePathname() || '/';
@@ -84,7 +84,12 @@ export default function CoreShell({
   const langs: ILanguage[] = useMemo(buildLangs, []);
 
   return (
-    <IntlProvider locale={effective} defaultLocale={coreDefaultLocale} messages={messages}>
+    <IntlProvider locale={effective} defaultLocale={coreDefaultLocale} messages={messages}
+        onError={(e) => {
+          if ((e as any).code === 'MISSING_TRANSLATION') return;
+          console.error(e);
+        }}
+      >
       <Providers initialLocale={effective}>
         {showLocaleSwitcher && <InterComp Langs={langs} />}
         {children}
