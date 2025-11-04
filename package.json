@@ -1,6 +1,6 @@
 {
   "name": "@nixinx/core",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": false,
   "publishConfig": {
     "access": "restricted",
@@ -21,7 +21,6 @@
     "start": "next start",
     "lint": "next lint",
     ".": "npm install && npm audit fix && next lint && next build && git status && git add . && (git commit -m \"General Adjustments\" || echo No changes) && powershell -NoProfile -Command \"$b=(git rev-parse --abbrev-ref HEAD); git push -u origin $b\" && cls && next dev",
-    "all": "npm install && npm audit fix && next lint && next build && next postbuild && next start",
     "git": "git status && git add . && (git commit -m \"General Adjustments\" || echo No changes) && powershell -NoProfile -Command \"$b=(git rev-parse --abbrev-ref HEAD); git push -u origin $b\" && cls && next dev",
     "dev:nixinx": "npm run env:use:nixinx && next dev -p 3001",
     "_check:build": "npm run typecheck && npm run lint && next build && next-sitemap",
@@ -31,7 +30,8 @@
     "publish:nixinx": "npm run clean:deep && npm install && npm run build:pkg && npm publish --access=restricted",
     "deploy:nixinx": "npm run clean:deep && npm install && npm run env:use:nixinx && npm run typecheck && npm run lint && npm run build:pkg && npm run _git:push && npm publish --access=restricted && npm run dev:nixinx",
     "build:pkg": "tsc -p tsconfig.pkg.json && tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js",
-    "npm": "npm run git && npm version patch && npm run build:pkg && npm publish --access=restricted"
+    "npm": "npm run git && npm version patch && npm run build:pkg && npm publish --access=restricted",
+    "all": "npm run clean:deep && npm install && npm audit fix && next lint && next build && next postbuild && npm run npm && npm run dev"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
