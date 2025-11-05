@@ -5,6 +5,7 @@
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+nixinx-firebase-adminsdk-fbsvc-6196da666f
 
 # testing
 /coverage
