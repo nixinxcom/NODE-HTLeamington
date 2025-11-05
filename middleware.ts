@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 const LOCALES = ['es','en','fr'] as const
-const DEFAULT_LOCALE = 'es'
+const DEFAULT_LOCALE = 'en'
 
 // extensiones públicas a ignorar
 const PUBLIC_FILE = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|txt|json|xml|css|js|map|mp4|webm|woff2?|ttf|otf)$/i
@@ -24,22 +24,18 @@ const IGNORED_PREFIXES = [
 // === NUEVO (no invasivo): tenant por host ===
 const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT || 'nixinx'
 const TENANT_BY_HOST: Record<string, string> = {
-  'localhost:3000': 'nixinx',
-  'localhost:3001': 'nixinx',
-  'nixinx.com': 'nixinx',
-  'www.nixinx.com': 'nixinx',
-
-  'localhost:3002': 'elpatronbarandgrill',
-  'patronbarandgrill.com': 'elpatronbarandgrill',
-  'www.patronbarandgrill.com': 'elpatronbarandgrill',
-
-  'localhost:3003': 'hottacosrestaurant',
-  'hottacosrestaurant.com': 'hottacosrestaurant',
-  'www.hottacosrestaurant.com': 'hottacosrestaurant',
-
-  'localhost:3004': 'hottacoswindsor',
-  'hottacosrestaurant.ca': 'hottacoswindsor',
-  'www.hottacosrestaurant.ca': 'hottacoswindsor',
+  'nixinx.com': 'NIXINX',
+  'localhost:3000': 'NIXINX',
+  'www.nixinx.com': 'NIXINX',
+  'patronbarandgrill.com': 'ElPatron',
+  'localhost:3001': 'ElPatron',
+  'www.patronbarandgrill.com': 'ElPatron',
+  'hottacosrestaurant.ca': 'HTWindsor',
+  'localhost:3002': 'HTWindsor',
+  'www.hottacosrestaurant.ca': 'HTWindsor',
+  'hottacosrestaurant.com': 'HTLeamington',
+  'localhost:3003': 'HTLeamington',
+  'www.hottacosrestaurant.com': 'HTLeamington',
   // agrega aquí más dominios/puertos → tenant
 }
 function getTenantForHost(req: NextRequest) {
@@ -50,16 +46,18 @@ function getTenantForHost(req: NextRequest) {
 // 🔒 Slugs de primer nivel que ya son "sitios" del cliente y
 //     NO deben recibir el prefijo {tenant} en la reescritura.
 const STATIC_TOP_LEVEL_SLUGS = new Set<string>([
-  'elpatronbarandgrill',
-  'hottacosrestaurant',
-  'hottacoswindsor',
+  'nixinx',
+  'elpatron',
+  'htwindsor',
+  'htleamington',
 ])
 
 // 🏠 Home por tenant (/{locale} → /{locale}/{homeDelTenant})
 const HOME_BY_TENANT: Record<string, string> = {
-  elpatronbarandgrill: 'elpatronbarandgrill',
-  hottacosrestaurant: 'hottacosrestaurant',
-  hottacoswindsor: 'hottacoswindsor',
+  NIXINX: 'NIXINX',
+  ElPatron: 'ElPatron',
+  HTLeamington: 'HTLeamington',
+  HTWindsor: 'HTWindsor',
 }
 
 // === Firestore REST (tu lógica existente) ===
