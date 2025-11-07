@@ -12,13 +12,15 @@
     "lint:fix": "next lint --fix",
     "typecheck": "tsc --noEmit",
 
-    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:lib": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:app": "next build",
+    "build": "npm run build:lib && npm run build:app",
     "postbuild": "next-sitemap",
     "build:pkg": "tsc -p tsconfig.pkg.json && tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js",
 
     "toscratch": "node -e \"const fs=require('fs');const paths=['.next','.turbo','node_modules','dist','build','coverage','android','ios','www','capacitor-out','package-lock.json','pnpm-lock.yaml','yarn.lock'];for(const p of paths){try{fs.rmSync(p,{recursive:true,force:true});console.log('removed',p);}catch(e){}}\"",
     "reinstall": "npm install && npm audit && npm audit fix && npm run lint:fix && npm run lint && npm run typecheck",
-    "rebuild": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && next build && next-sitemap && tsc -p tsconfig.pkg.json && tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js",
+    "rebuild": "npm run build && npm run postbuild && npm run build:pkg",
 
     "github": "powershell -NoProfile -Command \"$msg=$env:npm_config_msg; if ([string]::IsNullOrWhiteSpace($msg)) { $msg='General Adjustments' }; git status; git add -A; git diff --cached --quiet; if ($LASTEXITCODE -ne 0) { git commit -m \\\"$msg\\\" } else { Write-Host 'No changes to commit.' }; git fetch origin; git switch main; git pull --rebase origin main; git push -u origin main;\"",
 
