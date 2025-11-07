@@ -22,7 +22,7 @@
 
     "github": "powershell -NoProfile -Command \"$msg=$env:npm_config_msg; if ([string]::IsNullOrWhiteSpace($msg)) { $msg='General Adjustments' }; git status; git add -A; git diff --cached --quiet; if ($LASTEXITCODE -ne 0) { git commit -m \\\"$msg\\\" } else { Write-Host 'No changes to commit.' }; git fetch origin; git switch main; git pull --rebase origin main; git push -u origin main;\"",
 
-    "env": "node -e \"const fs=require('fs');const e=process.env.npm_config_env||process.env.npm_config_branch; if(!e){console.error('Falta parametro --env=<Name> (ej: --env=ElPatron)');process.exit(1);} const s='.env.'+e+'.local'; const d='.env.local'; if(!fs.existsSync(s)){console.error('No existe '+s);process.exit(1);} fs.copyFileSync(s,d); console.log('Using '+s+' -> '+d);\"",
+    "env": "node -e \"const fs=require('fs');const e=process.env.npm_config_env; if(!e){console.error('Falta parametro --env=<Name> (ej: --env=NIXINX)');process.exit(1);} const s='.env.'+e+'.local'; const d='.env.local'; if(!fs.existsSync(s)){console.error('No existe '+s);process.exit(1);} fs.copyFileSync(s,d); console.log('Using '+s+' -> '+d);\"",
     "env:NIXINX": "npm run env -- --env=NIXINX",
     "env:ElPatron": "npm run env -- --env=ElPatron",
     "env:HTWindsor": "npm run env -- --env=HTWindsor",

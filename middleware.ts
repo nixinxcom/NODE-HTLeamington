@@ -2,10 +2,10 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const LOCALES = ['es','en','fr'] as const
+const LOCALES = ['es', 'en', 'fr'] as const
 const DEFAULT_LOCALE = 'en'
 
-// extensiones públicas a ignorar
+// archivos públicos a ignorar
 const PUBLIC_FILE = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|txt|json|xml|css|js|map|mp4|webm|woff2?|ttf|otf)$/i
 const IGNORED_PREFIXES = [
   '/_next',
@@ -23,29 +23,52 @@ const IGNORED_PREFIXES = [
 
 // === tenant por host ===
 const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT || 'nixinx'
+
 const TENANT_BY_HOST: Record<string, string> = {
+  // Producción
   'nixinx.com': 'NIXINX',
-  'localhost:3000': 'NIXINX',
   'www.nixinx.com': 'NIXINX',
 
   'patronbarandgrill.com': 'ElPatron',
-  'localhost:3001': 'ElPatron',
   'www.patronbarandgrill.com': 'ElPatron',
 
   'hottacosrestaurant.ca': 'HTWindsor',
-  'localhost:3002': 'HTWindsor',
   'www.hottacosrestaurant.ca': 'HTWindsor',
 
   'hottacosrestaurant.com': 'HTLeamington',
-  'localhost:3003': 'HTLeamington',
   'www.hottacosrestaurant.com': 'HTLeamington',
+
+  // Desarrollo: puertos dedicados
+  'localhost:3001': 'NIXINX',
+  '127.0.0.1:3001': 'NIXINX',
+
+  'localhost:3002': 'ElPatron',
+  '127.0.0.1:3002': 'ElPatron',
+
+  'localhost:3003': 'HTWindsor',
+  '127.0.0.1:3003': 'HTWindsor',
+
+  'localhost:3004': 'HTLeamington',
+  '127.0.0.1:3004': 'HTLeamington',
 }
-function getTenantForHost(req: NextRequest) {
+
+function getTenantForHost(req: NextRequest): string | null {
   const host = (req.headers.get('host') || '').toLowerCase()
+
+  // Core / multi-tenant
+  if (
+    host === 'localhost:3000' ||
+    host === '127.0.0.1:3000' ||
+    host === 'nixinx.org' ||
+    host === 'www.nixinx.org'
+  ) {
+    return null
+  }
+
   return TENANT_BY_HOST[host] || DEFAULT_TENANT
 }
 
-// Slugs de tenants conocidos (en minúsculas)
+// slugs de tenants conocidos (minúsculas)
 const STATIC_TOP_LEVEL_SLUGS = new Set<string>([
   'nixinx',
   'elpatron',
@@ -53,7 +76,7 @@ const STATIC_TOP_LEVEL_SLUGS = new Set<string>([
   'htleamington',
 ])
 
-// Home por tenant (segmento interno)
+// home interno por tenant
 const HOME_BY_TENANT: Record<string, string> = {
   NIXINX: 'NIXINX',
   ElPatron: 'ElPatron',
@@ -61,7 +84,7 @@ const HOME_BY_TENANT: Record<string, string> = {
   HTWindsor: 'HTWindsor',
 }
 
-// === Firestore REST (tu lógica existente) ===
+// === Firestore / toggles existentes ===
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
 const SETTINGS_DOC = process.env.NEXT_PUBLIC_SETTINGS_DOC_PATH || 'settings/default'
 
@@ -77,7 +100,6 @@ function isI18nPath(pathname: string) {
   return (LOCALES as readonly string[]).includes(first ?? '')
 }
 
-// admin / wip
 function isAdminOrWip(pathname: string) {
   const segs = pathname.split('/').filter(Boolean)
   if (!segs.length) return false
@@ -120,7 +142,7 @@ function readBool(doc: any, path: string[], defaultValue: boolean | null): boole
 
 async function websiteEnabled(): Promise<boolean> {
   const doc = await fetchSettingsDoc()
-  const v1 = readBool(doc, ['faculties','website'], null)
+  const v1 = readBool(doc, ['faculties', 'website'], null)
   const v2 = readBool(doc, ['website'], null)
   const value = v1 ?? v2
   return value !== false
@@ -129,7 +151,7 @@ async function websiteEnabled(): Promise<boolean> {
 async function agentEnabled(): Promise<boolean> {
   const doc = await fetchSettingsDoc()
   const v1 = readBool(doc, ['agentAI'], null)
-  const v2 = readBool(doc, ['agentAI','enabled'], null)
+  const v2 = readBool(doc, ['agentAI', 'enabled'], null)
   const value = v1 ?? v2
   return value !== false
 }
@@ -137,7 +159,7 @@ async function agentEnabled(): Promise<boolean> {
 export async function middleware(req: NextRequest) {
   const { pathname, search, hash } = req.nextUrl
 
-  // normalización /en-US → /en
+  // normalización /en-US -> /en, etc.
   const segs = pathname.split('/').filter(Boolean)
   const first = (segs[0] || '').toLowerCase()
   const LONG_TO_SHORT: Record<string, typeof LOCALES[number]> = {
@@ -162,7 +184,10 @@ export async function middleware(req: NextRequest) {
       if (!on) {
         return new NextResponse(JSON.stringify({ ok: false, error: 'agent_disabled' }), {
           status: 503,
-          headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+          headers: {
+            'content-type': 'application/json',
+            'cache-control': 'no-store',
+          },
         })
       }
     }
@@ -174,14 +199,14 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // === Rutas con locale visible: control multi-tenant + kill-switch ===
+  // === Con locale visible ===
   if (isI18nPath(pathname)) {
     const parts = pathname.split('/').filter(Boolean)
     const locale = parts[0]
     const afterLocale = parts.slice(1)
     const firstAfter = (afterLocale[0] || '').toLowerCase()
 
-    // kill-switch (salvo admin/wip)
+    // kill-switch global (excepto admin/wip)
     if (!isAdminOrWip(pathname)) {
       const enabled = await websiteEnabled()
       if (!enabled) {
@@ -196,17 +221,26 @@ export async function middleware(req: NextRequest) {
     }
 
     const tenant = getTenantForHost(req)
-    const tenantLower = tenant.toLowerCase()
 
-    // admin/wip: permitidos tal cual (no forzamos tenant)
+    // admin/wip: deja pasar (no forzamos tenant)
     if (isAdminOrWip(pathname)) {
       const reqHeaders = new Headers(req.headers)
-      reqHeaders.set('x-tenant', tenant)
+      if (tenant) reqHeaders.set('x-tenant', tenant)
       reqHeaders.set('x-locale', locale)
       return NextResponse.next({ request: { headers: reqHeaders } })
     }
 
-    // 1) /{locale} -> rewrite interno a /{locale}/{tenant}
+    // Sin tenant fijo (localhost:3000) => multi-tenant dev, no aislamiento por host
+    if (!tenant) {
+      const reqHeaders = new Headers(req.headers)
+      reqHeaders.set('x-locale', locale)
+      return NextResponse.next({ request: { headers: reqHeaders } })
+    }
+
+    const tenantLower = tenant.toLowerCase()
+    const isKnownTenantSlug = STATIC_TOP_LEVEL_SLUGS.has(firstAfter)
+
+    // 1) /{locale} -> internamente /{locale}/{HOME_BY_TENANT[tenant]}
     if (afterLocale.length === 0) {
       const home = HOME_BY_TENANT[tenant as keyof typeof HOME_BY_TENANT] || tenant
       const url = req.nextUrl.clone()
@@ -217,36 +251,27 @@ export async function middleware(req: NextRequest) {
       return NextResponse.rewrite(url, { request: { headers: reqHeaders } })
     }
 
-    // 2) Si el usuario pone explícitamente el slug del tenant en la URL pública,
-    //    lo limpiamos:
-    //    /{locale}/ElPatron/...  -> /{locale}/...
+    // 2) /{locale}/{tenant}/... -> quita el slug del tenant en la URL pública
     if (firstAfter === tenantLower) {
-      const rest = afterLocale.slice(1)
+      const rest = afterLocale.slice(1).join('/')
       const url = req.nextUrl.clone()
-      url.pathname = rest.length
-        ? `/${locale}/${rest.join('/')}`
-        : `/${locale}/`
+      url.pathname = rest ? `/${locale}/${rest}` : `/${locale}`
       url.search = search
       url.hash = hash
       return NextResponse.redirect(url, 307)
     }
 
-    // 3) Si intenta usar el slug de OTRO tenant → 404
-    const isKnownTenantSlug = STATIC_TOP_LEVEL_SLUGS.has(firstAfter)
+    // 3) /{locale}/{OtroTenant}/... -> 404
     if (isKnownTenantSlug && firstAfter !== tenantLower) {
       const url = req.nextUrl.clone()
-      url.pathname = '/404'
+      url.pathname = `/${locale}/not-found`
       const res = NextResponse.rewrite(url)
       res.headers.set('Cache-Control', 'no-store')
       res.headers.set('X-Robots-Tag', 'noindex, nofollow')
       return res
     }
 
-    // 4) Cualquier otra ruta /{locale}/algo...
-    //    Se interpreta como página del tenant actual:
-    //    patronbarandgrill.com/es/encuestas
-    //      -> internamente /es/ElPatron/encuestas
-    //    Si esa página no existe, Next devolverá 404 (lo que quieres).
+    // 4) Resto: /{locale}/algo -> interno /{locale}/{tenant}/algo
     const url = req.nextUrl.clone()
     const rest = afterLocale.join('/')
     url.pathname = `/${locale}/${tenant}/${rest}`
@@ -256,11 +281,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.rewrite(url, { request: { headers: reqHeaders } })
   }
 
-  // === Sin locale visible: decide locale y redirige a /{locale}/… ===
+  // === Sin locale visible: redirige a /{locale}/... ===
   const locale = pathname === '/' ? pickLocale(req) : DEFAULT_LOCALE
-
-  // kill-switch en destino (para la ruta con locale)
   const candidatePath = `/${locale}${pathname}`
+
   if (!isAdminOrWip(candidatePath)) {
     const enabled = await websiteEnabled()
     if (!enabled) {
