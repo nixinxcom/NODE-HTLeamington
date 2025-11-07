@@ -23,8 +23,8 @@ export const envMeta: Partial<Record<keyof iEnvVars, Meta>> = {
     NEXT_PUBLIC_AGENT_ID: { label: 'Agent ID', placeholder: 'default', readOnly: true },
     NEXT_PUBLIC_ADSENSE_CLIENT: { label: 'Adsense client' },
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: { label: 'Stripe publishable key' },
-    NEXT_PUBLIC_GOOGLE_MAPS_JS_API_KEY: { label: 'Google Maps JS key' },
-    NEXT_PUBLIC_FCM_VAPID_KEY: { label: 'FCM VAPID public key', doc: 'https://console.firebase.google.com/ → Cloud Messaging → Web Push' },
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: { label: 'Google Maps key' },
+    NEXT_PUBLIC_FBCLOUD_MESSAGES_VAPID_KEY: { label: 'FCM VAPID public key', doc: 'https://console.firebase.google.com/ → Cloud Messaging → Web Push' },
 
 
     FIREBASE_PRIVATE_KEY: { label: 'Firebase Admin Private Key', secret: true, serverOnly: true, doc: 'https://firebase.google.com/docs/admin/setup' },

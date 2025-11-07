@@ -1,5 +1,5 @@
 // app/lib/tenant/resolve.ts
-export const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT || 'nixinx';
+export const DEFAULT_TENANT = process.env.NEXT_PUBLIC_FIREBASE_DEFAULT_TENANT || 'nixinx';
 
 const TENANT_BY_HOST: Record<string, string> = {
   'localhost:3000': 'nixinx',

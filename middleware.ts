@@ -22,7 +22,7 @@ const IGNORED_PREFIXES = [
 ]
 
 // === tenant por host ===
-const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT || 'nixinx'
+const DEFAULT_TENANT = process.env.NEXT_PUBLIC_FIREBASE_DEFAULT_TENANT || 'nixinx'
 
 const TENANT_BY_HOST: Record<string, string> = {
   // Producción

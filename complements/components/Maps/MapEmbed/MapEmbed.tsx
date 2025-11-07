@@ -3,7 +3,7 @@ type Mode = 'view' | 'streetview' | 'place' | 'search' | 'directions';
 import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 
 type Props = {
-  apiKey?: string;                // usa NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY si no pasas
+  apiKey?: string;                // usa NEXT_PUBLIC_GOOGLE_MAPS_API_KEY si no pasas
   mode?: Mode;
 
   // Coords
@@ -41,7 +41,7 @@ function clamp(n: number, min: number, max: number) { return Math.min(max, Math.
 function wrap360(n: number) { return ((n % 360) + 360) % 360; }
 
 export default function MapEmbed({
-  apiKey = process.env.NEXT_PUBLIC_GOOGLE_NOT_RESTRICTED_API_KEY!,
+  apiKey = process.env.NEXT_PUBLIC_GOOGLE_UNRESTRICTED_KEY!,
   mode = 'view',
   lat, lng,
   zoom = 15, mapType = 'roadmap',

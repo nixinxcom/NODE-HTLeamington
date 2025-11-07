@@ -24,12 +24,13 @@
 
     "github": "powershell -NoProfile -Command \"$msg=$env:npm_config_msg; if ([string]::IsNullOrWhiteSpace($msg)) { $msg='General Adjustments' }; git status; git add -A; git diff --cached --quiet; if ($LASTEXITCODE -ne 0) { git commit -m \\\"$msg\\\" } else { Write-Host 'No changes to commit.' }; git fetch origin; git switch main; git pull --rebase origin main; git push -u origin main;\"",
 
+    "trigger": "powershell -NoProfile -Command \"try { curl.exe -X POST 'https://api.vercel.com/v1/integrations/deploy/prj_gakG67qzmYqXfNIFBPpPDTaDeYaI/JaUs2x8Dt8' > $null; Write-Host 'Triggered NIXINX OK'; } catch { Write-Host 'Failed NIXINX'; exit 1 }\"",
     "trigger:nixinx": "powershell -NoProfile -Command \"try { curl.exe -X POST 'https://api.vercel.com/v1/integrations/deploy/prj_5WhvzM7roFJ9Q1S74hwNtLg5Rmxr/VArZoblR9c' > $null; Write-Host 'Triggered NIXINX OK'; } catch { Write-Host 'Failed NIXINX'; exit 1 }\"",
     "trigger:elpatron": "powershell -NoProfile -Command \"try { curl.exe -X POST 'https://api.vercel.com/v1/integrations/deploy/prj_ZqiSCDdp300UhEpfoOx0B8t4Gfcm/gDpDq1XNoU' > $null; Write-Host 'Triggered ElPatron OK'; } catch { Write-Host 'Failed ElPatron'; exit 1 }\"",
     "trigger:htwindsor": "powershell -NoProfile -Command \"try { curl.exe -X POST 'https://api.vercel.com/v1/integrations/deploy/prj_Ni0gWvmVA1AMXy7QOIWq5tjZQvv2/Y0gZgw6k9t' > $null; Write-Host 'Triggered HTWindsor OK'; } catch { Write-Host 'Failed HTWindsor'; exit 1 }\"",
     "trigger:htleamington": "powershell -NoProfile -Command \"try { curl.exe -X POST 'https://api.vercel.com/v1/integrations/deploy/prj_cizfjdHBX60kMBbqYg6CQTpoxXm3/Ubwftb8ac3' > $null; Write-Host 'Triggered HTLeamington OK'; } catch { Write-Host 'Failed HTLeamington'; exit 1 }\"",
 
-    "trigger:all": "npm run trigger:nixinx && npm run trigger:elpatron && npm run trigger:htwindsor && npm run trigger:htleamington",
+    "trigger:all": "npm run trigger && npm run trigger:nixinx && npm run trigger:elpatron && npm run trigger:htwindsor && npm run trigger:htleamington",
     "deploy:all": "npm run github && npm run trigger:all",
 
     "env": "node -e \"const fs=require('fs');const e=process.env.npm_config_env; if(!e){console.error('Falta parametro --env=<Name> (ej: --env=NIXINX)');process.exit(1);} const s='.env.'+e+'.local'; const d='.env.local'; if(!fs.existsSync(s)){console.error('No existe '+s);process.exit(1);} fs.copyFileSync(s,d); console.log('Using '+s+' -> '+d);\"",

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const envSchema = z.object({
     // ===== Firebase Web (cliente) =====
-    NEXT_PUBLIC_DEFAULT_TENANT: z.string().min(1),
+    NEXT_PUBLIC_FIREBASE_DEFAULT_TENANT: z.string().min(1),
     NEXT_PUBLIC_FIREBASE_API_KEY: z.string().min(1),
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().min(1),
     NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().min(1),
@@ -31,11 +31,9 @@ export const envSchema = z.object({
     NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID_PREPAID: z.string().optional(),
     NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID_PROMISE: z.string().optional(),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
-    NEXT_PUBLIC_GOOGLE_MAPS_JS_API_KEY: z.string().optional(),
-    NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY: z.string().optional(),
-    NEXT_PUBLIC_GOOGLE_STREET_VIEW_API_KEY: z.string().optional(),
-    NEXT_PUBLIC_GOOGLE_NOT_RESTRICTED_API_KEY: z.string().optional(),
-    NEXT_PUBLIC_FCM_VAPID_KEY: z.string().optional(),
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
+    NEXT_PUBLIC_GOOGLE_UNRESTRICTED_KEY: z.string().optional(),
+    NEXT_PUBLIC_FBCLOUD_MESSAGES_VAPID_KEY: z.string().optional(),
     NEXT_PUBLIC_PAYPAL_ENV: z.literal('sandbox').default('sandbox'),
     NEXT_PUBLIC_PAYPAL_CLIENT_ID: z.string().optional(),
 
