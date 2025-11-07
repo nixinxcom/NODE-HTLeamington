@@ -1,0 +1,63 @@
+/* ADITIVO — Plantilla pública: atado a --pl-* (fallbacks = look actual) */
+
+.main{
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  /* Fallback = BLANCO (look original) */
+  background: var(--pl-bg, #ffffff);
+  color: var(--pl-fg, #0b0f14);
+}
+
+/* Respuesta a tema (soporta .dark, .light y remover .dark) */
+:global(html.dark) .main{
+  background: var(--pl-bg-dark, #0b0b0b);
+  color: var(--pl-fg-dark, #ffffff);
+}
+:global(html.light) .main,
+:global(html:not(.dark)) .main{
+  background: var(--pl-bg-light, #ffffff);
+  color: var(--pl-fg-light, #0b0f14);
+}
+
+.section{
+  padding: var(--pl-section-pad, 4rem 1.5rem);
+  display: grid;
+  place-items: center;
+}
+
+.heroInner{
+  max-width: var(--pl-hero-maxw, 960px);
+  text-align: var(--pl-hero-align, center);
+}
+
+/* CTA row */
+.ctaRow{
+  margin-top: var(--pl-cta-mt, 2rem);
+  display: inline-flex;
+  gap: var(--pl-cta-gap, .75rem);
+  align-items: center;
+}
+
+/* Enlaces estilo botón */
+.linkBtn{
+  padding: var(--pl-link-pad, .6rem 1rem);
+  border-radius: var(--pl-link-radius, .75rem);
+  border: 1px solid var(--pl-link-border, currentColor);
+  text-decoration: var(--pl-link-decoration, none);
+  transition: opacity var(--trans-fast, 180ms ease-out), background var(--trans-fast, 180ms ease-out);
+}
+.linkBtn:hover{
+  background: var(--pl-link-hover-bg, rgba(255,255,255,0.08));
+  opacity: var(--pl-link-hover-opacity, 1);
+}
+
+/* Nota y bloque AI */
+.New{ color: var(--pl-new-fg, red); }
+.note{
+  opacity: var(--pl-note-opacity, .8);
+  font-size: var(--pl-note-size, .9rem);
+  margin-top: var(--pl-note-mt, .5rem);
+  color: var(--pl-note-fg, inherit);
+}
+.aiBlock{ margin-top: var(--pl-ai-mt, 2rem);}

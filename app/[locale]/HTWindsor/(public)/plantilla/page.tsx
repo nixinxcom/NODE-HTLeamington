@@ -55,7 +55,7 @@ export default async function Page(
   return (
     <div className={s.section}>
       <HomePublicPage ssrTime={ssrTime} locale={locale} />
-      Plantilla de NIXINX.org
+      Plantilla de Hot Tacos Windsor
     </div>
   );
 }
