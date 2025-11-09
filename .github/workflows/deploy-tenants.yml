@@ -1,0 +1,13 @@
+name: Deploy tenants
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-nixinx-com:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger nixinx.com on Vercel
+        run: curl -X POST "${{ secrets.VERCEL_HOOK_NIXINX_COM }}"
