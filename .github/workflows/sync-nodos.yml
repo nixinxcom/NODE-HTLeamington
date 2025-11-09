@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   sync-nodes:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_USER: nixinxcom
+      PAT: ${{ secrets.NODES_SYNC_TOKEN }}
 
     steps:
       - name: Checkout NIXINX core
@@ -19,28 +21,22 @@ jobs:
       - name: Configure git identity
         run: |
           git config user.name "nixinx-sync-bot"
-          git config user.email "actions@nixinx.com"
+          git config user.email "sync-bot@nixinx.com"
 
       - name: Sync NODE-HTLeamington
-        env:
-          PAT: ${{ secrets.NODES_SYNC_TOKEN }}
         run: |
-          git remote remove NODE-HTLeamington 2>/dev/null || true
-          git remote add NODE-HTLeamington https://${PAT}@github.com/nixinxcom/NODE-HTLeamington.git
-          git push NODE-HTLeamington HEAD:main --force
+          git remote remove NODE-HTLeamington || true
+          git remote add NODE-HTLeamington https://${GITHUB_USER}:${PAT}@github.com/nixinxcom/NODE-HTLeamington.git
+          git push NODE-HTLeamington main:main --force
 
       - name: Sync NODE-HTWindsor
-        env:
-          PAT: ${{ secrets.NODES_SYNC_TOKEN }}
         run: |
-          git remote remove NODE-HTWindsor 2>/dev/null || true
-          git remote add NODE-HTWindsor https://${PAT}@github.com/nixinxcom/NODE-HTWindsor.git
-          git push NODE-HTWindsor HEAD:main --force
+          git remote remove NODE-HTWindsor || true
+          git remote add NODE-HTWindsor https://${GITHUB_USER}:${PAT}@github.com/nixinxcom/NODE-HTWindsor.git
+          git push NODE-HTWindsor main:main --force
 
       - name: Sync NODE-ElPatron
-        env:
-          PAT: ${{ secrets.NODES_SYNC_TOKEN }}
         run: |
-          git remote remove NODE-ElPatron 2>/dev/null || true
-          git remote add NODE-ElPatron https://${PAT}@github.com/nixinxcom/NODE-ElPatron.git
-          git push NODE-ElPatron HEAD:main --force
+          git remote remove NODE-ElPatron || true
+          git remote add NODE-ElPatron https://${GITHUB_USER}:${PAT}@github.com/nixinxcom/NODE-ElPatron.git
+          git push NODE-ElPatron main:main --force
