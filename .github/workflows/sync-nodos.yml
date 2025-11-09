@@ -1,0 +1,61 @@
+name: Sync NODE repos
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sync-nodes:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout NIXINX core
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install rsync
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync
+
+      - name: Sync to NODE repos
+        env:
+          GH_TOKEN: ${{ secrets.NODES_SYNC_TOKEN }}
+          TARGET_REPOS: |
+            nixinxcom/NODE-ElPatron
+            nixinxcom/NODE-HTWindsor
+            nixinxcom/NODE-HTLeamington
+        run: |
+          git config --global user.name  "NIXINX Sync Bot"
+          git config --global user.email "bot@nixinx.com"
+
+          # Copiamos el repo fuente (sin .git) a una carpeta temporal
+          mkdir src
+          rsync -a --delete --exclude ".git" ./ src/
+
+          for target in $TARGET_REPOS; do
+            echo ">>> Syncing to $target"
+
+            git clone --depth=1 "https://x-access-token:${GH_TOKEN}@github.com/${target}.git" target-repo
+
+            rsync -a --delete --exclude ".git" src/ target-repo/
+
+            cd target-repo
+
+            if git status --porcelain | grep . >/dev/null 2>&1; then
+              git add -A
+              git commit -m "Sync from NIXINX core (${GITHUB_SHA})"
+              git push origin HEAD:main
+            else
+              echo "No changes for $target"
+            fi
+
+            cd ..
+            rm -rf target-repo
+          done
