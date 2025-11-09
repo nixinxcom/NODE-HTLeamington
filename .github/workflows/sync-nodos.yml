@@ -4,73 +4,36 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   sync-nodes:
     runs-on: ubuntu-latest
 
-    # Solo afecta al GITHUB_TOKEN, el PAT va por secret aparte.
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout NIXINX core
+      - name: Checkout NIXINX repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install rsync
+      - name: Configure git identity
         run: |
-          sudo apt-get update
-          sudo apt-get install -y rsync
+          git config user.name "nixinx-sync-bot"
+          git config user.email "sync@nixinx.com"
 
-      - name: Sync to NODE repos
-        env:
-          GH_TOKEN: ${{ secrets.NODES_SYNC_TOKEN }}
-          TARGET_REPOS: |
-            nixinxcom/NODE-ElPatron
-            nixinxcom/NODE-HTWindsor
-            nixinxcom/NODE-HTLeamington
+      - name: Sync to NODE-HTLeamington
         run: |
-          set -e
+          git push --force \
+            https://x-access-token:${{ secrets.NODES_SYNC_TOKEN }}@github.com/nixinxcom/NODE-HTLeamington.git \
+            main:main
 
-          git config --global user.name  "NIXINX Sync Bot"
-          git config --global user.email "bot@nixinx.com"
+      - name: Sync to NODE-HTWindsor
+        run: |
+          git push --force \
+            https://x-access-token:${{ secrets.NODES_SYNC_TOKEN }}@github.com/nixinxcom/NODE-HTWindsor.git \
+            main:main
 
-          echo "Preparando copia fuente..."
-          mkdir src
-          rsync -a --delete --exclude ".git" ./ src/
-
-          for target in $TARGET_REPOS; do
-            echo "========================================"
-            echo ">>> Syncing to $target"
-
-            rm -rf target-repo
-            # IMPORTANTE: para PAT fine-grained usamos directamente el token en la URL
-            git clone "https://${GH_TOKEN}@github.com/${target}.git" target-repo || {
-              echo "Error clonando ${target}"
-              exit 1
-            }
-
-            cd target-repo
-
-            # Asegurar que trabajamos en rama main (crea main si el repo está vacío)
-            git checkout -B main
-
-            # Copiar contenido desde el core
-            rsync -a --delete --exclude ".git" ../src/ ./
-
-            if git status --porcelain | grep . >/dev/null 2>&1; then
-              echo "Hay cambios, haciendo commit en $target"
-              git add -A
-              git commit -m "Sync from NIXINX core (${GITHUB_SHA})"
-              git push origin main
-            else
-              echo "Sin cambios para $target"
-            fi
-
-            cd ..
-          done
-
-          echo "Sync finalizado."
+      - name: Sync to NODE-ElPatron
+        run: |
+          git push --force \
+            https://x-access-token:${{ secrets.NODES_SYNC_TOKEN }}@github.com/nixinxcom/NODE-ElPatron.git \
+            main:main
