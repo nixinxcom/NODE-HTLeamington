@@ -1,6 +1,5 @@
 // app/(nixinx-com)/layout.tsx
 import type { Metadata } from "next";
-import "./globals.css";
 
 export const metadata: Metadata = {
   title: "NIXINX — Multi-tenant Web Stack for Modern Brands",
