@@ -1,0 +1,28 @@
+/* app/[locale]/[tenant]/(public)/page.module.css */
+.orgMain {
+  min-height: 100vh;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.orgHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.orgTitle {
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.orgSubtitle {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.orgContent {
+  margin-top: 1rem;
+}
