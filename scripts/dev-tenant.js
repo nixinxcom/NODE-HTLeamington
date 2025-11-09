@@ -1,28 +1,35 @@
 // scripts/dev-tenant.js
 const fs = require("fs");
+const path = require("path");
 const { spawn } = require("child_process");
 
 const tenant = process.argv[2];
 const port = process.argv[3] || "3000";
-const mode = process.argv[4] === "start" ? "start" : "dev";
+const modeArg = (process.argv[4] || "").toLowerCase();
+const mode = modeArg === "start" ? "start" : "dev"; // dev por defecto
 
 if (!tenant) {
-  console.error('Falta argumento tenant. Ej: node scripts/dev-tenant.js NIXINX 3001');
+  console.error(
+    'Falta argumento tenant.\n' +
+    'Uso: node scripts/dev-tenant.js NIXINX 3001 [start]'
+  );
   process.exit(1);
 }
 
 const envFile = `.env.${tenant}.local`;
+const envPath = path.join(process.cwd(), envFile);
 
-if (!fs.existsSync(envFile)) {
+if (!fs.existsSync(envPath)) {
   console.error(`No existe ${envFile}`);
   process.exit(1);
 }
 
-// Cargar variables desde .env.<tenant>.local en process.env (sin tocar .env.local)
-const lines = fs.readFileSync(envFile, "utf8").split("\n");
-for (const raw of lines) {
+// Cargar variables desde .env.<TENANT>.local en process.env (sin tocar .env.local)
+const content = fs.readFileSync(envPath, "utf8");
+for (const raw of content.split("\n")) {
   const line = raw.trim();
   if (!line || line.startsWith("#")) continue;
+
   const idx = line.indexOf("=");
   if (idx === -1) continue;
 
@@ -39,20 +46,26 @@ for (const raw of lines) {
   if (key) process.env[key] = value;
 }
 
-console.log(`Using ${envFile} for tenant ${tenant} on port ${port} (${mode})`);
+// Marcar explícitamente el tenant en el entorno
+process.env.NEXT_PUBLIC_TENANT = tenant;
+process.env.TENANT = tenant;
 
-// Ruta absoluta al CLI de Next dentro de node_modules
+console.log(
+  `Using ${envFile} for tenant ${tenant} on port ${port} (mode: ${mode})`
+);
+
+// Resolver CLI de Next
 let nextCli;
 try {
   nextCli = require.resolve("next/dist/bin/next");
 } catch (e) {
   console.error(
-    'No se encontró "next". Asegúrate de haber corrido "npm install".'
+    'No se encontró "next/dist/bin/next". Asegúrate de haber corrido "npm install".'
   );
   process.exit(1);
 }
 
-// Ejecutar: node node_modules/next/dist/bin/next dev -p <port>
+// Ejecutar: next dev/start -p <port>
 const child = spawn(process.execPath, [nextCli, mode, "-p", port], {
   stdio: "inherit",
   env: process.env,
