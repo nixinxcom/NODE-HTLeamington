@@ -2,8 +2,8 @@ name: Sync NODE repos
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   sync-nodes:
@@ -15,13 +15,6 @@ jobs:
     steps:
       - name: Checkout NIXINX core
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Configure git identity
-        run: |
-          git config user.name "nixinx-sync-bot"
-          git config user.email "sync-bot@nixinx.com"
 
       - name: Sync NODE-HTLeamington
         run: |
