@@ -18,3 +18,9 @@ jobs:
       - name: Trigger nixinx.org on Vercel
         run: curl -X POST "${{ secrets.VERCEL_HOOK_NIXINX_ORG }}"
 
+  deploy-elpatron-com:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Patron Bar & Grill
+        run: curl -X POST "${{ secrets.VERCEL_HOOK_PATRON }}"
+
