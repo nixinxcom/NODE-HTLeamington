@@ -10,6 +10,7 @@ jobs:
   sync-nodes:
     runs-on: ubuntu-latest
 
+    # Solo afecta al GITHUB_TOKEN, el PAT va por secret aparte.
     permissions:
       contents: read
 
@@ -32,30 +33,44 @@ jobs:
             nixinxcom/NODE-HTWindsor
             nixinxcom/NODE-HTLeamington
         run: |
+          set -e
+
           git config --global user.name  "NIXINX Sync Bot"
           git config --global user.email "bot@nixinx.com"
 
-          # Copiamos el repo fuente (sin .git) a una carpeta temporal
+          echo "Preparando copia fuente..."
           mkdir src
           rsync -a --delete --exclude ".git" ./ src/
 
           for target in $TARGET_REPOS; do
+            echo "========================================"
             echo ">>> Syncing to $target"
 
-            git clone --depth=1 "https://x-access-token:${GH_TOKEN}@github.com/${target}.git" target-repo
-
-            rsync -a --delete --exclude ".git" src/ target-repo/
+            rm -rf target-repo
+            # IMPORTANTE: para PAT fine-grained usamos directamente el token en la URL
+            git clone "https://${GH_TOKEN}@github.com/${target}.git" target-repo || {
+              echo "Error clonando ${target}"
+              exit 1
+            }
 
             cd target-repo
 
+            # Asegurar que trabajamos en rama main (crea main si el repo está vacío)
+            git checkout -B main
+
+            # Copiar contenido desde el core
+            rsync -a --delete --exclude ".git" ../src/ ./
+
             if git status --porcelain | grep . >/dev/null 2>&1; then
+              echo "Hay cambios, haciendo commit en $target"
               git add -A
               git commit -m "Sync from NIXINX core (${GITHUB_SHA})"
-              git push origin HEAD:main
+              git push origin main
             else
-              echo "No changes for $target"
+              echo "Sin cambios para $target"
             fi
 
             cd ..
-            rm -rf target-repo
           done
+
+          echo "Sync finalizado."
