@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch: {}
 
 jobs:
   deploy-nixinx-com:
@@ -18,20 +19,20 @@ jobs:
       - name: Trigger nixinx.org on Vercel
         run: curl -X POST "${{ secrets.VERCEL_HOOK_NIXINX_ORG }}"
 
-  deploy-elpatron-com:
+  deploy-patronbarandgrill-com:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Patron Bar & Grill
+      - name: Trigger patronbarandgrill.com on Vercel
         run: curl -X POST "${{ secrets.VERCEL_HOOK_PATRON }}"
 
   deploy-htwindsor-com:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger HT Windsor
+      - name: Trigger HT Windsor on Vercel
         run: curl -X POST "${{ secrets.VERCEL_HOOK_HTWINDSOR }}"
 
-  deploy-htleamington-com:
+  deploy-hottacos-ca:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Hot Tacos CA
+      - name: Trigger hottacosrestaurant.ca on Vercel
         run: curl -X POST "${{ secrets.VERCEL_HOOK_HOTLEAMINGTON }}"
