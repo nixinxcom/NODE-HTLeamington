@@ -1,42 +1,58 @@
-name: Sync NODE repos and deploy
+name: Sync and Deploy NODE Clients
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  sync-repos:
+  sync-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source repo (completo)
+      - name: Checkout NIXINX
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Configura Git
+      - name: Setup Git identity
         run: |
-          git config --global user.email "nixinxcom@users.noreply.github.com"
-          git config --global user.name "nixinxcom"
+          git config user.name "nixinx-sync-bot"
+          git config user.email "sync-bot@noreply.github.com"
 
-      - name: Push to NODE-HTLeamington
+      - name: Sync NODE-HTLeamington
         env:
           PAT: ${{ secrets.NODES_SYNC_TOKEN }}
         run: |
+          set -e
+          echo "Syncing NODE-HTLeamington..."
           git remote add node-htleamington https://nixinxcom:${PAT}@github.com/nixinxcom/NODE-HTLeamington.git
-          git push node-htleamington HEAD:main --force
+          if git ls-remote node-htleamington &>/dev/null; then
+            git push node-htleamington main --force
+          else
+            echo "❌ Cannot access NODE-HTLeamington, skipping..."
+          fi
 
-      - name: Push to NODE-HTWindsor
+      - name: Sync NODE-HTWindsor
         env:
           PAT: ${{ secrets.NODES_SYNC_TOKEN }}
         run: |
+          set -e
+          echo "Syncing NODE-HTWindsor..."
           git remote add node-htwindsor https://nixinxcom:${PAT}@github.com/nixinxcom/NODE-HTWindsor.git
-          git push node-htwindsor HEAD:main --force
+          if git ls-remote node-htwindsor &>/dev/null; then
+            git push node-htwindsor main --force
+          else
+            echo "❌ Cannot access NODE-HTWindsor, skipping..."
+          fi
 
-      - name: Push to NODE-ElPatron
+      - name: Sync NODE-ElPatron
         env:
           PAT: ${{ secrets.NODES_SYNC_TOKEN }}
         run: |
+          set -e
+          echo "Syncing NODE-ElPatron..."
           git remote add node-elpatron https://nixinxcom:${PAT}@github.com/nixinxcom/NODE-ElPatron.git
-          git push node-elpatron HEAD:main --force
+          if git ls-remote node-elpatron &>/dev/null; then
+            git push node-elpatron main --force
+          else
+            echo "❌ Cannot access NODE-ElPatron, skipping..."
+          fi

@@ -1,0 +1,13 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = true
+	symlinks = false
+	ignorecase = true
+[remote "origin"]
+	url = https://github.com/nixinxcom/NIXINX.git
+	fetch = +refs/*:refs/*
+	mirror = true
+[remote "node-htleamington"]
+	url = https://github.com/nixinxcom/NODE-HTLeamington.git
+	fetch = +refs/heads/*:refs/remotes/node-htleamington/*
