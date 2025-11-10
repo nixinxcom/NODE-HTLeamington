@@ -2,7 +2,7 @@ name: Sync NODE repos
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout NIXINX core
+      - name: Checkout core repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -25,7 +25,9 @@ jobs:
           PAT: ${{ secrets.NODES_SYNC_TOKEN }}
         run: |
           set -e
-          git remote add node-htleamington "https://nixinxcom:${PAT}@github.com/nixinxcom/NODE-HTLeamington.git"
+          git remote remove node-htleamington || true
+          git remote add node-htleamington "https://x-access-token:${PAT}@github.com/nixinxcom/NODE-HTLeamington.git"
+          git remote -v
           git push node-htleamington main:main --force
 
       - name: Sync NODE-HTWindsor
@@ -33,7 +35,9 @@ jobs:
           PAT: ${{ secrets.NODES_SYNC_TOKEN }}
         run: |
           set -e
-          git remote add node-htwindsor "https://nixinxcom:${PAT}@github.com/nixinxcom/NODE-HTWindsor.git"
+          git remote remove node-htwindsor || true
+          git remote add node-htwindsor "https://x-access-token:${PAT}@github.com/nixinxcom/NODE-HTWindsor.git"
+          git remote -v
           git push node-htwindsor main:main --force
 
       - name: Sync NODE-ElPatron
@@ -41,5 +45,7 @@ jobs:
           PAT: ${{ secrets.NODES_SYNC_TOKEN }}
         run: |
           set -e
-          git remote add node-elpatron "https://nixinxcom:${PAT}@github.com/nixinxcom/NODE-ElPatron.git"
+          git remote remove node-elpatron || true
+          git remote add node-elpatron "https://x-access-token:${PAT}@github.com/nixinxcom/NODE-ElPatron.git"
+          git remote -v
           git push node-elpatron main:main --force
