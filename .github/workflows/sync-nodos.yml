@@ -26,7 +26,7 @@ jobs:
         run: |
           set -e
           git remote remove node-htleamington || true
-          git remote add node-htleamington "https://x-access-token:${PAT}@github.com/nixinxcom/NODE-HTLeamington.git"
+          git remote add node-htleamington "https://x-access-token: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@github.com/nixinxcom/NODE-HTLeamington.git"
           git remote -v
           git push node-htleamington main:main --force
 
@@ -36,7 +36,7 @@ jobs:
         run: |
           set -e
           git remote remove node-htwindsor || true
-          git remote add node-htwindsor "https://x-access-token:${PAT}@github.com/nixinxcom/NODE-HTWindsor.git"
+          git remote add node-htwindsor "https://x-access-token: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@github.com/nixinxcom/NODE-HTWindsor.git"
           git remote -v
           git push node-htwindsor main:main --force
 
@@ -46,6 +46,6 @@ jobs:
         run: |
           set -e
           git remote remove node-elpatron || true
-          git remote add node-elpatron "https://x-access-token:${PAT}@github.com/nixinxcom/NODE-ElPatron.git"
+          git remote add node-elpatron "https://x-access-token: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@github.com/nixinxcom/NODE-ElPatron.git"
           git remote -v
           git push node-elpatron main:main --force
