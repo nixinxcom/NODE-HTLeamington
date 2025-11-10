@@ -1,0 +1,54 @@
+name: Sync and Deploy NODE Clients
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout NIXINX
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Git identity
+        run: |
+          git config user.name "nixinx-sync-bot"
+          git config user.email "sync-bot@noreply.github.com"
+
+      - name: Push to NODE-HTLeamington
+        env:
+          PAT: ${{ secrets.NODES_SYNC_TOKEN }}
+        run: |
+          git remote remove htl || true
+          git remote add htl https://nixinxcom:${PAT}@github.com/nixinxcom/NODE-HTLeamington.git
+          git push htl main:main --force
+
+      - name: Trigger deploy - HTLeamington
+        run: curl -X POST "${{ secrets.VERCEL_DEPLOY_NODE_HTLeamington }}"
+
+      - name: Push to NODE-HTWindsor
+        env:
+          PAT: ${{ secrets.NODES_SYNC_TOKEN }}
+        run: |
+          git remote remove htw || true
+          git remote add htw https://nixinxcom:${PAT}@github.com/nixinxcom/NODE-HTWindsor.git
+          git push htw main:main --force
+
+      - name: Trigger deploy - HTWindsor
+        run: curl -X POST "${{ secrets.VERCEL_DEPLOY_NODE_HTWindsor }}"
+
+      - name: Push to NODE-ElPatron
+        env:
+          PAT: ${{ secrets.NODES_SYNC_TOKEN }}
+        run: |
+          git remote remove ep || true
+          git remote add ep https://nixinxcom:${PAT}@github.com/nixinxcom/NODE-ElPatron.git
+          git push ep main:main --force
+
+      - name: Trigger deploy - ElPatron
+        run: curl -X POST "${{ secrets.VERCEL_DEPLOY_NODE_ElPatron }}"
