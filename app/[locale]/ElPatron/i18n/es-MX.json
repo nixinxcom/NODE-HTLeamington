@@ -553,5 +553,11 @@
 "aai.products": "Productos",
 "aai.services": "Servicios",
 "aai.ui.placeholder": "Escribe un mensaje...",
-"aai.ui.send": "Enviar"
+"aai.ui.send": "Enviar", 
+
+
+"legal.terms.title":"",
+"legal.terms.body":"",
+"legal.privacy.title":"",
+"legal.privacy.body":""
 }

@@ -30,9 +30,9 @@ export const baseBranding: iBranding = {
     mission: <FM id="branding.brand.mission" defaultMessage="To provide exceptional solutions that drive client success." />,
     vision:  <FM id="branding.brand.vision"  defaultMessage="To be a global leader in innovative business solutions." />,
     values: [
-      <FM id="branding.brand.value.customer"  defaultMessage="Customer Satisfaction" />,
-      <FM id="branding.brand.value.innovation" defaultMessage="Innovation" />,
-      <FM id="branding.brand.value.integrity"  defaultMessage="Integrity" />,
+      <FM key="branding.brand.value.customer" id="branding.brand.value.customer"  defaultMessage="Customer Satisfaction" />,
+      <FM key="branding.brand.value.innovation" id="branding.brand.value.innovation" defaultMessage="Innovation" />,
+      <FM key="branding.brand.value.integrity" id="branding.brand.value.integrity"  defaultMessage="Integrity" />,
     ],
     branches: [
       {

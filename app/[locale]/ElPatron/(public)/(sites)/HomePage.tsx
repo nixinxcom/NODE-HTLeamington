@@ -14,7 +14,7 @@ import HeroEventsCarousel from "@/complements/components/HeroEventsCarousel/Hero
 import ReviewsRail from "@/complements/components/ReviewsRail/ReviewsRail";
 import { useParams } from 'next/navigation';
 import FM from "@/complements/i18n/FM";
-
+import { generateClientID, decodeClientID } from '@/functionalities/CommonFunctions/CreateIDFunc';
 interface EventType {
   id: string;
   titulo: string;
@@ -25,6 +25,9 @@ interface EventType {
   hora?: string;
   descripcion?: string;
 }
+
+const CID = generateClientID('HTLM');
+const CID2 = decodeClientID(CID.token);
 
 export default function HomePage() {
   const { Settings, Branding } = useAppContext();
@@ -200,6 +203,7 @@ export default function HomePage() {
 
         {/* Opiniones */}
         <section className={`${styles.sectionSurfaceLight} text-center`}>
+          {/* AQUIVA {CID.id} */}
           <ReviewsRail className="w-full" />
         </section>
 
