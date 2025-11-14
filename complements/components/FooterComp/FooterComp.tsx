@@ -1,24 +1,55 @@
 'use client';
 
 import styles from './FooterComp.module.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, signInAnonymously, signOut } from 'firebase/auth';
 import { FbAuth } from '@/app/lib/services/firebase';
-import { useI18nHref } from '@/app/lib/useI18nHref';
-import { FormattedMessage, useIntl } from 'react-intl';
+import { useIntl } from 'react-intl';
 import FM from '@/complements/i18n/FM';
 import { useAppContext } from '@/context/AppContext';
-import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import {
+  BUTTON,
+  LINK,
+  NEXTIMAGE,
+  IMAGE,
+  DIV,
+  INPUT,
+  SELECT,
+  LABEL,
+  SPAN,
+  SPAN1,
+  SPAN2,
+  A,
+  B,
+  P,
+  H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+} from '@/complements/components/ui/wrappers';
 
-type LinkItem = { name?: string; title?: string; url?: string; href?: string; enabled?: boolean; icon?: string };
+type LinkItem = {
+  name?: string;
+  title?: string;
+  url?: string;
+  href?: string;
+  enabled?: boolean;
+  icon?: string;
+};
 
 /** Normaliza cadena para matching por alias */
 const norm = (s?: string) =>
-  (s ?? '').toLowerCase().trim().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+  (s ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/[^a-z0-9]/g, '');
 
 /** Devuelve url string si el valor es string u objeto con url/href */
 const toUrl = (v: any): string | undefined =>
-  typeof v === 'string' ? v : (v?.url ?? v?.href ?? undefined);
+  typeof v === 'string' ? v : v?.url ?? v?.href ?? undefined;
 
 /** Busca un link por alias en un ARREGLO de links */
 const pickFromArray = (arr: LinkItem[] | undefined, aliases: string[]) => {
@@ -39,7 +70,7 @@ const pickFromObject = (obj: any, keys: string[]) => {
 /** Unifica acceso (array u objeto) y devuelve {enabled,url,item} */
 const resolveLink = (
   source: any,
-  aliases: string[]
+  aliases: string[],
 ): { enabled: boolean; url?: string; item?: any } => {
   // 1) Objeto legado
   const legacy = pickFromObject(source, aliases);
@@ -61,17 +92,77 @@ const resolveLink = (
   return { enabled: false };
 };
 
+/**
+ * Defensivo para textos provenientes de Branding que puedan venir como:
+ * - string / number
+ * - ReactElement vivo (<FM />)
+ * - ReactElement serializado { key,type,ref,props }
+ */
+const renderBrandingText = (value: any): ReactNode => {
+  if (value == null) return null;
+
+  const t = typeof value;
+
+  // caso normal
+  if (t === 'string' || t === 'number') return value;
+
+  if (t === 'object') {
+    const anyVal = value as any;
+
+    // ReactElement vivo (tiene $$typeof)
+    if (anyVal.$$typeof) {
+      return anyVal as ReactNode;
+    }
+
+    // Objeto “muerto” tipo { key,type,ref,props }
+    const props = anyVal.props ?? {};
+
+    if (typeof props.defaultMessage === 'string') {
+      return props.defaultMessage;
+    }
+
+    const children = props.children;
+    if (typeof children === 'string' || typeof children === 'number') {
+      return children;
+    }
+
+    if (Array.isArray(children)) {
+      const firstText = children.find(
+        (c: any) => typeof c === 'string' || typeof c === 'number',
+      );
+      if (firstText != null) return firstText;
+    }
+  }
+
+  // último recurso
+  try {
+    return String(value);
+  } catch {
+    return '';
+  }
+};
+
+/** Alias específico para las sucursales */
+const renderBranchName = (name: any): ReactNode => renderBrandingText(name);
+
 export default function FooterComp() {
   const { Branding } = useAppContext();
-  const i18nHref = useI18nHref ? useI18nHref() : (p: string) => p;
   const [authUser, setAuthUser] = useState<any>(null);
   const intl = useIntl();
 
   // --- Platforms (array u objeto) ---
   const platformsSrc = (Branding as any)?.platforms;
-  const onlineOrder = resolveLink(platformsSrc, ['onlineorder', 'online order', 'order online']);
+  const onlineOrder = resolveLink(platformsSrc, [
+    'onlineorder',
+    'online order',
+    'order online',
+  ]);
   const uberEats = resolveLink(platformsSrc, ['ubereats', 'uber eats', 'uber']);
-  const skipTheDishes = resolveLink(platformsSrc, ['skipthedishes', 'skip the dishes', 'skip']);
+  const skipTheDishes = resolveLink(platformsSrc, [
+    'skipthedishes',
+    'skip the dishes',
+    'skip',
+  ]);
   const doordash = resolveLink(platformsSrc, ['doordash', 'door dash']);
 
   // --- Socials (array u objeto) ---
@@ -87,7 +178,7 @@ export default function FooterComp() {
     toUrl((Branding as any)?.contact?.maps);
 
   const branches = Array.isArray(Branding?.company?.branches)
-    ? Branding!.company!.branches
+    ? Branding.company.branches
     : [];
 
   useEffect(() => {
@@ -104,26 +195,39 @@ export default function FooterComp() {
     } catch {}
   };
 
-  // arriba del return, junto con los demás derives:
-  type Address = { street?: string; city?: string; state?: string; zip?: string; country?: string };
+  type Address = {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
   const address: Address = (Branding.contact?.address ?? {}) as Address;
 
-  const fullAddress = [address.street, address.city, address.state, address.zip, address.country]
+  const fullAddress = [
+    address.street,
+    address.city,
+    address.state,
+    address.zip,
+    address.country,
+  ]
     .filter(Boolean)
     .join(', ');
-
 
   return (
     <footer className={styles.footer}>
       <div className={styles.container}>
         <div className={styles.footerRestaurants}>
           <H3 className={styles.footerTitle}>
-            <FM defaultMessage="Nuestras Recomendaciones" id="Home.Recomendaciones" />
+            <FM
+              defaultMessage="Nuestras Recomendaciones"
+              id="Home.Recomendaciones"
+            />
           </H3>
 
           {branches.length > 0 && (
             <ul className={styles.footerRestaurantsList}>
-              {branches.map((b, i) => (
+              {branches.map((b: any, i: number) => (
                 <li key={i}>
                   <A
                     href={b.url}
@@ -132,9 +236,14 @@ export default function FooterComp() {
                     className={styles.footerLink}
                   >
                     {b.icon ? (
-                      <NEXTIMAGE src={b.icon!} width={16} height={16} alt="Branch Icon" />
+                      <NEXTIMAGE
+                        src={b.icon!}
+                        width={16}
+                        height={16}
+                        alt="Branch Icon"
+                      />
                     ) : null}{' '}
-                    <SPAN>{b.name}</SPAN>
+                    <SPAN>{renderBranchName(b.name)}</SPAN>
                   </A>
                 </li>
               ))}
@@ -174,29 +283,50 @@ export default function FooterComp() {
           )}
 
           {doordash.enabled && doordash.url && (
-            <LINK href={doordash.url} className={styles.icon} target="_blank" rel="noopener">
+            <LINK
+              href={doordash.url}
+              className={styles.icon}
+              target="_blank"
+              rel="noopener"
+            >
               <NEXTIMAGE
                 src="/Icons/Doordash.png"
                 width={40}
                 height={40}
-                alt={intl.formatMessage({ id: 'footer.alt.doordash', defaultMessage: 'Doordash' })}
+                alt={intl.formatMessage({
+                  id: 'footer.alt.doordash',
+                  defaultMessage: 'Doordash',
+                })}
               />
             </LINK>
           )}
 
           {uberEats.enabled && uberEats.url && (
-            <LINK href={uberEats.url} className={styles.icon} target="_blank" rel="noopener">
+            <LINK
+              href={uberEats.url}
+              className={styles.icon}
+              target="_blank"
+              rel="noopener"
+            >
               <NEXTIMAGE
                 src="/Icons/Uber Eats.png"
                 width={40}
                 height={40}
-                alt={intl.formatMessage({ id: 'footer.alt.ubereats', defaultMessage: 'Uber Eats' })}
+                alt={intl.formatMessage({
+                  id: 'footer.alt.ubereats',
+                  defaultMessage: 'Uber Eats',
+                })}
               />
             </LINK>
           )}
 
           {skipTheDishes.enabled && skipTheDishes.url && (
-            <LINK href={skipTheDishes.url} className={styles.icon} target="_blank" rel="noopener">
+            <LINK
+              href={skipTheDishes.url}
+              className={styles.icon}
+              target="_blank"
+              rel="noopener"
+            >
               <NEXTIMAGE
                 src="/Icons/SkipTheDishes.jpg"
                 width={40}
@@ -219,20 +349,50 @@ export default function FooterComp() {
 
         <div className={styles.socials}>
           {facebook.enabled && facebook.url && (
-            <LINK href={facebook.url} className={styles.icon} target="_blank" rel="noopener">
-              <NEXTIMAGE src="/Icons/FacebookIcon.png" width={40} height={40} alt="Facebook" />
+            <LINK
+              href={facebook.url}
+              className={styles.icon}
+              target="_blank"
+              rel="noopener"
+            >
+              <NEXTIMAGE
+                src="/Icons/FacebookIcon.png"
+                width={40}
+                height={40}
+                alt="Facebook"
+              />
             </LINK>
           )}
 
           {instagram.enabled && instagram.url && (
-            <LINK href={instagram.url} className={styles.icon} target="_blank" rel="noopener">
-              <NEXTIMAGE src="/Icons/InstaIcon.png" width={40} height={40} alt="Instagram" />
+            <LINK
+              href={instagram.url}
+              className={styles.icon}
+              target="_blank"
+              rel="noopener"
+            >
+              <NEXTIMAGE
+                src="/Icons/InstaIcon.png"
+                width={40}
+                height={40}
+                alt="Instagram"
+              />
             </LINK>
           )}
 
           {tiktok.enabled && tiktok.url && (
-            <LINK href={tiktok.url} className={styles.icon} target="_blank" rel="noopener">
-              <NEXTIMAGE src="/Icons/TikTok.webp" width={40} height={40} alt="TikTok" />
+            <LINK
+              href={tiktok.url}
+              className={styles.icon}
+              target="_blank"
+              rel="noopener"
+            >
+              <NEXTIMAGE
+                src="/Icons/TikTok.webp"
+                width={40}
+                height={40}
+                alt="TikTok"
+              />
             </LINK>
           )}
         </div>
@@ -241,7 +401,8 @@ export default function FooterComp() {
           className={`container mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between ${styles.containerPad} ${styles.rowGapY} ${styles.address}`}
         >
           <div>
-            <strong>{Branding.company?.brandName}</strong><br />
+            <strong>{renderBrandingText(Branding.company?.brandName)}</strong>
+            <br />
             <address className="not-italic">{fullAddress}</address>
 
             {Branding.contact?.phone && (
@@ -256,7 +417,12 @@ export default function FooterComp() {
         <div className={styles.socials} style={{ marginTop: '0.75rem' }}>
           {/* Google Maps */}
           {googleMapsUrl && (
-            <LINK href={googleMapsUrl} className={styles.icon} target="_blank" rel="noopener">
+            <LINK
+              href={googleMapsUrl}
+              className={styles.icon}
+              target="_blank"
+              rel="noopener"
+            >
               <FM id="footer.gmaps" defaultMessage="Google Maps" />
             </LINK>
           )}
@@ -285,7 +451,12 @@ export default function FooterComp() {
 
           {/* YouTube */}
           {youtube.enabled && youtube.url && (
-            <LINK href={youtube.url} className={styles.icon} target="_blank" rel="noopener">
+            <LINK
+              href={youtube.url}
+              className={styles.icon}
+              target="_blank"
+              rel="noopener"
+            >
               <FM id="footer.youtube" defaultMessage="YouTube" />
             </LINK>
           )}
