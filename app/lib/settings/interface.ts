@@ -134,6 +134,8 @@ export default interface iSettings {
     enabled: boolean;
     url: string;
   };
+  /** <-- Reemplazo: ahora admite OpenAI y Gemini con parámetros correctos */
+  agentAI: AgentAISettings;
   website: {
     url: string;
     favicon: string;
