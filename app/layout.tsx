@@ -3,32 +3,26 @@ import GTMProvider from "@/app/providers/GTMProvider";
 import type { Viewport } from "next";
 import Script from "next/script";
 import { Inter } from "next/font/google";
-import './globals.css';
-import { ContextProvider } from "@/context/AppContext";
-import InterComp from "@/complements/components/InterComp/InterComp";
 import { Suspense } from "react";
 import { AuthProvider } from "@/complements/components/AuthenticationComp/AuthContext";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { ContextProvider } from "@/context/AppContext";
+import InterComp from "@/complements/components/InterComp/InterComp";
 import AppHydrators from "@/app/providers/AppHydrators";
 import { withSitesLayoutMetadata } from "@/app/lib/seo/withPageMetadata";
-// ⬇️ Fuente única de verdad
-import { Analytics } from "@vercel/analytics/next";
 import ThemeProviders from "./providers/ThemeProviders";
 import BrandingCacheHydrator from "@/app/providers/BrandingCacheHydrator";
 import { getBssEffectiveCached } from '@/app/lib/bss/server';
 import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { NotificationsProvider } from "@/app/lib/notifications/provider";
+import './globals.css';
 
 // 1) Metadata global para toda la app (usa tus defaults y, si tienes, FS/meta_*).
 export const generateMetadata = withSitesLayoutMetadata();
 
 // 2) Fuente
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "600"],
-  variable: "--font-inter",
-  display: "swap",
-});
+const inter = Inter({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-inter", display: "swap" });
 
 // 3) Viewport (fallback estático; la regla de datos se inyecta dinámicamente en <head>)
 export const viewport: Viewport = {
@@ -90,24 +84,19 @@ function toShort(v?: string) {
   return 'en';
 }
 
-export default async function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({children}: Readonly<{ children: React.ReactNode }>) {
   const DefaultLocale = toShort(process.env.NEXT_PUBLIC_DEFAULT_LOCALE);
   const { branding, settings } = await getBssEffectiveCached(DefaultLocale);
   const initialSlot = settings!.website!.theme!.initialSlot as "light"|"dark";
-  // Locale (única fuente: settings)
-  const locale = String(settings?.website?.i18n?.defaultLocale);
-  // Branding efectivo por locale (FS i18n)
-  // CSS vars desde branding (con fallback puntual a settings.website.fonts si falta en branding)
   const cssVars = cssVarsFromBranding(branding, settings);
-
   // Idioma del documento
+  const locale = String(settings?.website?.i18n?.defaultLocale);
   const htmlLang = locale;
 
   // Theme color dinámico (desde settings) — integra regla de datos
   const themeColorLight = settings?.website?.theme?.meta?.themeColor?.light;
   const themeColorDark  = settings?.website?.theme?.meta?.themeColor?.dark;
+  const suportedLanguages = settings?.agentAI?.languages;
 
   return (
     <html
@@ -201,7 +190,7 @@ export default async function RootLayout({
                         {
                           language: "Español",
                           locale: "es",
-                          icon: "/Icons/MXNIcon.png",
+                          icon: "/Icons/es.png",
                           country: "MXN",
                           alt: "Español",
                           prioritario: true,
@@ -212,7 +201,7 @@ export default async function RootLayout({
                         {
                           language: "English",
                           locale: "en",
-                          icon: "/Icons/USAIcon.png",
+                          icon: "/Icons/en.png",
                           country: "USA",
                           alt: "English",
                           prioritario: true,
@@ -220,17 +209,17 @@ export default async function RootLayout({
                           height: 35,
                           fill: false,
                         },
-                        {
-                          language: "French",
-                          locale: "fr",
-                          icon: "/Icons/CADIcon.png",
-                          country: "FR",
-                          alt: "French",
-                          prioritario: true,
-                          width: 40,
-                          height: 40,
-                          fill: false,
-                        },
+                        // {
+                        //   language: "French",
+                        //   locale: "fr",
+                        //   icon: "/Icons/fr.png",
+                        //   country: "FR",
+                        //   alt: "French",
+                        //   prioritario: true,
+                        //   width: 40,
+                        //   height: 40,
+                        //   fill: false,
+                        // },
                       ]}
                       Position="fixed"
                       BackgroundColor="black"

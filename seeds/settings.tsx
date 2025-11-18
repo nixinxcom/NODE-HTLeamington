@@ -47,49 +47,6 @@ export const baseSettings: iSettings = {
     enabled: true,
     url: '*/example.com/*'
   },
-  /** =========================
-   *  AAI (OpenAI estable)
-   *  - apiMode: 'chat' para /v1/chat/completions (usa max_tokens)
-   *  - chat.maxTokens: mapeado correctamente a max_tokens
-   *  - languages: para la UI si quieres limitar locales
-   *  Para usar Gemini, ver ejemplo comentado abajo.
-   *  ========================= */
-  agentAI: {
-    avatar: 'https://example.com/assets/avatartsx.png',
-    provider: "openai",
-    model: 'gpt-4o-mini',             // modelo real y estable; puedes cambiarlo desde la UI/FS
-    apiMode: 'chat',                  // 'auto' | 'chat' | 'responses'
-    temperature: 0.7,
-    languages: ['es', 'en', 'fr'],
-    chat: {                           // parámetros específicos de Chat Completions
-      maxTokens: 600,
-      top_p: 1
-      // frequency_penalty: 0,
-      // presence_penalty: 0,
-      // stop: []
-    },
-    indiceAI: {
-      Horario: ["schedule"],
-      Teléfono: ["company.contact.phone"],
-      Redes: ["socials"],
-      Dirección: ["company.contact.address"],
-      Sitio: ["company.contact.website"],
-      Email: ["company.contact.email"],
-      Sucursales: ["company.branches"],
-      Plataformas: ["platforms"],
-      Productos: ["products"],
-      Servicios: ["services"],
-      FAQ: ["more.FAQ"],
-      Eventos: ["more.Events"],
-      Ingredientes: ["more.recipeingredients"],
-      Festivos: ["holidays"],
-      Legales: ["company.terms", "company.privacy"],
-      Misión: ["company.mission"],
-      Visión: ["company.vision"],
-      Valores: ["company.values"],
-      Marca: ["company.brandName", "company.logo", "company.tagline", "company.legalName"],
-    }
-  },
   website: {
     url: 'https://example.com',
     favicon: 'https://example.com/assets/favicon.ico',

@@ -699,6 +699,37 @@ export default function SettingsTab() {
   const [saving, setSaving] = React.useState(false);
   const [open, setOpen] = React.useState<Record<string, boolean>>({});
 
+  // --- NUEVO: estado para sync con Google Profile ---
+  const [syncing, setSyncing] = React.useState(false);
+  const [syncMsg, setSyncMsg] = React.useState<string | null>(null);
+
+  const handleSyncFromGoogleProfile = async () => {
+    setSyncing(true);
+    setSyncMsg("Sincronizando horarios y datos desde Google…");
+    try {
+      const res = await fetch("/api/admin/sync-gprofile", {
+        method: "POST",
+        headers: {
+          // misma “llave” que el servidor
+          "x-admin-key": process.env.NEXT_PUBLIC_GBP_LOCATION_NAME ?? "",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      setSyncMsg("Sincronización completada. Revisa horarios y dirección.");
+    } catch (err: any) {
+      setSyncMsg(
+        `Error al sincronizar: ${err?.message ?? "error desconocido"}`
+      );
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+
   // NUEVO: vista previa por regla (para validar que respeta FS > TSX(FM) > JSON > TSX)
   const [previewProv, setPreviewProv] = React.useState<any | null>(null);
   const [showPreview, setShowPreview] = React.useState(false);
@@ -739,7 +770,23 @@ export default function SettingsTab() {
   const topLevelKeys = Object.keys(data);
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      {/* Botón flotante fijo en esquina inferior derecha */}
+      <div className="fixed bottom-4 right-4 flex flex-col items-end gap-1 z-50">
+        <BUTTON
+          type="button"
+          className="rounded-full px-4 py-2 text-xs bg-white/90 text-slate-900 shadow-lg shadow-black/40 hover:bg-white disabled:opacity-60"
+          onClick={handleSyncFromGoogleProfile}
+          disabled={syncing}
+        >
+          {syncing ? "Sincronizando…" : "Actualizar horarios desde Google"}
+        </BUTTON>
+        {syncMsg && (
+          <SPAN className="mt-1 max-w-xs text-[11px] text-right text-white/80 drop-shadow">
+            {syncMsg}
+          </SPAN>
+        )}
+      </div>
       <div className="flex items-center gap-2">
         <H1 className="text-2xl font-semibold">Configuración (Manifiesto PWA)</H1>
         <BUTTON

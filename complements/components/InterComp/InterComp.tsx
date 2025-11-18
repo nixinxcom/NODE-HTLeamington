@@ -10,7 +10,7 @@ import { IntlProvider } from "react-intl";
 
 interface iLanguages {
   language?: string;
-  locale?: string;   // "es" | "es-MX" | "en-US" | "fr-CA"
+  locale: string;   // "es" | "es-MX" | "en-US" | "fr-CA"
   icon?: string;
   country?: string;
   alt?: string;
@@ -131,9 +131,9 @@ export default function InterComp(props: iInternational) {
               >
                 <IMAGE
                   src={props.Langs[nextIdx].icon!}
-                  width={props.Langs[nextIdx].width}
-                  height={props.Langs[nextIdx].height}
-                  priority={props.Langs[nextIdx].prioritario}
+                  width={props.Langs[nextIdx].width ?? 35}
+                  height={props.Langs[nextIdx].height ?? 35}
+                  priority={props.Langs[nextIdx].prioritario ?? true}
                   alt={props.Langs[nextIdx].alt || ""}
                 />
               </LINK>
@@ -155,9 +155,9 @@ export default function InterComp(props: iInternational) {
                 >
                   <IMAGE
                     src={lang.icon}
-                    width={lang.width}
-                    height={lang.height}
-                    priority={lang.prioritario}
+                    width={lang.width ?? 35}
+                    height={lang.height ?? 35}
+                    priority={lang.prioritario ?? true}
                     alt={lang.alt || ""}
                   />
                 </LINK>
