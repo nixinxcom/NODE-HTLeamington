@@ -8,10 +8,19 @@ const port = process.argv[3] || "3000";
 const modeArg = (process.argv[4] || "").toLowerCase();
 const mode = modeArg === "start" ? "start" : "dev"; // dev por defecto
 
+// ✅ Forzar un NODE_ENV válido para Next.js
+if (mode === "start") {
+  // next start -> producción
+  process.env.NODE_ENV = "production";
+} else {
+  // next dev -> desarrollo
+  process.env.NODE_ENV = "development";
+}
+
 if (!tenant) {
   console.error(
     'Falta argumento tenant.\n' +
-    'Uso: node scripts/dev-tenant.js NIXINX 3001 [start]'
+      'Uso: node scripts/dev-tenant.js NIXINX 3001 [start]'
   );
   process.exit(1);
 }
@@ -51,7 +60,7 @@ process.env.NEXT_PUBLIC_TENANT = tenant;
 process.env.TENANT = tenant;
 
 console.log(
-  `Using ${envFile} for tenant ${tenant} on port ${port} (mode: ${mode})`
+  `Using ${envFile} for tenant ${tenant} on port ${port} (mode: ${mode}, NODE_ENV=${process.env.NODE_ENV})`
 );
 
 // Resolver CLI de Next

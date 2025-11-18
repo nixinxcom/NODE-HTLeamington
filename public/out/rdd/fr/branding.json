@@ -29,11 +29,11 @@
     ],
     "branches": [
       {
-        "icon": "https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/PWAStorage%2FWebContent%2FBranch_700x700.webp?alt=media&token=376f3a28-b3d5-4067-8d0f-015f22321e86",
+        "icon": "https://firebasestorage.googleapis.com/v0/b/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/o/PWAStorage%2FWebContent%2FBranch_700x700.webp?alt=media&token=376f3a28-b3d5-4067-8d0f-015f22321e86",
         "url": "https://branch1example.com/"
       },
       {
-        "icon": "https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/PWAStorage%2FWebContent%2FBranch_700x700.webp?alt=media&token=376f3a28-b3d5-4067-8d0f-015f22321e86",
+        "icon": "https://firebasestorage.googleapis.com/v0/b/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/o/PWAStorage%2FWebContent%2FBranch_700x700.webp?alt=media&token=376f3a28-b3d5-4067-8d0f-015f22321e86",
         "url": "https://branch2example.com/"
       }
     ]

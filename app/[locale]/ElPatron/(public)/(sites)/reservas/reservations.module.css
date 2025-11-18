@@ -3,7 +3,6 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.9)), url('https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/PWAStorage%2FWebContent%2Frenovation_700x700.webp?alt=media&token=27ab6500-c1e1-4702-8c10-855eebf656ac') no-repeat center center/cover;
     padding: 2rem;
     padding-top: 7.5rem;
 }
@@ -96,7 +95,7 @@
   /* Fondo compuesto: gradiente + imagen */
   background-image:
     var(--reservas-bg-gradient, linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.85))),
-    var(--reservas-bg-image, url('https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/PWAStorage%2FWebContent%2Frenovation_700x700.webp?alt=media&token=27ab6500-c1e1-4702-8c10-855eebf656ac'));
+    var(--reservas-bg-image, url("https://firebasestorage.googleapis.com/v0/b/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/o/PWAStorage%2FWebContent%2Frenovation_700x700.webp?alt=media&token=27ab6500-c1e1-4702-8c10-855eebf656ac"));
   background-repeat: no-repeat, no-repeat;
   background-position: center center, center center;
   background-size: cover, cover;

@@ -1,417 +1,595 @@
+//complements\admin\BrandingTab.tsx
 'use client';
 
-import React from 'react';
-import type iBranding from '@/app/lib/branding/interface';
-import { useEffect, useState } from "react";
-import { getBrandingEffectiveForUI } from "@/complements/data/ruleUI";
+import React, { useEffect, useState, useCallback } from 'react';
 
-// Branding (leer RAW + guardar GLOBAL)
-import { getBrandingAdminRaw as getBrandingRaw, saveBrandingGlobal } from '@/complements/data/brandingFS';
+import {
+  brandingSchema,
+  brandingSections,
+  type FieldMeta,
+  type FieldShape,
+  type ScalarFieldMeta,
+} from '@/complements/data/branding.schema';
 
-// i18n único (leer/guardar diccionario por locale)
-import { getI18nEffective, saveI18n, type I18nDict } from '@/complements/data/i18nFS';
-import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { loadBrandingGlobal, saveBrandingGlobal } from '@/complements/data/brandingFS';
+import { ensureAnon } from '@/app/lib/services/firebase';
+import { deepMerge } from '@/complements/utils/deep-merge';
 
-// Locales visibles (ajusta codes a tus seeds/FS)
-const LOCALE_COLUMNS = [
-  { label: 'es', code: 'es' },
-  { label: 'en', code: 'en' },
-  { label: 'fr', code: 'fr' },
-];
+import {
+  BUTTON,
+  INPUT,
+  LABEL,
+  SPAN,
+  DIV,
+  P,
+  H2,
+  H3,
+} from '@/complements/components/ui/wrappers';
 
-// ---------------- helpers ----------------
-const setByPath = (obj: any, path: string, value: any) => {
-  const parts = path.split('.');
-  const last = parts.pop()!;
-  const target = parts.reduce((acc, k) => (acc[k] ??= {}), obj);
-  target[last] = value;
-  return obj;
+import FM from '@/complements/i18n/FM';
+
+type PathValueChange = (path: string, value: any) => void;
+
+// Placeholders neutrales por tipo (solo visual, NO se guarda)
+const PLACEHOLDER_BY_KIND: Record<ScalarFieldMeta['kind'], string> = {
+  string:   'string',
+  textarea: 'text',
+  number:   'number',
+  lat:      'latitude',
+  lng:      'longitude',
+  zoom:     'zoom',
+  angle:    'angle',
+  bool:     '',
+  url:      'url',
+  email:    'email',
+  phone:    'phone',
 };
 
-// Filtra ReactElements (<FM/>) para no enviar al GLOBAL
-const stripFM = (v: any): any => {
-  if (Array.isArray(v)) return v.map(stripFM);
-  if (React.isValidElement(v)) return undefined;
-  if (v && typeof v === 'object') {
-    const out: any = {};
-    for (const k of Object.keys(v)) {
-      const sv = stripFM(v[k]);
-      if (sv !== undefined) out[k] = sv;
-    }
-    return out;
-  }
-  return v;
-};
+// ---------------------------------------------------------------------------
+//  Componente principal
+// ---------------------------------------------------------------------------
 
-const looksUrl = (s: string) => /^https?:\/\//i.test(s);
-const looksImg = (s: string) => /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(s);
+function BrandingTab() {
+  const [data, setData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-// ---------------- Array editor compacto ----------------
-function ArrayField({
-  path,
-  label,
-  value,
-  onChange,
-  renderItem,
-}: {
-  path: string;
-  label?: string;
-  value: any[];
-  onChange: (path: string, v: any[]) => void;
-  renderItem: (subPath: string, v: any) => React.ReactNode;
-}) {
-  const removeItem = (i: number) => onChange(path, value.filter((_, j) => j !== i));
-  const addItem = () => onChange(path, [...value, '']);
-  const move = (i: number, d: -1 | 1) => {
-    const j = i + d;
-    if (j < 0 || j >= value.length) return;
-    const next = value.slice();
-    [next[i], next[j]] = [next[j], next[i]];
-    onChange(path, next);
-  };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await ensureAnon();
+      const existing = await loadBrandingGlobal();
 
-  return (
-    <fieldset className="rounded-lg border border-[#1f2937] px-3 py-2 my-2">
-      <legend className="px-1 text-xs opacity-80">{label ?? path}</legend>
-      <div className="flex flex-col gap-2">
-        {value.map((item, i) => (
-          <div key={`${path}-${i}`} className="rounded border border-[#1f2937] p-2">
-            <div className="flex items-center justify-between mb-1">
-              <SPAN className="text-[11px] opacity-60">#{i + 1}</SPAN>
-              <div className="flex gap-1">
-                <BUTTON className="px-2 py-1 rounded bg-[#111827]" onClick={() => move(i, -1)} type="button">↑</BUTTON>
-                <BUTTON className="px-2 py-1 rounded bg-[#111827]" onClick={() => move(i, +1)} type="button">↓</BUTTON>
-                <BUTTON className="px-2 py-1 rounded bg-[#7f1d1d] text-white" onClick={() => removeItem(i)} type="button">✕</BUTTON>
-              </div>
-            </div>
-            {renderItem(`${path}.${i}`, item)}
-          </div>
-        ))}
-      </div>
-      <BUTTON className="mt-2 px-3 py-1 rounded bg-[#2563eb] text-white text-sm" onClick={addItem} type="button">
-        + Añadir
-      </BUTTON>
-    </fieldset>
-  );
-}
+      const defaults = buildDefaultsFromSchema(brandingSchema as FieldShape);
+      const merged = deepMerge(defaults, (existing || {}) as any);
 
-// ---------------- Campo mixto (muestra i18n apilado) ----------------
-function FieldMixed({
-  path,
-  value,
-  label,
-  onChange,
-  dicts,
-  setDictValue,
-}: {
-  path: string;
-  value: any;
-  label?: string;
-  onChange: (path: string, v: any) => void;
-  dicts: Record<string, I18nDict>;
-  setDictValue: (localeCode: string, id: string, val: string) => void;
-}) {
-  const idHtml = `fld-${path.replace(/\./g, '-')}`;
-
-  // <FM/> → ID arriba, default debajo, locales debajo (apilados)
-  if (React.isValidElement(value)) {
-    const props = (value as React.ReactElement<any>).props ?? {};
-    const fmId = props?.id as string | undefined;
-    const def = (props?.defaultMessage as string | undefined) ?? '';
-    if (!fmId) return null;
-
-    return (
-      <div className="rounded-lg border border-[#1f2937] p-2 my-2">
-        <div className="font-mono text-[11px] break-all">{fmId}</div>
-        {def ? <div className="text-xs opacity-80 mt-1">{def}</div> : null}
-        <div className="mt-2 flex flex-col gap-2">
-          {LOCALE_COLUMNS.map((c) => {
-            const current = (dicts[c.code] && dicts[c.code][fmId]) ?? def;
-            return (
-              <LABEL key={c.code} className="text-[11px] uppercase opacity-70">
-                {c.label}
-                <INPUT
-                  type="text"
-                  className="mt-1 rounded px-2 py-1 bg-[#0f172a] border border-[#1f2937] w-full text-sm"
-                  value={current}
-                  onChange={(e) => setDictValue(c.code, fmId, e.target.value)}
-                  placeholder={def}
-                />
-              </LABEL>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // Primitivos
-  if (typeof value === 'boolean') {
-    return (
-      <LABEL className="flex items-center gap-2 py-1">
-        <INPUT type="checkbox" checked={!!value} onChange={(e) => onChange(path, e.target.checked)} />
-        <SPAN className="text-sm">{label ?? path}</SPAN>
-      </LABEL>
-    );
-  }
-
-  if (typeof value === 'number') {
-    return (
-      <div className="flex flex-col gap-1 py-1">
-        <LABEL htmlFor={idHtml} className="text-sm">{label ?? path}</LABEL>
-        <INPUT
-          id={idHtml}
-          type="number"
-          className="rounded px-2 py-1 bg-[#0f172a] border border-[#1f2937] w-full"
-          value={value}
-          onChange={(e) => onChange(path, Number(e.target.value))}
-        />
-      </div>
-    );
-  }
-
-  if (typeof value === 'string') {
-    const isUrl = looksUrl(value);
-    return (
-      <div className="flex flex-col gap-1 py-1">
-        <LABEL htmlFor={idHtml} className="text-sm">{label ?? path}</LABEL>
-        <div className="flex items-center gap-2">
-          <INPUT
-            id={idHtml}
-            type="text"
-            className="rounded px-2 py-1 bg-[#0f172a] border border-[#1f2937] w-full"
-            value={value}
-            onChange={(e) => onChange(path, e.target.value)}
-            placeholder={isUrl ? 'https://...' : ''}
-          />
-          {isUrl && looksImg(value) && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={value} alt="preview" className="h-7 w-7 rounded border border-[#1f2937] object-cover" />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Arrays
-  if (Array.isArray(value)) {
-    return (
-      <ArrayField
-        path={path}
-        label={label}
-        value={value}
-        onChange={onChange}
-        renderItem={(p, v) => (
-          <FieldMixed
-            path={p}
-            value={v}
-            onChange={onChange}
-            dicts={dicts}
-            setDictValue={setDictValue}
-          />
-        )}
-      />
-    );
-  }
-
-  // Objetos
-  if (value && typeof value === 'object') {
-    return (
-      <fieldset className="rounded-lg border border-[#1f2937] px-3 py-2 my-2">
-        <legend className="px-1 text-xs opacity-80">{label ?? path}</legend>
-        <div className="flex flex-col gap-2">
-          {Object.keys(value).map((k) => (
-            <FieldMixed
-              key={k}
-              path={`${path}.${k}`}
-              label={k}
-              value={(value as any)[k]}
-              onChange={onChange}
-              dicts={dicts}
-              setDictValue={setDictValue}
-            />
-          ))}
-        </div>
-      </fieldset>
-    );
-  }
-
-  // Fallback JSON
-  return (
-    <div className="flex flex-col gap-1 py-1">
-      <LABEL htmlFor={idHtml} className="text-sm">{label ?? path} (JSON)</LABEL>
-      <textarea
-        id={idHtml}
-        className="rounded px-2 py-1 bg-[#0f172a] border border-[#1f2937] min-h-20"
-        value={JSON.stringify(value ?? null, null, 2)}
-        onChange={(e) => {
-          try { onChange(path, JSON.parse(e.target.value)); } catch {}
-        }}
-      />
-    </div>
-  );
-}
-
-// ---------------- Tab principal ----------------
-export default function BrandingTab() {
-  const [loading, setLoading] = React.useState(true);
-  const [branding, setBranding] = React.useState<iBranding<any> | null>(null); // RAW (con FM)
-  const [dicts, setDicts] = React.useState<Record<string, I18nDict>>({});
-  const [saving, setSaving] = React.useState(false);
-
-  // NUEVO: controles de vista previa efectiva por locale
-  const [activeLocale, setActiveLocale] = useState<string>(LOCALE_COLUMNS[0].code);
-  const [previewEff, setPreviewEff] = useState<any | null>(null);
-  const [previewProv, setPreviewProv] = useState<any | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
-
-  // Carga inicial: RAW + diccionarios por locale
-  React.useEffect(() => {
-    (async () => {
-      setLoading(true);
-
-      // Estructura RAW de branding (con <FM/>)
-      const raw = await getBrandingRaw(LOCALE_COLUMNS[0].code);
-
-      // Diccionarios efectivos por locale (única fuente de textos)
-      const dictEntries = await Promise.all(
-        LOCALE_COLUMNS.map(async (c) => [c.code, await getI18nEffective(c.code)] as const)
-      );
-
-      setBranding(raw);
-      setDicts(Object.fromEntries(dictEntries));
+      setData(merged);
+      setDirty(false);
+    } catch (e) {
+      console.error('[BrandingTab] error al cargar:', e);
+      setError('load'); // flag interno, el texto lo pone <FM />
+    } finally {
       setLoading(false);
-    })();
+    }
   }, []);
 
-  // NUEVO: vista previa efectiva por locale (regla FS > TSX(FM) > JSON > TSX)
   useEffect(() => {
-    let cancel = false;
-    (async () => {
-      const { effective, provenance } = await getBrandingEffectiveForUI(activeLocale);
-      if (!cancel) {
-        setPreviewEff(effective);
-        setPreviewProv(provenance);
-      }
-    })();
-    return () => { cancel = true; };
-  }, [activeLocale]);
+    load();
+  }, [load]);
 
-  const updateBranding = (path: string, v: any) => {
-    setBranding((prev) => {
-      const clone = JSON.parse(JSON.stringify(prev ?? {}));
-      setByPath(clone, path, v);
-      return clone;
+  const handleChange: PathValueChange = useCallback((path, value) => {
+    setData((prev: any) => {
+      if (!prev) return prev;
+      return setValueAtPath(prev, path, value);
     });
-  };
+    setDirty(true);
+  }, []);
 
-  const setDictValue = (localeCode: string, id: string, val: string) => {
-    setDicts((prev) => ({
-      ...prev,
-      [localeCode]: { ...(prev[localeCode] || {}), [id]: val },
-    }));
-  };
-
-  const onSaveAll = async () => {
-    if (!branding) return;
+  const handleSave = useCallback(async () => {
+    if (!data) return;
     setSaving(true);
+    setError(null);
     try {
-      await Promise.all(
-        LOCALE_COLUMNS.map((c) => saveI18n(c.code, dicts[c.code] || {}))
-      );
-
-      // 2) Guardar estructura global de branding (sin <FM/>)
-      const globalPayload = stripFM(branding);
-      await saveBrandingGlobal(globalPayload);
+      await ensureAnon();
+      await saveBrandingGlobal(data as any);
+      setDirty(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      console.error('[BrandingTab] error al guardar:', e);
+      setError('save'); // flag interno
     } finally {
       setSaving(false);
     }
-  };
+  }, [data]);
 
-  if (loading || !branding) return <div className="opacity-70">Cargando…</div>;
+  if (loading) {
+    return (
+      <DIV className="p-4 text-sm text-neutral-300">
+        <FM id="branding.loading" />
+      </DIV>
+    );
+  }
 
-  const topKeys = Object.keys(branding as any);
+  if (!data) {
+    return (
+      <DIV className="p-4 text-sm text-red-400">
+        <FM id="branding.empty" />
+      </DIV>
+    );
+  }
 
   return (
-    <div className="space-y-2 pb-16">
-      <H2 className="text-base font-semibold">Branding</H2>
+    <DIV className="relative space-y-4 pb-16">
+      <H2 className="text-base font-semibold text-white mb-1">
+        <FM id="branding.title" />
+      </H2>
 
-      {/* NUEVO: selector de locale + toggle de vista previa */}
-      <div className="flex items-center gap-2 mb-2">
-        <LABEL className="text-sm opacity-80">Locale:</LABEL>
-        <SELECT
-          className="rounded border border-[#1f2937] bg-[#0f172a] px-2 py-1 text-sm"
-          value={activeLocale}
-          onChange={(e) => setActiveLocale(e.target.value)}
+      <P className="text-sm text-neutral-400 mb-4">
+        <FM id="branding.subtitle" />
+      </P>
+
+      {error && (
+        <DIV className="border border-red-700 bg-red-950/40 text-red-200 text-xs px-3 py-2 rounded">
+          {error === 'load' && <FM id="branding.error.load" />}
+          {error === 'save' && <FM id="branding.error.save" />}
+        </DIV>
+      )}
+
+      {/* Secciones definidas en el schema */}
+      <DIV className="space-y-4">
+        {brandingSections.map((section) => {
+          const key = section.key as string;
+          const meta = (brandingSchema as any)[key] as FieldMeta;
+          const value = (data as any)[key];
+
+          return (
+            <Section
+              key={key}
+              sectionKey={key}
+              titleId={section.titleId}
+              translate={section.translate}
+              descriptionId={section.descriptionId}
+            >
+              {renderField({
+                fieldKey: key,
+                meta,
+                path: key,
+                value,
+                onChange: handleChange,
+              })}
+            </Section>
+          );
+        })}
+      </DIV>
+
+      {/* Barra flotante de guardado */}
+      <DIV className="fixed bottom-3 right-3 z-50 flex flex-col items-end gap-2">
+        {dirty && !saving && (
+          <DIV className="text-xs text-amber-300 bg-amber-900/60 border border-amber-700 px-3 py-1 rounded">
+            <FM id="branding.toast.unsaved" />
+          </DIV>
+        )}
+        {saved && !dirty && (
+          <DIV className="text-xs text-emerald-300 bg-emerald-900/60 border border-emerald-700 px-3 py-1 rounded">
+            <FM id="branding.toast.saved" />
+          </DIV>
+        )}
+        <BUTTON
+          className="rounded px-4 py-2 bg-[#2563eb] text-white shadow-lg text-sm disabled:opacity-60"
+          onClick={handleSave}
+          disabled={saving}
         >
-          {LOCALE_COLUMNS.map(c => (
-            <option key={c.code} value={c.code}>{c.label} ({c.code})</option>
+          {saving ? <FM id="branding.button.saving" /> : <FM id="branding.button.save" />}
+        </BUTTON>
+      </DIV>
+    </DIV>
+  );
+}
+
+export default BrandingTab;
+
+// ---------------------------------------------------------------------------
+//  Sección wrapper (títulos vía FM si translate === true)
+// ---------------------------------------------------------------------------
+
+function Section(props: {
+  sectionKey: string;
+  titleId: string;
+  translate?: boolean;
+  descriptionId?: string;
+  children: React.ReactNode;
+}) {
+  const { sectionKey, titleId, translate, descriptionId, children } = props;
+
+  const titleNode =
+    translate === true
+      ? <FM id={titleId} defaultMessage={sectionKey} />
+      : sectionKey;
+
+  return (
+    <DIV className="rounded-lg border border-neutral-800 bg-black/40 p-4 space-y-3">
+      <DIV className="space-y-1">
+        <H3 className="text-sm font-semibold text-white">
+          {titleNode}
+        </H3>
+        {descriptionId && (
+          <P className="text-xs text-neutral-400">
+            {/* Para descripción no necesitas flag; siempre pasa por FM si hay id */}
+            <FM id={descriptionId} defaultMessage={sectionKey} />
+          </P>
+        )}
+      </DIV>
+      <DIV className="space-y-3">
+        {children}
+      </DIV>
+    </DIV>
+  );
+}
+
+// ---------------------------------------------------------------------------
+//  Render dinámico según schema
+// ---------------------------------------------------------------------------
+
+function renderField(args: {
+  fieldKey: string;
+  meta: FieldMeta;
+  path: string;
+  value: any;
+  onChange: PathValueChange;
+}): React.ReactNode {
+  const { fieldKey, meta, path, value, onChange } = args;
+
+  if (meta.kind === 'object') {
+    const shape = meta.shape;
+    return (
+      <DIV className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {Object.entries(shape).map(([k, subMeta]) => (
+          <React.Fragment key={k}>
+            {renderField({
+              fieldKey: k,
+              meta: subMeta as FieldMeta,
+              path: `${path}.${k}`,
+              value: value ? (value as any)[k] : undefined,
+              onChange,
+            })}
+          </React.Fragment>
+        ))}
+      </DIV>
+    );
+  }
+
+  if (meta.kind === 'array') {
+    const items: any[] = Array.isArray(value) ? value : [];
+
+    const handleAdd = () => {
+      const newItem = buildDefaultForField(meta.of);
+      onChange(path, [...items, newItem]);
+    };
+
+    const handleRemove = (index: number) => {
+      const next = items.slice();
+      next.splice(index, 1);
+      onChange(path, next);
+    };
+
+    return (
+      <DIV className="space-y-2">
+        <LABEL className="text-xs font-medium text-neutral-300">
+          {getLabel(fieldKey, path)}
+        </LABEL>
+
+        {items.length === 0 && (
+          <P className="text-xs text-neutral-500">
+            <FM id="branding.array.empty" />
+          </P>
+        )}
+
+        <DIV className="space-y-2">
+          {items.map((item, idx) => (
+            <DIV
+              key={`${path}-${idx}`}
+              className="border border-neutral-800 rounded-md p-3 space-y-2 bg-black/40"
+            >
+              <DIV className="flex items-center justify-between">
+                <SPAN className="text-[11px] text-neutral-400">
+                  {`#${idx + 1}`}
+                </SPAN>
+                <BUTTON
+                  type="button"
+                  className="text-[11px] px-2 py-1 rounded bg-[#7f1d1d] text-white"
+                  onClick={() => handleRemove(idx)}
+                >
+                  <FM id="branding.array.remove" />
+                </BUTTON>
+              </DIV>
+
+              {meta.of.kind === 'object' ? (
+                <DIV className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {Object.entries(meta.of.shape).map(([k, subMeta]) => (
+                    <React.Fragment key={k}>
+                      {renderField({
+                        fieldKey: k,
+                        meta: subMeta as FieldMeta,
+                        path: `${path}.${idx}.${k}`,
+                        value: item ? (item as any)[k] : undefined,
+                        onChange,
+                      })}
+                    </React.Fragment>
+                  ))}
+                </DIV>
+              ) : (
+                renderScalarField(meta.of as ScalarFieldMeta, `${path}.${idx}`, fieldKey, item, onChange)
+              )}
+            </DIV>
           ))}
-        </SELECT>
+        </DIV>
 
         <BUTTON
           type="button"
-          className="ml-auto rounded px-3 py-1 text-sm border border-[#1f2937] bg-[#0d1326]"
-          onClick={() => setShowPreview(v => !v)}
+          className="mt-1 px-3 py-1 rounded bg-[#2563eb] text-white text-xs"
+          onClick={handleAdd}
         >
-          {showPreview ? `Ocultar vista previa ${activeLocale}` : `Ver vista previa efectiva ${activeLocale}`}
+          <FM id="branding.array.add" />
         </BUTTON>
-      </div>
+      </DIV>
+    );
+  }
 
-      {showPreview && (
-        <details open className="rounded-lg border border-[#1f2937] bg-[#0b1220] mb-2">
-          <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium bg-[#0d1326]">
-            Vista previa efectiva (solo lectura) — {activeLocale}
-          </summary>
-          <div className="px-3 pb-3 pt-2 grid grid-cols-1 gap-2">
-            <div className="text-xs opacity-70">Regla: FS &gt; TSX(FM) &gt; JSON &gt; TSX</div>
-            <div className="rounded border border-[#1f2937] p-2 overflow-auto">
-              <pre className="whitespace-pre-wrap text-xs">
-{JSON.stringify(previewEff ?? {}, null, 2)}
-              </pre>
-            </div>
-            <details className="rounded border border-[#1f2937] p-2">
-              <summary className="cursor-pointer text-xs opacity-80">Provenance (capas por clave)</summary>
-              <pre className="whitespace-pre-wrap text-[11px] opacity-80">
-{JSON.stringify(previewProv ?? {}, null, 2)}
-              </pre>
-            </details>
-          </div>
-        </details>
-      )}
+  return renderScalarField(meta as ScalarFieldMeta, path, fieldKey, value, onChange);
+}
 
-      {topKeys.map((k) => {
-        const val = (branding as any)[k];
-        return (
-          <details key={k} open className="rounded-lg border border-[#1f2937] bg-[#0b1220]">
-            <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium bg-[#0d1326]">
-              {k}
-            </summary>
-            <div className="px-3 pb-3 pt-2">
-              <FieldMixed
-                path={k}
-                label={k}
-                value={val}
-                onChange={updateBranding}
-                dicts={dicts}
-                setDictValue={setDictValue}
-              />
-            </div>
-          </details>
-        );
-      })}
+function renderScalarField(
+  meta: ScalarFieldMeta,
+  path: string,
+  fieldKey: string,
+  value: any,
+  onChange: PathValueChange,
+): React.ReactNode {
+  // Label dinámico para campos individuales (id derivado del path)
+  const segments = path.split('.');
 
-      {/* Botón flotante único */}
-      <div className="fixed bottom-3 right-3 z-50">
-        <BUTTON
-          className="rounded px-4 py-2 bg-[#2563eb] text-white shadow-lg text-sm disabled:opacity-60"
-          onClick={onSaveAll}
-          disabled={saving}
-          title="Guardar diccionarios i18n + branding global (sin <FM/>)"
-        >
-          {saving ? 'Guardando…' : 'Guardar todo'}
-        </BUTTON>
-      </div>
-    </div>
+  const lastNonNumeric =
+    [...segments].reverse().find((seg) => Number.isNaN(Number(seg))) ?? fieldKey;
+
+  const labelFallback = humanizeKey(lastNonNumeric);
+
+  const fmBasePath = segments
+    .filter((seg) => Number.isNaN(Number(seg)))
+    .join('.');
+
+  const fmId = `branding.field.${fmBasePath}`;
+  const shouldTranslate = meta.translate !== false; // default: true
+
+  const labelNode = shouldTranslate
+    ? <FM id={fmId} defaultMessage={labelFallback} />
+    : labelFallback;
+
+  const id = path;
+  const required = meta.required;
+  const placeholder = PLACEHOLDER_BY_KIND[meta.kind];
+
+  const baseLabel = (
+    <LABEL htmlFor={id} className="text-xs font-medium text-neutral-300">
+      {labelNode}{' '}
+      {required && <SPAN className="text-red-400">*</SPAN>}
+    </LABEL>
   );
+
+  // Booleano → checkbox
+  if (meta.kind === 'bool') {
+    return (
+      <DIV className="flex items-center gap-2 col-span-1">
+        <input
+          id={id}
+          name={id}
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(e) => onChange(path, e.target.checked)}
+        />
+        {baseLabel}
+      </DIV>
+    );
+  }
+
+  // Textarea → ocupa 2 columnas en desktop
+  if (meta.kind === 'textarea') {
+    const safe =
+      typeof value === 'string'
+        ? value
+        : value == null
+        ? ''
+        : typeof value === 'number'
+        ? String(value)
+        : '';
+
+    return (
+      <DIV className="flex flex-col gap-1 col-span-1 md:col-span-2">
+        {baseLabel}
+        <textarea
+          id={id}
+          name={id}
+          placeholder={placeholder}
+          className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-100 resize-y min-h-[80px]"
+          value={safe}
+          onChange={(e) => onChange(path, e.target.value)}
+        />
+      </DIV>
+    );
+  }
+
+  // Numéricos / coordenadas
+  if (
+    meta.kind === 'number' ||
+    meta.kind === 'lat' ||
+    meta.kind === 'lng' ||
+    meta.kind === 'zoom' ||
+    meta.kind === 'angle'
+  ) {
+    const { min, max } = meta;
+
+    const numericValue =
+      typeof value === 'number'
+        ? value
+        : value == null
+        ? ''
+        : typeof value === 'string'
+        ? value
+        : '';
+
+    return (
+      <DIV className="flex flex-col gap-1 col-span-1">
+        {baseLabel}
+        <INPUT
+          id={id}
+          name={id}
+          type="number"
+          placeholder={placeholder}
+          className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-100"
+          value={numericValue}
+          min={min !== undefined ? min : undefined}
+          max={max !== undefined ? max : undefined}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            const raw = e.target.value;
+            if (raw === '') {
+              onChange(path, undefined);
+              return;
+            }
+            let num = Number(raw);
+            if (!Number.isFinite(num)) return;
+
+            if (min !== undefined && num < min) num = min;
+            if (max !== undefined && num > max) num = max;
+
+            onChange(path, num);
+          }}
+        />
+      </DIV>
+    );
+  }
+
+  // Strings genéricos (string, url, email, phone)
+  let inputType: React.HTMLInputTypeAttribute = 'text';
+  if (meta.kind === 'email') inputType = 'email';
+  if (meta.kind === 'url') inputType = 'url';
+  if (meta.kind === 'phone') inputType = 'tel';
+
+  const safe =
+    typeof value === 'string'
+      ? value
+      : value == null
+      ? ''
+      : typeof value === 'number'
+      ? String(value)
+      : '';
+
+  return (
+    <DIV className="flex flex-col gap-1 col-span-1">
+      {baseLabel}
+      <INPUT
+        id={id}
+        name={id}
+        type={inputType}
+        placeholder={placeholder}
+        className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-100"
+        value={safe}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          onChange(path, e.target.value)
+        }
+      />
+    </DIV>
+  );
+}
+
+// ---------------------------------------------------------------------------
+//  Helpers
+// ---------------------------------------------------------------------------
+
+function humanizeKey(key: string): string {
+  return key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+function getLabel(fieldKey: string, path: string): string {
+  const segments = path.split('.');
+  const last = segments[segments.length - 1] || fieldKey;
+  return humanizeKey(last);
+}
+
+function buildDefaultsFromSchema(shape: FieldShape): any {
+  const out: any = {};
+  for (const [key, meta] of Object.entries(shape)) {
+    out[key] = buildDefaultForField(meta as FieldMeta);
+  }
+  return out;
+}
+
+function buildDefaultForField(meta: FieldMeta): any {
+  if (meta.kind === 'object') {
+    return buildDefaultsFromSchema(meta.shape);
+  }
+  if (meta.kind === 'array') {
+    return [];
+  }
+
+  switch (meta.kind) {
+    case 'string':
+    case 'textarea':
+    case 'url':
+    case 'email':
+    case 'phone':
+      return '';
+    case 'bool':
+      return false;
+    case 'number':
+    case 'lat':
+    case 'lng':
+    case 'zoom':
+    case 'angle':
+      return undefined;
+    default:
+      return '';
+  }
+}
+
+function setValueAtPath(root: any, path: string, value: any): any {
+  if (!root) return root;
+
+  const cloned = JSON.parse(JSON.stringify(root));
+  const segments = path.split('.');
+  let curr: any = cloned;
+
+  for (let i = 0; i < segments.length - 1; i++) {
+    const seg = segments[i];
+    const idx = Number(seg);
+    const isIndex = !Number.isNaN(idx) && seg === String(idx);
+
+    if (isIndex && Array.isArray(curr)) {
+      curr = curr[idx];
+    } else {
+      curr = curr[seg];
+    }
+    if (curr === undefined) {
+      return cloned;
+    }
+  }
+
+  const last = segments[segments.length - 1];
+  const lastIdx = Number(last);
+  const isLastIndex = !Number.isNaN(lastIdx) && last === String(lastIdx);
+
+  if (isLastIndex && Array.isArray(curr)) {
+    curr[lastIdx] = value;
+  } else {
+    curr[last] = value;
+  }
+
+  return cloned;
 }

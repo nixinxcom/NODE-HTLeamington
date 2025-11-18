@@ -3,7 +3,7 @@ import GTMProvider from "@/app/providers/GTMProvider";
 import type { Viewport } from "next";
 import Script from "next/script";
 import { Inter } from "next/font/google";
-import "./globals.css";
+import './globals.css';
 import { ContextProvider } from "@/context/AppContext";
 import InterComp from "@/complements/components/InterComp/InterComp";
 import { Suspense } from "react";
@@ -205,8 +205,8 @@ export default async function RootLayout({
                           country: "MXN",
                           alt: "Español",
                           prioritario: true,
-                          width: 40,
-                          height: 40,
+                          width: 35,
+                          height: 35,
                           fill: false,
                         },
                         {
@@ -216,8 +216,8 @@ export default async function RootLayout({
                           country: "USA",
                           alt: "English",
                           prioritario: true,
-                          width: 40,
-                          height: 40,
+                          width: 35,
+                          height: 35,
                           fill: false,
                         },
                         {

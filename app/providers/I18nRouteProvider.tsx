@@ -78,6 +78,11 @@ export default function I18nRouteProvider({ children }: { children: React.ReactN
     return () => { alive = false; };
   }, [short, routeKey, seeds]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // lógica que usa cacheKey/autoSubmit
+  }, []);
+
   return (
     <IntlProvider
       key={`${brandDefaultShort}|${short}|${routeKey}`}

@@ -38,7 +38,7 @@ export default function AboutUsPage({ locale }: Props) {
           </div>
           <div className={styles.imageContainer}>
             <IMAGE
-              src="https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/PWAStorage%2FWebContent%2Frestaurant_700x700.webp?alt=media&token=04a86a24-78ae-4e55-8f1b-403e971affb6"
+              src="https://firebasestorage.googleapis.com/v0/b/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/o/PWAStorage%2FWebContent%2Frestaurant_700x700.webp?alt=media&token=04a86a24-78ae-4e55-8f1b-403e971affb6"
               alt="El Patrón Interior"
               fill
               className={styles.image}
@@ -63,7 +63,7 @@ export default function AboutUsPage({ locale }: Props) {
           </div>
           <div className={styles.imageContainer}>
             <IMAGE
-              src="https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/PWAStorage%2FWebContent%2Fdancefloor_700x700.webp?alt=media&token=67552274-6889-4154-97b2-7b4c559b2223"
+              src="https://firebasestorage.googleapis.com/v0/b/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/o/PWAStorage%2FWebContent%2Fdancefloor_700x700.webp?alt=media&token=67552274-6889-4154-97b2-7b4c559b2223"
               alt="Dance floor"
               fill
               className={styles.image}
@@ -88,7 +88,7 @@ export default function AboutUsPage({ locale }: Props) {
           </div>
           <div className={styles.imageContainer}>
             <IMAGE
-              src="https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/PWAStorage%2FWebContent%2Fkaraoke_700x700.webp?alt=media&token=cc7dc974-1246-418f-bb24-b812f5bd61a6"
+              src="https://firebasestorage.googleapis.com/v0/b/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/o/PWAStorage%2FWebContent%2Fkaraoke_700x700.webp?alt=media&token=cc7dc974-1246-418f-bb24-b812f5bd61a6"
               alt="Karaoke night"
               fill
               className={styles.image}
@@ -119,7 +119,7 @@ export default function AboutUsPage({ locale }: Props) {
           </div>
           <div className={styles.imageContainer}>
             <IMAGE
-              src="https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/PWAStorage%2FWebContent%2Frenovation_700x700.webp?alt=media&token=27ab6500-c1e1-4702-8c10-855eebf656ac"
+              src="https://firebasestorage.googleapis.com/v0/b/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/o/PWAStorage%2FWebContent%2Frenovation_700x700.webp?alt=media&token=27ab6500-c1e1-4702-8c10-855eebf656ac"
               alt="Renovations"
               fill
               className={styles.image}

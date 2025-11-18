@@ -19,9 +19,9 @@
 }
 
 .Lngdiv:hover {
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(var(--body-borderColor), 0.35);
     border-radius: 14px;
-    background-color: rgba(var(--bluemateX), 0.35);
+    background-color: rgba(var(--body-backgroundColor), 0.35);
 }
 
 .minimized {
@@ -49,7 +49,7 @@
 
 /* ADITIVO: parametrización por variables (elimina este bloque para volver) */
 .LangsContainer{
-  border: 1px solid var(--i18n-border, #ffffff);
+  border: 1px solid var(--body-backgroundColor);
   border-radius: var(--i18n-radius, 7px);
   background: var(--i18n-bg, transparent);
   color: var(--i18n-fg, inherit);

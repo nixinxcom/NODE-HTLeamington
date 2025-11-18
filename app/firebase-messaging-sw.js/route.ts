@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "edge"; // opcional
+export const runtime = "nodejs"; // opcional
 
 export async function GET() {
   const config = {
