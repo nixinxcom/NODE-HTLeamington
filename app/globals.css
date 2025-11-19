@@ -7033,6 +7033,49 @@ html[data-theme="dark"]{
 .p.p-highlight{ background-color: var(--p-backgroundColor-highlight); color: var(--p-textColor-highlight); border-color: var(--p-borderColor-highlight); }
 .p.p-highlight:hover{ background-color: var(--p-backgroundColor-highhover); color: var(--p-textColor-highhover); border-color: var(--p-borderColor-highhover); }
 
+/* === DIV === */
+.div {
+  background-color: var(--div-backgroundColor-rest);
+  color:            var(--div-textColor-rest);
+
+  border-style: solid;
+  border-width: calc(var(--div-borderWidth-rest) * 1px);
+  border-color: var(--div-borderColor-rest);
+
+  border-radius: calc(var(--div-borderRadius-rest) * 1px);
+  box-shadow:    var(--div-boxShadow-rest);
+  padding:       calc(var(--div-paddingY-rest) * 1px)
+                 calc(var(--div-paddingX-rest) * 1px);
+
+  transition: all var(--div-transitionSpeed-rest, 200ms) ease;
+}
+
+/* Estados */
+.div:hover {
+  background-color: var(--div-backgroundColor-hover);
+  color:            var(--div-textColor-hover);
+  border-color:     var(--div-borderColor-hover);
+}
+
+.div:active {
+  background-color: var(--div-backgroundColor-active);
+  color:            var(--div-textColor-active);
+  border-color:     var(--div-borderColor-active);
+}
+
+/* Variante highlight (igual patrón que .p) */
+.div.div-highlight {
+  background-color: var(--div-backgroundColor-highlight);
+  color:            var(--div-textColor-highlight);
+  border-color:     var(--div-borderColor-highlight);
+}
+
+.div.div-highlight:hover {
+  background-color: var(--div-backgroundColor-highhover);
+  color:            var(--div-textColor-highhover);
+  border-color:     var(--div-borderColor-highhover);
+}
+
 /* === IMG (Image) === */
 .image{
   background-color: var(--image-backgroundColor-rest);

@@ -1,4 +1,5 @@
 "use client";
+import ReactDOM from "react-dom";
 import React, { useEffect, useMemo, useState } from "react";
 import { saveSettingsClient } from "@/app/lib/settings/client";
 import Link from "next/link";
@@ -61,7 +62,8 @@ export type StylesSchema = {
 const BASE_COMPONENTS: ComponentKey[] = [
   "input","select","button","label",
   "h1","h2","h3","h4","h5","h6",
-  "a","p","image","nextimage","link"
+  "a","p","image","nextimage","link",
+  "div"
 ];
 const STATES: StyleState[] = [
   "rest","hover","active","disabled","highlight","highhover",
@@ -467,10 +469,57 @@ const ColorField: React.FC<{ value?: string; onChange: (v: string) => void; plac
     return () => window.removeEventListener("colorfield:closeAll", closeAll as any);
   }, []);
 
+  useEffect(() => {
+    if (!open || !ref.current) return;
+
+    const updatePosition = () => {
+      if (!ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      const margin = 8;
+      const width = 320; // coincide con w-80
+      let left = rect.left;
+      let top = rect.bottom + margin;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const estimatedHeight = 260; // alto aprox del popup
+
+      // Ajuste horizontal
+      if (left + width > vw - margin) {
+        left = vw - width - margin;
+      }
+      if (left < margin) {
+        left = margin;
+      }
+
+      // Si no cabe hacia abajo, lo abrimos hacia arriba
+      if (top + estimatedHeight > vh - margin) {
+        top = rect.top - estimatedHeight - margin;
+      }
+
+      setPopupPos({ top, left, width });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
   const toggle = () => {
     if (!open) window.dispatchEvent(new Event("colorfield:closeAll"));
     setOpen((o) => !o);
   };
+
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number }>({
+    top: 0,
+    left: 0,
+    width: 320,
+  });
 
   const baseForInputColor = (() => {
     const raw = (isTransparent ? "#ffffff" : temp || value || "").trim();
@@ -526,113 +575,123 @@ const ColorField: React.FC<{ value?: string; onChange: (v: string) => void; plac
         <SPAN className="ml-auto text-xs text-gray-500">{open ? "▲" : "▼"}</SPAN>
       </BUTTON>
 
-      {open && (
-        <div
-          className="absolute z-20 mt-2 w-80 rounded-2xl border border-gray-300 bg-gray-900 text-white shadow-lg p-4"
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <SPAN className="text-xs font-medium text-gray-300">Selecciona un color</SPAN>
-            <BUTTON
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpen(false);
-              }}
-              aria-label="Cerrar selector"
-              className="p-1 rounded hover:bg-gray-800"
-            >
-              ✕
-            </BUTTON>
-          </div>
-
-          <div className="mb-2">
-            <INPUT
-              type="color"
-              className="w-full h-10 rounded disabled:opacity-50"
-              disabled={isTransparent}
-              value={baseForInputColor}
-              onChange={(e) => {
-                setTemp(normalizeHex((e.target as HTMLInputElement).value));
-              }}
-            />
-          </div>
-
-          <div className="mb-2">
-            <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-              <SPAN>Opacidad (alpha)</SPAN>
-              <SPAN>{Math.round(effectiveAlpha * 100)}%</SPAN>
-            </div>
-            <INPUT
-              type="range"
-              min={0}
-              max={100}
-              value={Math.round(effectiveAlpha * 100)}
-              disabled={isTransparent}
-              onChange={(e) => {
-                const a = clamp01(Number((e.target as HTMLInputElement).value) / 100);
-                setAlpha(a);
-              }}
-              className="w-full"
-            />
-          </div>
-
-          <div>
-            <INPUT
-              type="text"
-              className="w-full rounded-lg border border-gray-300 bg-white text-black px-2 py-2 font-mono text-xs"
-              placeholder={placeholder || "#111827 | rgba(...) | hsla(...) | transparent"}
-              value={isTransparent ? "transparent" : temp}
-              disabled={isTransparent}
-              onChange={(e) => {
-                setTemp((e.target as HTMLInputElement).value);
-              }}
-              onBlur={() => {
-                if (!isTransparent) {
-                  onChange(compose(temp || "#ffffff", alpha || 1));
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
+      {open &&
+        typeof document !== "undefined" &&
+        ReactDOM.createPortal(
+          <div
+            className="fixed z-[9999] w-80 rounded-2xl border border-gray-300 bg-gray-900 text-white shadow-lg p-4"
+            style={{ top: popupPos.top, left: popupPos.left }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <SPAN className="text-xs font-medium text-gray-300">Selecciona un color</SPAN>
+              <BUTTON
+                type="button"
+                onMouseDown={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
+                  setOpen(false);
+                }}
+                aria-label="Cerrar selector"
+                className="p-1 rounded hover:bg-gray-800"
+              >
+                ✕
+              </BUTTON>
+            </div>
+
+            <div className="mb-2">
+              <INPUT
+                type="color"
+                className="w-full h-10 rounded disabled:opacity-50"
+                disabled={isTransparent}
+                value={baseForInputColor}
+                onChange={(e) => {
+                  setTemp(normalizeHex((e.target as HTMLInputElement).value));
+                }}
+              />
+            </div>
+
+            <div className="mb-2">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <SPAN>Opacidad (alpha)</SPAN>
+                <SPAN>{Math.round(effectiveAlpha * 100)}%</SPAN>
+              </div>
+              <INPUT
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(effectiveAlpha * 100)}
+                disabled={isTransparent}
+                onChange={(e) => {
+                  const a = clamp01(Number((e.target as HTMLInputElement).value) / 100);
+                  setAlpha(a);
+                }}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <INPUT
+                type="text"
+                className="w-full rounded-lg border border-gray-300 bg-white text-black px-2 py-2 font-mono text-xs"
+                placeholder={placeholder || "#111827 | rgba(...) | hsla(...) | transparent"}
+                value={isTransparent ? "transparent" : temp}
+                disabled={isTransparent}
+                onChange={(e) => {
+                  setTemp((e.target as HTMLInputElement).value);
+                }}
+                onBlur={() => {
                   if (!isTransparent) {
                     onChange(compose(temp || "#ffffff", alpha || 1));
                   }
-                  setOpen(false);
-                }
-              }}
-            />
-          </div>
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (!isTransparent) {
+                      onChange(compose(temp || "#ffffff", alpha || 1));
+                    }
+                    setOpen(false);
+                  }
+                }}
+              />
+            </div>
 
-          <div className="flex justify-end gap-2 mt-3">
-            <BUTTON
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpen(false);
-              }}
-              className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700"
-            >
-              Cerrar
-            </BUTTON>
-            <BUTTON
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleApply();
-              }}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
-            >
-              Aplicar
-            </BUTTON>
-          </div>
-        </div>
-      )}
+            <div className="flex justify-end gap-2 mt-3">
+              <BUTTON
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOpen(false);
+                }}
+                className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700"
+              >
+                Cerrar
+              </BUTTON>
+              <BUTTON
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isTransparent) {
+                    onChange("transparent");
+                  } else {
+                    onChange(compose(temp || "#ffffff", alpha || 1));
+                  }
+                  setOpen(false);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
+              >
+                Aplicar
+              </BUTTON>
+            </div>
+          </div>,
+          document.body
+        )}
+
     </div>
   );
 };
@@ -812,10 +871,19 @@ const GLOBAL_PROPS_ROW2: GlobalDef[] = [
 
 /* === Cabecera de columna compacta === */
 const PropHeaderCell: React.FC<{ abbr: string; title: string }> = ({ abbr, title }) => (
-  <div className="px-1 py-2 text-[10px] font-semibold uppercase tracking-wide text-gray-600 text-center" title={title}>
-    {abbr}
+  <div
+    className="px-1 py-1 text-center text-[9px] leading-tight"
+    title={title}
+  >
+    <div className="font-semibold uppercase tracking-wide text-gray-400">
+      {abbr}
+    </div>
+    <div className="text-[9px] text-gray-500 normal-case">
+      {title}
+    </div>
   </div>
 );
+
 
 /* === Botonera de estados (solo en topbar, sin duplicados) === */
 const StateButtons: React.FC<{ current: StyleState; onPick: (s: StyleState) => void }> = ({ current, onPick }) => (
@@ -869,47 +937,121 @@ const StickyDualPreviewAccordion: React.FC<{
   const renderSide = (themeKey: ThemeKey, themeLabel: "light" | "dark") => {
     const effState: StyleState = hoverByTheme[themeKey] ? "hover" : currentState;
     const tok = resolveTokens(schema, component, themeKey, effState);
+
     const global = schema.global.body[themeKey] ?? {};
 
-    const previewStyle: React.CSSProperties = {
-      backgroundColor: tok.backgroundColor, color: tok.textColor,
-      borderColor: tok.borderColor, borderWidth: (tok.borderWidth ?? 0) + "px",
-      borderStyle: "solid", borderRadius: (tok.borderRadius ?? 0) + "px",
-      boxShadow: tok.boxShadow, padding: `${tok.paddingY ?? 0}px ${tok.paddingX ?? 0}px`,
-      fontFamily: tok.fontFamily, fontSize: (tok.fontSize ?? 16) + "px", fontWeight: tok.fontWeight as any,
-      letterSpacing: (tok.letterSpacing ?? 0) + "em", lineHeight: String(tok.lineHeight ?? 1.2),
-      transition: `all ${TRANSITION_SPEEDS[tok.transitionSpeed ?? "normal"]} ease`,
-      opacity: currentState === "disabled" ? 0.6 : 1, cursor: currentState === "disabled" ? "not-allowed" : undefined,
+    // Construye el style para UN estado específico
+    const buildPreviewStyle = (st: StyleState): React.CSSProperties => {
+      const t = resolveTokens(schema, component, themeKey, st);
+
+      return {
+        backgroundColor: t.backgroundColor,
+        color: t.textColor,
+        borderColor: t.borderColor,
+        borderWidth: (t.borderWidth ?? 0) + "px",
+        borderStyle: "solid",
+        borderRadius: (t.borderRadius ?? 0) + "px",
+        boxShadow: t.boxShadow,
+        padding: `${t.paddingY ?? 0}px ${t.paddingX ?? 0}px`,
+        fontFamily: t.fontFamily,
+        fontSize: (t.fontSize ?? 16) + "px",
+        fontWeight: t.fontWeight as any,
+        letterSpacing: (t.letterSpacing ?? 0) + "em",
+        lineHeight: String(t.lineHeight ?? 1.2),
+        transition: `all ${TRANSITION_SPEEDS[t.transitionSpeed ?? "normal"]} ease`,
+        opacity: st === "disabled" ? 0.6 : 1,
+        cursor: st === "disabled" ? "not-allowed" : undefined,
+      };
     };
 
-    const commonHover = { onMouseEnter: () => onHoverToggle(themeKey, true), onMouseLeave: () => onHoverToggle(themeKey, false) };
-    const label = `${component} (${themeLabel}/${currentState})`;
+    // Renderiza el control (button, input, h1, etc.) en UN estado
+    const renderControlForState = (st: StyleState) => {
+      const style = buildPreviewStyle(st);
+      const label = `${component} (${themeLabel}/${st})`;
+      const disabled = st === "disabled";
 
-    const Control = (() => {
-      if (component === "button" || (!BASE_COMPONENTS.includes(component) && component !== "image" && component !== "a" && component !== "p")) {
-        return <BUTTON style={previewStyle} disabled={currentState === "disabled"} {...commonHover}>{label}</BUTTON>;
-      }
-      if (component === "input")   return <INPUT  style={previewStyle as any} placeholder={label} disabled={currentState === "disabled"} {...commonHover} />;
-      if (component === "select")  return <SELECT style={previewStyle as any} disabled={currentState === "disabled"} {...commonHover}><option>{label}</option></SELECT>;
-      if (component === "label")   return <LABEL style={previewStyle as any}>{label}</LABEL>;
-      if (component === "h1") return <H1 style={previewStyle as any}>{label}</H1>;
-      if (component === "h2") return <H2 style={previewStyle as any}>{label}</H2>;
-      if (component === "h3") return <H3 style={previewStyle as any}>{label}</H3>;
-      if (component === "h4") return <H4 style={previewStyle as any}>{label}</H4>;
-      if (component === "h5") return <H5 style={previewStyle as any}>{label}</H5>;
-      if (component === "h6") return <H6 style={previewStyle as any}>{label}</H6>;
-      if (component === "a")  return <a href="#" onClick={(e)=>e.preventDefault()} style={previewStyle as any} {...commonHover}>{label}</a>;
-      if (component === "p")  return <P style={previewStyle as any}>{label}</P>;
-      if (component === "image") return <img style={previewStyle as any} src="https://picsum.photos/seed/pwa-sticky/280/150" alt="preview" />;
-      if (component === "nextimage") {
+      if (component === "div") {
         return (
-          <SPAN style={previewStyle as any}>
-            <Image src="https://picsum.photos/seed/pwa-sticky-next/280/150" alt="preview" width={280} height={150} unoptimized style={{ display: "block", borderRadius: "inherit" }} />
+          <DIV style={style as any}>
+            {label}
+          </DIV>
+        );
+      }
+
+      if (component === "input") {
+        return (
+          <INPUT
+            style={style}
+            disabled={disabled}
+            placeholder={label}
+          />
+        );
+      }
+
+      if (component === "select") {
+        return (
+          <SELECT style={style} disabled={disabled}>
+            <option>{label}</option>
+          </SELECT>
+        );
+      }
+
+      if (component === "label") return <LABEL style={style as any}>{label}</LABEL>;
+      if (component === "h1") return <H1 style={style as any}>{label}</H1>;
+      if (component === "h2") return <H2 style={style as any}>{label}</H2>;
+      if (component === "h3") return <H3 style={style as any}>{label}</H3>;
+      if (component === "h4") return <H4 style={style as any}>{label}</H4>;
+      if (component === "h5") return <H5 style={style as any}>{label}</H5>;
+      if (component === "h6") return <H6 style={style as any}>{label}</H6>;
+
+      if (component === "a" || component === "link") {
+        return (
+          <A
+            href="#"
+            onClick={(e: React.MouseEvent) => e.preventDefault()}
+            style={style as any}
+          >
+            {label}
+          </A>
+        );
+      }
+
+      if (component === "p") return <P style={style as any}>{label}</P>;
+
+      if (component === "image") {
+        return (
+          <SPAN style={style as any}>
+            <img
+              src="https://picsum.photos/seed/pwa-sticky/260/120"
+              alt={label}
+              style={{ display: "block", borderRadius: "inherit" }}
+            />
           </SPAN>
         );
       }
-      return <BUTTON style={previewStyle} disabled={currentState === "disabled"} {...commonHover}>{label}</BUTTON>;
-    })();
+
+      if (component === "nextimage") {
+        return (
+          <SPAN style={style as any}>
+            <NEXTIMAGE
+              src="https://picsum.photos/seed/pwa-sticky-next/260/120"
+              alt={label}
+              width={260}
+              height={120}
+              style={{ display: "block", borderRadius: "inherit" }}
+            />
+          </SPAN>
+        );
+      }
+
+      // default: button o cualquier otro wrapper desconocido
+      return (
+        <BUTTON style={style} disabled={disabled}>
+          {label}
+        </BUTTON>
+      );
+    };
+
 
     const GlobalCell: React.FC<{ def: GlobalDef }> = ({ def }) => {
       const v = (schema.global.body[themeKey] ?? {})[def.key] as any;
@@ -944,9 +1086,30 @@ const StickyDualPreviewAccordion: React.FC<{
             margin: `${global.marginY ?? 0}px ${global.marginX ?? 0}px`,
             transition: `all ${TRANSITION_SPEEDS[global.transitionSpeed ?? "normal"]} ease`,
           }}
-        >
-          <div className="text-center text-xs mb-2 opacity-70">{themeLabel} (alias: <code>{themeKey}</code>)</div>
-          <div className="flex items-center justify-center py-4">{Control}</div>
+                >
+          <div className="text-center text-xs mb-2 opacity-70">
+            {themeLabel} (alias: <code>{themeKey}</code>)
+          </div>
+
+          {/* Preview completo: un control por estado (compacto, 2 columnas) */}
+          // NUEVO: 1 por fila en pantallas chicas, 2 en medianas, 3 en grandes
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+            {STATES.map((st) => (
+              <div
+                key={st}
+                className={
+                  "rounded-xl border px-2 py-1.5 bg-black/60 " +
+                  (st === currentState ? "border-red-500" : "border-gray-700/60")
+                }
+              >
+                <div className="mb-0.5">{renderControlForState(st)}</div>
+                <SPAN className="block text-[9px] uppercase tracking-wide text-center text-red-400">
+                  {st}
+                </SPAN>
+              </div>
+            ))}
+          </div>
+
 
           {/* Globales compactos en 2 filas */}
           <div className="mt-2 space-y-2 bg-white dark:bg-black rounded-md p-2">
@@ -972,149 +1135,364 @@ const StickyDualPreviewAccordion: React.FC<{
 /* === Acordeón: Tabla de ajustes compacta (sin columna "Valores") === */
 
 const PropertyHeader: React.FC = () => (
-  <div
-    className="grid sticky top-0 z-10 bg-gray-50/70 dark:bg-gray-900/50"
-    style={{ gridTemplateColumns: `repeat(${CONTROL_PROPS.length}, minmax(72px, 1fr))` }}
-  >
-    {CONTROL_PROPS.map((p) => <PropHeaderCell key={String(p.key)} abbr={p.abbr} title={p.label} />)}
+  <div className="px-1 pb-1 text-[11px] font-semibold text-gray-300">
+    Propiedades del control
   </div>
 );
 
 const PropertyValueRow: React.FC<{
-  schema: StylesSchema; themeKey: ThemeKey; component: ComponentKey; state: StyleState;
+  schema: StylesSchema;
+  themeKey: ThemeKey;
+  component: ComponentKey;
+  state: StyleState;
   onUpdate: (patch: Partial<TokenSet>) => void;
 }> = ({ schema, themeKey, component, state, onUpdate }) => {
   const resolved = resolveTokens(schema, component, themeKey, state);
   const raw = (schema.components[component]?.[themeKey]?.[state] ?? {}) as TokenSet;
 
-  const cell = (p: PropDef) => {
-    const val = (raw[p.key] ?? resolved[p.key]) as any;
+  const cell = (p: (typeof CONTROL_PROPS)[number]) => {
+    const val = (raw as any)[p.key] ?? (resolved as any)[p.key];
+
     if (p.type === "color") {
-      return <TinyColor value={val as string} onChange={(nv)=>onUpdate({ [p.key]: nv } as any)} title={p.label} />;
+      return (
+        <TinyColor
+          value={val as string}
+          onChange={(nv) => onUpdate({ [p.key]: nv } as any)}
+          title={p.label}
+        />
+      );
     }
+
     if (p.type === "number") {
       return (
         <TinyNumberCommit
           w={p.width ?? 56}
           value={Number(val ?? 0)}
-          min={p.min} max={p.max} step={p.step}
-          onCommit={(n)=>onUpdate({ [p.key]: n } as any)}
+          min={p.min}
+          max={p.max}
+          step={p.step}
+          onCommit={(n) => onUpdate({ [p.key]: n } as any)}
         />
       );
     }
+
     if (p.type === "text") {
-      return <TinyText w={p.width ?? 140} value={String(val ?? "")} onCommit={(v)=>onUpdate({ [p.key]: v } as any)} />;
+      return (
+        <TinyText
+          w={p.width ?? 140}
+          value={String(val ?? "")}
+          onCommit={(v) => onUpdate({ [p.key]: v } as any)}
+        />
+      );
     }
+
     if (p.type === "shadow") {
-      return <MiniBoxShadowEditor value={String(val ?? "")} onCommit={(v)=>onUpdate({ [p.key]: v } as any)} />;
+      return (
+        <MiniBoxShadowEditor
+          value={String(val ?? "")}
+          onCommit={(v) => onUpdate({ [p.key]: v } as any)}
+        />
+      );
     }
+
     return null;
   };
 
   return (
-    <div
-      className="grid border-b border-gray-100 dark:border-gray-800 bg-white/60 dark:bg-gray-900/40"
-      style={{ gridTemplateColumns: `repeat(${CONTROL_PROPS.length}, minmax(72px, 1fr))` }}
-    >
-      {CONTROL_PROPS.map((p) => (
-        <div key={String(p.key)} className="px-1 py-1.5 flex items-center justify-center">{cell(p)}</div>
-      ))}
+    <div className="border-b border-gray-100 dark:border-gray-800 bg-white/60 dark:bg-gray-900/40 px-2 pb-2">
+      {/* Grid VERTICAL de propiedades: 2–4 columnas, sin scroll horizontal */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
+        {CONTROL_PROPS.map((p) => (
+          <div key={String(p.key)} className="flex flex-col gap-1">
+            <div className="text-[9px] uppercase tracking-wide text-gray-500">
+              {p.abbr}
+              <SPAN className="ml-1 text-[9px] normal-case text-gray-400">
+                {p.label}
+              </SPAN>
+            </div>
+            {cell(p)}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
 
 const PropertyInheritRow: React.FC<{
-  schema: StylesSchema; themeKey: ThemeKey; component: ComponentKey; state: StyleState;
+  schema: StylesSchema;
+  themeKey: ThemeKey;
+  component: ComponentKey;
+  state: StyleState;
   onUnset: (key: keyof TokenSet) => void;
 }> = ({ schema, themeKey, component, state, onUnset }) => {
   const raw = (schema.components[component]?.[themeKey]?.[state] ?? {}) as TokenSet;
+
   return (
-    <div
-      className="grid border-b border-gray-100 dark:border-gray-800"
-      style={{ gridTemplateColumns: `repeat(${CONTROL_PROPS.length}, minmax(72px, 1fr))` }}
-    >
-      {CONTROL_PROPS.map((p) => {
-        const overridden = isOverridden(raw, p.key);
-        return (
-          <div key={String(p.key)} className="px-1 py-1 flex items-center justify-center">
-            {overridden ? (
-              <BUTTON
-                type="button"
-                className="px-2 py-0.5 rounded border text-[10px] bg-white text-black"
-                title="Limpiar override (heredar)"
-                onClick={()=>onUnset(p.key)}
-              >
-                ↺
-              </BUTTON>
-            ) : (
-              <SPAN className="text-[10px] text-gray-400">✓</SPAN>
-            )}
-          </div>
-        );
-      })}
+    <div className="border-b border-gray-100 dark:border-gray-800 px-2 pt-1 pb-2">
+      {/* Misma idea: grid vertical, pequeño, sin tabla horizontal */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
+        {CONTROL_PROPS.map((p) => {
+          const overridden = isOverridden(raw, p.key);
+          return (
+            <div
+              key={String(p.key)}
+              className="flex items-center justify-between text-[10px]"
+            >
+              <SPAN className="text-gray-500">{p.abbr}</SPAN>
+              {overridden ? (
+                <BUTTON
+                  className="px-2 py-0.5 rounded-full text-[10px] bg-gray-800 text-gray-50 hover:bg-red-600"
+                  onClick={() => onUnset(p.key)}
+                >
+                  ↺
+                </BUTTON>
+              ) : (
+                <SPAN className="text-[10px] text-gray-400">✓</SPAN>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
 
 const DynamicPropertyTableAccordion: React.FC<{
   schema: StylesSchema;
-  aliasLight: ThemeKey; aliasDark: ThemeKey;
+  aliasLight: ThemeKey;
+  aliasDark: ThemeKey;
   component: ComponentKey;
   currentState: StyleState;
-  updateTokens: (theme: ThemeKey, comp: ComponentKey, state: StyleState, patch: Partial<TokenSet>) => void;
-  unsetTokenFn: (theme: ThemeKey, comp: ComponentKey, state: StyleState, key: keyof TokenSet) => void;
-}> = ({ schema, aliasLight, aliasDark, component, currentState, updateTokens, unsetTokenFn }) => {
+  updateTokens: (
+    theme: ThemeKey,
+    comp: ComponentKey,
+    state: StyleState,
+    patch: Partial<TokenSet>
+  ) => void;
+  unsetTokenFn: (
+    theme: ThemeKey,
+    comp: ComponentKey,
+    state: StyleState,
+    key: keyof TokenSet
+  ) => void;
+}> = ({
+  schema,
+  aliasLight,
+  aliasDark,
+  component,
+  currentState,
+  updateTokens,
+  unsetTokenFn,
+}) => {
   const thLight = themeKeyFromAlias(aliasLight, "light");
-  const thDark  = themeKeyFromAlias(aliasDark, "dark");
+  const thDark = themeKeyFromAlias(aliasDark, "dark");
 
-  return (
-    <Accordion title="Tabla de ajustes (sticky, compacta)" defaultOpen>
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-auto max-h-[60vh]">
-        <PropertyHeader />
-        {/* Light */}
-        <div className="bg-white/40 dark:bg-gray-900/30">
-          <div className="px-2 py-1 text-[11px] font-medium text-gray-600">Light (alias: <code>{thLight}</code>) — estado: <strong>{currentState}</strong></div>
-          <PropertyValueRow
-            schema={schema}
-            themeKey={thLight}
-            component={component}
-            state={currentState}
-            onUpdate={(patch)=>updateTokens(thLight, component, currentState, patch)}
-          />
-          <div className="px-2 pt-1 text-[10px] text-gray-500">Hereda</div>
-          <PropertyInheritRow
-            schema={schema}
-            themeKey={thLight}
-            component={component}
-            state={currentState}
-            onUnset={(key)=>unsetTokenFn(thLight, component, currentState, key)}
-          />
+  // === Preview por tema (matriz de estados) ===============================
+  const renderStatesMatrix = (themeKey: ThemeKey, themeLabel: "light" | "dark") => {
+    const buildPreviewStyle = (st: StyleState): React.CSSProperties => {
+      const t = resolveTokens(schema, component, themeKey, st);
+
+      return {
+        backgroundColor: t.backgroundColor,
+        color: t.textColor,
+        borderColor: t.borderColor,
+        borderWidth: (t.borderWidth ?? 0) + "px",
+        borderStyle: "solid",
+        borderRadius: (t.borderRadius ?? 0) + "px",
+        boxShadow: t.boxShadow,
+        padding: `${t.paddingY ?? 0}px ${t.paddingX ?? 0}px`,
+        fontFamily: t.fontFamily,
+        fontSize: (t.fontSize ?? 16) + "px",
+        fontWeight: t.fontWeight as any,
+        letterSpacing: (t.letterSpacing ?? 0) + "em",
+        lineHeight: String(t.lineHeight ?? 1.2),
+        transition: `all ${TRANSITION_SPEEDS[t.transitionSpeed ?? "normal"]} ease`,
+        opacity: st === "disabled" ? 0.6 : 1,
+        cursor: st === "disabled" ? "not-allowed" : undefined,
+      };
+    };
+
+    const renderControlForState = (st: StyleState) => {
+      const style = buildPreviewStyle(st);
+      const label = `${component} (${themeLabel}/${st})`;
+      const disabled = st === "disabled";
+
+      if (component === "div") {
+        return (
+          <DIV style={style as any}>
+            {label}
+          </DIV>
+        );
+      }
+
+      if (component === "input") {
+        return <INPUT style={style} disabled={disabled} placeholder={label} />;
+      }
+
+      if (component === "select") {
+        return (
+          <SELECT style={style} disabled={disabled}>
+            <option>{label}</option>
+          </SELECT>
+        );
+      }
+
+      if (component === "label") return <LABEL style={style as any}>{label}</LABEL>;
+      if (component === "h1") return <H1 style={style as any}>{label}</H1>;
+      if (component === "h2") return <H2 style={style as any}>{label}</H2>;
+      if (component === "h3") return <H3 style={style as any}>{label}</H3>;
+      if (component === "h4") return <H4 style={style as any}>{label}</H4>;
+      if (component === "h5") return <H5 style={style as any}>{label}</H5>;
+      if (component === "h6") return <H6 style={style as any}>{label}</H6>;
+
+      if (component === "a" || component === "link") {
+        return (
+          <A
+            href="#"
+            onClick={(e: React.MouseEvent) => e.preventDefault()}
+            style={style as any}
+          >
+            {label}
+          </A>
+        );
+      }
+
+      if (component === "p") return <P style={style as any}>{label}</P>;
+
+      if (component === "image") {
+        return (
+          <SPAN style={style as any}>
+            <img
+              src="https://picsum.photos/seed/pwa-states/260/120"
+              alt={label}
+              style={{ display: "block", borderRadius: "inherit" }}
+            />
+          </SPAN>
+        );
+      }
+
+      if (component === "nextimage") {
+        return (
+          <SPAN style={style as any}>
+            <NEXTIMAGE
+              src="https://picsum.photos/seed/pwa-states-next/260/120"
+              alt={label}
+              width={260}
+              height={120}
+              style={{ display: "block", borderRadius: "inherit" }}
+            />
+          </SPAN>
+        );
+      }
+
+      // default: button u otro wrapper
+      return (
+        <BUTTON style={style} disabled={disabled}>
+          {label}
+        </BUTTON>
+      );
+    };
+
+    return (
+      <div className="h-full p-3">
+        <div className="text-[11px] font-medium text-gray-200 mb-2">
+          Preview {component} — {themeLabel} (<code>{themeKey}</code>)
         </div>
-        {/* Dark */}
-        <div className="bg-white/40 dark:bg-gray-900/30">
-          <div className="px-2 py-1 text-[11px] font-medium text-gray-600">Dark (alias: <code>{thDark}</code>) — estado: <strong>{currentState}</strong></div>
-          <PropertyValueRow
-            schema={schema}
-            themeKey={thDark}
-            component={component}
-            state={currentState}
-            onUpdate={(patch)=>updateTokens(thDark, component, currentState, patch)}
-          />
-          <div className="px-2 pt-1 text-[10px] text-gray-500">Hereda</div>
-          <PropertyInheritRow
-            schema={schema}
-            themeKey={thDark}
-            component={component}
-            state={currentState}
-            onUnset={(key)=>unsetTokenFn(thDark, component, currentState, key)}
-          />
+
+        {/* 1 por fila en muy chico, 2 en mediano, 3 en grande */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+          {STATES.map((st) => (
+            <div
+              key={st}
+              className={
+                "rounded-xl border px-2 py-1.5 bg-black/60 " +
+                (st === currentState ? "border-red-500" : "border-gray-700/60")
+              }
+            >
+              <div className="mb-0.5">{renderControlForState(st)}</div>
+              <SPAN className="block text-[9px] uppercase tracking-wide text-center text-red-400">
+                {st}
+              </SPAN>
+            </div>
+          ))}
         </div>
       </div>
-    </Accordion>
-  );
-};
-/* === Componente principal: StyleDesigner (acordeones pedidos + correcciones) === */
+    );
 
+  };
+
+  // Panel por tema (light / dark): propiedades a la izq, previews a la der.
+  const renderThemePanel = (themeKey: ThemeKey, label: "light" | "dark") => {
+    const global = schema.global.body[themeKey] ?? {};
+
+    return (
+      <div
+        className="rounded-3xl border border-gray-700/50 p-3"
+        style={{
+          backgroundColor:
+            global.backgroundColor ??
+            (label === "light" ? "#ffffff" : "#020617"),
+          color: global.textColor ?? undefined,
+        }}
+      >
+        {/* Panel por tema: 50% props | 50% previews */}
+        <div className="h-[520px] min-h-[520px] flex flex-row gap-3">
+          {/* ── COLUMNA IZQUIERDA: PROPIEDADES ── */}
+          <div className="basis-1/2 min-w-0 min-h-0 overflow-y-auto rounded-2xl bg-black/40 border border-gray-800/70 p-2">
+            <div className="px-1 pb-1 text-[11px] font-medium text-gray-300">
+              Control: <strong>{component}</strong> — tema:{" "}
+              <strong>{label}</strong> (<code>{themeKey}</code>) — estado:{" "}
+              <strong>{currentState}</strong>
+            </div>
+
+            <PropertyHeader />
+
+            <PropertyValueRow
+              schema={schema}
+              themeKey={themeKey}
+              component={component}
+              state={currentState}
+              onUpdate={(patch) =>
+                updateTokens(themeKey, component, currentState, patch)
+              }
+            />
+
+            <div className="px-2 pt-1 text-[10px] text-gray-500">Hereda</div>
+            <PropertyInheritRow
+              schema={schema}
+              themeKey={themeKey}
+              component={component}
+              state={currentState}
+              onUnset={(key) =>
+                unsetTokenFn(themeKey, component, currentState, key)
+              }
+            />
+          </div>
+
+          {/* ── COLUMNA DERECHA: PREVIEWS ── */}
+          <div className="basis-1/2 min-w-0 min-h-0 overflow-y-auto bg-black/60 rounded-2xl border border-gray-700/80">
+            {renderStatesMatrix(themeKey, label)}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+return (
+  <Accordion title="Tabla de ajustes (sticky, compacta)" defaultOpen>
+    {/* Cada tema ocupa 100% de ancho; uno debajo del otro */}
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-3">
+      <div className="flex flex-col gap-4">
+        {renderThemePanel(thLight, "light")}
+        {renderThemePanel(thDark, "dark")}
+      </div>
+    </div>
+  </Accordion>
+);
+
+};
+
+/* === Componente principal: StyleDesigner (acordeones pedidos + correcciones) === */
 export default function StyleDesigner({
   initialStyles,
   loadStyles,
