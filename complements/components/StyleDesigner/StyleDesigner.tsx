@@ -1176,7 +1176,6 @@ const StickyDualPreviewAccordion: React.FC<{
           </div>
 
           {/* Preview completo: un control por estado (compacto, 2 columnas) */}
-          // NUEVO: 1 por fila en pantallas chicas, 2 en medianas, 3 en grandes
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
             {STATES.map((st) => (
               <div
@@ -1569,7 +1568,7 @@ const DynamicPropertyTableAccordion: React.FC<{
                   )
                 }
               >
-                REST → {currentState}
+                REST(Control/Tema) → {currentState}
               </BUTTON>
 
               <BUTTON
@@ -1582,7 +1581,7 @@ const DynamicPropertyTableAccordion: React.FC<{
                   )
                 }
               >
-                REST → todos
+                REST(Control/Tema) → todos
               </BUTTON>
 
               <BUTTON
