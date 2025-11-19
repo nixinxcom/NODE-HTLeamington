@@ -60,35 +60,67 @@ export type StylesSchema = {
 };
 
 const BASE_COMPONENTS: ComponentKey[] = [
-  "input","select","button","label",
-  "h1","h2","h3","h4","h5","h6",
-  "a","p","image","nextimage","link",
-  "div"
+  "a",
+  "b",
+  "p",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "span",
+  "div",
+  "link",
+  "label",
+  "input",
+  "button",
+  "select",
+  "image",
+  "nextimage",
 ];
 const STATES: StyleState[] = [
-  "rest","hover","active","disabled","highlight","highhover",
-  "inert","focus","visited","warning","error"
+  "rest",
+  "hover",
+  "active",
+  "disabled",
+  "highlight",
+  "highhover",
+  "inert",
+  "focus",
+  "visited",
+  "warning",
+  "error"
 ];
 const NON_REST_STATES: StyleState[] = [
-  "hover","active","disabled","highlight","highhover","inert","focus","visited","warning","error"
+  "hover",
+  "active",
+  "disabled",
+  "highlight",
+  "highhover",
+  "inert",
+  "focus",
+  "visited",
+  "warning",
+  "error"
 ];
 const BASE_THEMES: ThemeKey[] = ["light","dark"];
 
 const DEFAULT_TOKENS: TokenSet = {
   backgroundColor: "#ffffff",
-  textColor: "#111827",
+  textColor: "#000000",
   borderColor: "#e5e7eb",
-  borderRadius: 10,
+  borderRadius: 7,
   borderWidth: 1,
-  paddingX: 12,
-  paddingY: 10,
+  paddingX: 4,
+  paddingY: 3,
   marginX: 0,
-  marginY: 8,
+  marginY: 4,
   fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-  fontSize: 12,
+  fontSize: 14,
   fontWeight: 500,
   letterSpacing: 0,
-  lineHeight: 1.3,
+  lineHeight: 1.4,
   transitionSpeed: "normal",
 };
 /* ========= Utils ========= */
@@ -638,19 +670,42 @@ const ColorField: React.FC<{ value?: string; onChange: (v: string) => void; plac
                 className="w-full rounded-lg border border-gray-300 bg-white text-black px-2 py-2 font-mono text-xs"
                 placeholder={placeholder || "#111827 | rgba(...) | hsla(...) | transparent"}
                 value={isTransparent ? "transparent" : temp}
-                disabled={isTransparent}
+                // 👇 ya NO lo deshabilitamos; así puedes salir de "transparent"
                 onChange={(e) => {
-                  setTemp((e.target as HTMLInputElement).value);
+                  const val = (e.target as HTMLInputElement).value;
+                  setTemp(val);
+
+                  const low = val.trim().toLowerCase();
+
+                  if (low === "transparent") {
+                    // entra en modo transparente
+                    setIsTransparent(true);
+                    setAlpha(0);
+                  } else {
+                    // si estaba en transparente y ahora escribes un color, salimos de ese modo
+                    if (isTransparent) {
+                      setIsTransparent(false);
+                      setAlpha(1);
+                    }
+                  }
                 }}
                 onBlur={() => {
-                  if (!isTransparent) {
+                  const low = (temp || "").trim().toLowerCase();
+
+                  if (low === "transparent") {
+                    onChange("transparent");
+                  } else {
                     onChange(compose(temp || "#ffffff", alpha || 1));
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    if (!isTransparent) {
+                    const low = (temp || "").trim().toLowerCase();
+
+                    if (low === "transparent") {
+                      onChange("transparent");
+                    } else {
                       onChange(compose(temp || "#ffffff", alpha || 1));
                     }
                     setOpen(false);
@@ -658,6 +713,33 @@ const ColorField: React.FC<{ value?: string; onChange: (v: string) => void; plac
                 }}
               />
             </div>
+
+          {/* Toggle explícito de transparent */}
+          <div className="mt-2 flex items-center gap-2 text-xs text-gray-200">
+            <INPUT
+              type="checkbox"
+              checked={isTransparent}
+              onChange={(e) => {
+                const checked = (e.target as HTMLInputElement).checked;
+
+                if (checked) {
+                  // Entrar a modo transparente
+                  setIsTransparent(true);
+                  setAlpha(0);
+                } else {
+                  // Salir de modo transparente
+                  setIsTransparent(false);
+                  // Si el texto actual es "transparent" o está vacío, pon un color seguro
+                  const low = (temp || "").trim().toLowerCase();
+                  if (!temp || low === "transparent") {
+                    setTemp("#ffffff");
+                  }
+                  setAlpha(1);
+                }
+              }}
+            />
+            <SPAN>Usar transparent</SPAN>
+          </div>
 
             <div className="flex justify-end gap-2 mt-3">
               <BUTTON
@@ -952,7 +1034,9 @@ const StickyDualPreviewAccordion: React.FC<{
         borderStyle: "solid",
         borderRadius: (t.borderRadius ?? 0) + "px",
         boxShadow: t.boxShadow,
+        boxSizing: "border-box",
         padding: `${t.paddingY ?? 0}px ${t.paddingX ?? 0}px`,
+        margin: `${t.marginY ?? 0}px ${t.marginX ?? 0}px`,
         fontFamily: t.fontFamily,
         fontSize: (t.fontSize ?? 16) + "px",
         fontWeight: t.fontWeight as any,
@@ -1275,6 +1359,7 @@ const DynamicPropertyTableAccordion: React.FC<{
     state: StyleState,
     key: keyof TokenSet
   ) => void;
+  mutateSchema: (updater: (prev: StylesSchema) => StylesSchema) => void;
 }> = ({
   schema,
   aliasLight,
@@ -1283,6 +1368,7 @@ const DynamicPropertyTableAccordion: React.FC<{
   currentState,
   updateTokens,
   unsetTokenFn,
+  mutateSchema,
 }) => {
   const thLight = themeKeyFromAlias(aliasLight, "light");
   const thDark = themeKeyFromAlias(aliasDark, "dark");
@@ -1467,6 +1553,51 @@ const DynamicPropertyTableAccordion: React.FC<{
                 unsetTokenFn(themeKey, component, currentState, key)
               }
             />
+            {/* === Acciones rápidas de REST para este tema/control === */}
+            <div className="px-2 pt-2 pb-3 flex flex-wrap gap-2 text-[11px]">
+              <SPAN className="text-[10px] uppercase tracking-wide text-gray-500 mr-2">
+                Acciones rápidas
+              </SPAN>
+
+              <BUTTON
+                type="button"
+                className="px-2 py-1 rounded-lg border text-xs bg-white text-black"
+                title={`Copiar REST → ${currentState}`}
+                onClick={() =>
+                  mutateSchema((prev) =>
+                    copyRestToState(prev, themeKey, component, currentState)
+                  )
+                }
+              >
+                REST → {currentState}
+              </BUTTON>
+
+              <BUTTON
+                type="button"
+                className="px-2 py-1 rounded-lg border text-xs bg-white text-black"
+                title="Copiar REST → todos los estados"
+                onClick={() =>
+                  mutateSchema((prev) =>
+                    copyRestToAllStates(prev, themeKey, component)
+                  )
+                }
+              >
+                REST → todos
+              </BUTTON>
+
+              <BUTTON
+                type="button"
+                className="px-2 py-1 rounded-lg border border-red-400 text-xs text-red-600 bg-white"
+                title={`Eliminar overrides de ${currentState} (hereda 100% de REST)`}
+                onClick={() =>
+                  mutateSchema((prev) =>
+                    clearStateOverrides(prev, themeKey, component, currentState)
+                  )
+                }
+              >
+                Limpiar {currentState}
+              </BUTTON>
+            </div>
           </div>
 
           {/* ── COLUMNA DERECHA: PREVIEWS ── */}
@@ -1899,6 +2030,7 @@ export default function StyleDesigner({
         currentState={currentState}
         updateTokens={updateTokens}
         unsetTokenFn={unsetTokenFn}
+        mutateSchema={(fn) => setSchema((prev) => fn(prev))}
       />
 
       {/* (4) Heredar/copiar a múltiples (con fix de iteración Set) */}
