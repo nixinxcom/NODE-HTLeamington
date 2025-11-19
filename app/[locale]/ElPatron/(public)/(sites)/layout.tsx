@@ -43,12 +43,12 @@ export default function SitesLayout({ children }: { children: React.ReactNode })
       <header id="site-navbar" className={`${styles.header} ${navHidden ? styles.hidden : ''}`}>
         <NavBar
           onMenuToggle={(open: boolean) => setMobileMenuOpen(open)}
-          Logo="/Icons/manifest_icons/icon-192x192-maskable.png"
+          Logo={Branding.company.logo}
           Botons={[
             { FormattedMessage: "nav.home", linkURL: "/", defaultMessage: "Inicio", openTarget: "local" },
             { FormattedMessage: "nav.reservacion", linkURL: "/reservas", defaultMessage: "Reservacion", openTarget: "local" },
             { FormattedMessage: "nav.menu", linkURL: "/menus", defaultMessage: "Menu", openTarget: "local" },
-            { FormattedMessage: "home.cta.orderonline", linkURL: "https://order.tbdine.com/pickup/28824/menu", defaultMessage: "Ordena en Línea", openTarget: "external" },
+            // { FormattedMessage: "home.cta.orderonline", linkURL: "https://order.tbdine.com/pickup/28824/menu", defaultMessage: "Ordena en Línea", openTarget: "external" },
             { FormattedMessage: "nav.gallery", linkURL: "/galeria", defaultMessage: "Gallería", openTarget: "local" },
             { FormattedMessage: "nav.AboutUs", linkURL: "/sobrenosotros", defaultMessage: "Acerca de Nosotros", openTarget: "local" },
             { FormattedMessage: "nav.callUs", linkURL: "tel:15193292838", defaultMessage: "Call Us", openTarget: "external" },

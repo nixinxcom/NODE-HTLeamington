@@ -370,11 +370,7 @@ const HintBadge: React.FC<{ on: boolean }> = ({ on }) => (
 const isOverridden = (raw: TokenSet, k: keyof TokenSet) => raw && Object.prototype.hasOwnProperty.call(raw, k);
 
 /* ========= ColorField ========= */
-const ColorField: React.FC<{ value?: string; onChange: (v: string) => void; placeholder?: string; }> = ({
-  value,
-  onChange,
-  placeholder,
-}) => {
+const ColorField: React.FC<{ value?: string; onChange: (v: string) => void; placeholder?: string; }> = ({ value, onChange, placeholder }) => {
   const [open, setOpen] = useState(false);
   const [temp, setTemp] = useState<string>(value ?? "");
   const [alpha, setAlpha] = useState<number>(1);
@@ -383,253 +379,155 @@ const ColorField: React.FC<{ value?: string; onChange: (v: string) => void; plac
 
   const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
   const to2 = (n: number) => n.toString(16).padStart(2, "0");
-  const normalizeHex = (v: string) => v.trim().toLowerCase();
-
-  const parseFromValue = (rawValue?: string) => {
-    const raw = (rawValue ?? "").trim();
-    if (!raw) {
-      return { tmp: "#ffffff", a: 1, transparent: false };
-    }
-    if (raw.toLowerCase() === "transparent") {
-      return { tmp: "#ffffff", a: 0, transparent: true };
-    }
-    // #RRGGBBAA
-    if (/^#[0-9a-fA-F]{8}$/.test(raw)) {
-      const rgb = raw.slice(1, 7);
-      const aa = parseInt(raw.slice(7, 9), 16) / 255;
-      return { tmp: `#${rgb}`, a: clamp01(aa), transparent: false };
-    }
-    // #RRGGBB
-    if (/^#[0-9a-fA-F]{6}$/.test(raw)) {
-      return { tmp: raw.toLowerCase(), a: 1, transparent: false };
-    }
-    // #RGB o #RGBA
-    if (/^#[0-9a-fA-F]{3,4}$/.test(raw)) {
-      const h = raw.slice(1).split("").map((c) => c + c).join("");
-      const rgb = h.slice(0, 6);
-      let aa = 1;
-      if (h.length === 8) {
-        aa = parseInt(h.slice(6, 8), 16) / 255;
-      }
-      return { tmp: `#${rgb}`, a: clamp01(aa), transparent: false };
-    }
-    // lo demás: texto libre sin alpha
-    return { tmp: raw, a: 1, transparent: false };
+  const normalizeHex = (v: string) => /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6,8})$/.test(v.trim()) ? v.trim().toLowerCase() : v.trim();
+  const hexToRgba = (hex: string) => {
+    let h = hex.replace("#", "");
+    if (h.length === 3) h = h.split("").map(c => c + c).join("");
+    if (h.length === 4) h = h.split("").map(c => c + c).join("");
+    if (h.length === 6) h += "ff";
+    const n = parseInt(h, 16);
+    return { r: (n >> 24) & 255, g: (n >> 16) & 255, b: (n >> 8) & 255, a: (n & 255) / 255 };
   };
-
   const compose = (base: string, a: number) => {
     if (isTransparent) return "transparent";
-    const raw = base.trim();
-    if (/^#[0-9a-fA-F]{6}$/.test(raw)) {
-      const rgb = raw.slice(1, 7);
+    if (/^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6,8})$/.test(base)) {
+      const { r, g, b } = hexToRgba(base);
       const aa = Math.round(clamp01(a) * 255);
-      return `#${rgb}${to2(aa)}`.toLowerCase();
+      return `#${to2(r)}${to2(g)}${to2(b)}${to2(aa)}`.toLowerCase();
     }
-    if (/^#[0-9a-fA-F]{8}$/.test(raw)) {
-      const rgb = raw.slice(1, 7);
-      const aa = Math.round(clamp01(a) * 255);
-      return `#${rgb}${to2(aa)}`.toLowerCase();
+    if (/rgba?\(/i.test(base)) {
+      const body = base.replace(/rgba?\(/i, "").replace(/\)$/, "");
+      const p = body.split(/,\s*/);
+      return `rgba(${p[0] ?? "0"}, ${p[1] ?? "0"}, ${p[2] ?? "0"}, ${clamp01(a)})`;
     }
-    return raw || "#ffffff";
+    if (/hsla?\(/i.test(base)) {
+      const body = base.replace(/hsla?\(/i, "").replace(/\)$/, "");
+      const p = body.split(/,\s*/);
+      return `hsla(${p[0] ?? "0"}, ${p[1] ?? "0%"}, ${p[2] ?? "0%"}, ${clamp01(a)})`;
+    }
+    return a === 1 ? base : base;
   };
 
-  // sincroniza estado interno cuando cambia value externo
+  useEffect(() => setTemp(value ?? ""), [value]);
   useEffect(() => {
-    const { tmp, a, transparent } = parseFromValue(value);
-    setTemp(tmp);
-    setAlpha(a);
-    setIsTransparent(transparent);
+    const v = (value ?? "").trim();
+    if (v.toLowerCase() === "transparent") { setIsTransparent(true); setAlpha(0); }
+    else {
+      setIsTransparent(false);
+      if (/^#/.test(v)) setAlpha(hexToRgba(v).a);
+      else if (/rgba?\(|hsla?\(/i.test(v)) {
+        const m = v.match(/,\s*([0-9.]+)\s*\)\s*$/);
+        setAlpha(m ? clamp01(parseFloat(m[1])) : 1);
+      } else setAlpha(1);
+    }
   }, [value]);
 
-  // cerrar al click fuera o Escape
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setTemp(value ?? "");
-        setOpen(false);
-      }
-      if (e.key === "Enter" && open) {
-        onChange(compose(normalizeHex(temp || "#ffffff"), alpha));
-        setOpen(false);
-      }
+    const onDocClick = (e: MouseEvent) => {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) setOpen(false);
     };
-
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setTemp(value ?? ""); setOpen(false); }
+      if (e.key === "Enter" && open) { onChange(compose(normalizeHex(temp || "#ffffff"), alpha)); setOpen(false); }
+    };
+    document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKey);
     return () => {
+      document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onKey);
     };
   }, [open, temp, alpha, value]);
 
-  // solo un ColorField abierto a la vez
-  useEffect(() => {
-    const closeAll = () => setOpen(false);
-    window.addEventListener("colorfield:closeAll", closeAll as any);
-    return () => window.removeEventListener("colorfield:closeAll", closeAll as any);
-  }, []);
+  useEffect(() => { const closeAll = () => setOpen(false); window.addEventListener("colorfield:closeAll", closeAll); return () => window.removeEventListener("colorfield:closeAll", closeAll); }, []);
 
-  const toggle = () => {
-    if (!open) window.dispatchEvent(new Event("colorfield:closeAll"));
-    setOpen((o) => !o);
-  };
+  const toggle = () => { if (!open) window.dispatchEvent(new Event("colorfield:closeAll")); setOpen(o => !o); };
+  const applyAndClose = () => { onChange(compose(normalizeHex(temp || "#ffffff"), alpha)); setOpen(false); };
 
   const baseForInputColor = (() => {
-    const raw = (isTransparent ? "#ffffff" : temp || value || "").trim();
-    if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase();
-    if (/^#[0-9a-fA-F]{8}$/.test(raw)) return `#${raw.slice(1, 7).toLowerCase()}`;
-    if (/^#[0-9a-fA-F]{3,4}$/.test(raw)) {
-      const h = raw.slice(1).split("").map((c) => c + c).join("");
-      return `#${h.slice(0, 6).toLowerCase()}`;
+    if (isTransparent) return "#ffffff";
+    const h = normalizeHex(temp || value || "");
+    if (/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(h)) return `#${h.slice(1, 7)}`;
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4})$/.test(h)) {
+      const x = h.slice(1).split("").map(c => c + c).join("");
+      return `#${x.slice(0, 6)}`;
     }
     return "#ffffff";
   })();
 
-  const effectiveAlpha = isTransparent ? 0 : alpha;
+  const raw = (temp ?? value ?? "").trim();
+  const isTransparentKeyword = raw.toLowerCase() === "transparent";
+  const hexAlpha = (() => {
+    if (/^#[0-9a-fA-F]{8}$/.test(raw)) return parseInt(raw.slice(7, 9), 16) / 255;
+    if (/^#[0-9a-fA-F]{4}$/.test(raw)) return parseInt(raw.slice(4, 5), 16) / 15;
+    return null;
+  })();
+  const funcAlpha = (() => {
+    const m = raw.match(/(rgba?|hsla?)\(([^)]+)\)/i);
+    if (!m) return null;
+    const parts = m[2].split(/\s*,\s*/);
+    const a = parseFloat(parts[parts.length - 1]);
+    return Number.isFinite(a) ? a : null;
+  })();
+  const effectiveAlpha = isTransparentKeyword ? 0 : hexAlpha ?? funcAlpha ?? (isTransparent ? 0 : alpha);
   const showChecker = effectiveAlpha < 1 - 1e-6;
-  const fillColor = isTransparent ? "transparent" : compose(temp || value || "#ffffff", effectiveAlpha);
-
-  const handleApply = () => {
-    if (isTransparent) {
-      onChange("transparent");
-    } else {
-      onChange(compose(temp || "#ffffff", alpha || 1));
-    }
-    setOpen(false);
-  };
+  const fillColor = isTransparentKeyword || isTransparent ? "rgba(0,0,0,0)" : compose(normalizeHex(temp || value || "#ffffff"), effectiveAlpha);
 
   return (
     <div className="relative" ref={ref}>
       <BUTTON
         type="button"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggle();
-        }}
+        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); toggle(); }}
         aria-expanded={open}
         className="flex items-center gap-2 w-full rounded-xl border border-gray-300 bg-white text-black px-2 py-2"
       >
         <SPAN
           className="inline-block h-5 w-5 rounded border border-gray-300 overflow-hidden"
-          style={
-            showChecker
-              ? {
-                  backgroundImage: "conic-gradient(#ccc 25%, #eee 0 50%, #ccc 0 75%, #eee 0)",
-                  backgroundSize: "8px 8px",
-                  boxShadow: `inset 0 0 0 9999px ${fillColor}`,
-                }
-              : { background: fillColor }
-          }
+          style={showChecker
+            ? { backgroundImage: "conic-gradient(#ccc 25%, #eee 0 50%, #ccc 0 75%, #eee 0)", backgroundSize: "8px 8px", boxShadow: `inset 0 0 0 9999px ${fillColor}` }
+            : { background: fillColor }}
         />
         <SPAN className="truncate text-left text-gray-800 dark:text-gray-100">
-          {isTransparent ? "transparent" : value || placeholder || "Select color"}
+          {isTransparent ? "transparent" : (value || placeholder || "Select color")}
         </SPAN>
         <SPAN className="ml-auto text-xs text-gray-500">{open ? "▲" : "▼"}</SPAN>
       </BUTTON>
 
       {open && (
-        <div
-          className="absolute z-20 mt-2 w-80 rounded-2xl border border-gray-300 bg-gray-900 text-white shadow-lg p-4"
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-        >
+        <div className="absolute z-20 mt-2 w-80 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3 shadow-lg" onMouseDownCapture={(e) => { e.stopPropagation(); (e as any).nativeEvent?.stopImmediatePropagation?.(); }} onClickCapture={(e) => { e.stopPropagation(); (e as any).nativeEvent?.stopImmediatePropagation?.(); }}>
           <div className="flex items-center justify-between mb-2">
-            <SPAN className="text-xs font-medium text-gray-300">Selecciona un color</SPAN>
-            <BUTTON
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpen(false);
-              }}
-              aria-label="Cerrar selector"
-              className="p-1 rounded hover:bg-gray-800"
-            >
-              ✕
-            </BUTTON>
+            <SPAN className="text-xs font-medium text-gray-500 dark:text-gray-400">Selecciona un color</SPAN>
+            <BUTTON type="button" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setTemp(value ?? ""); setOpen(false); }} aria-label="Cerrar selector" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">✕</BUTTON>
           </div>
-
+          <LABEL className="flex items-center gap-2 mb-2 text-xs text-gray-600 dark:text-gray-300">
+            <INPUT type="checkbox" checked={isTransparent} onChange={(e) => {
+              const checked = e.target.checked; setIsTransparent(checked);
+              if (checked) { setAlpha(0); onChange("transparent"); }
+              else { onChange(compose(normalizeHex(temp || "#ffffff"), alpha || 1)); }
+            }} />
+            usar <code>transparent</code>
+          </LABEL>
           <div className="mb-2">
-            <INPUT
-              type="color"
-              className="w-full h-10 rounded disabled:opacity-50"
-              disabled={isTransparent}
-              value={baseForInputColor}
-              onChange={(e) => {
-                setTemp(normalizeHex((e.target as HTMLInputElement).value));
-              }}
-            />
+            <INPUT type="color" className="w-full h-10 rounded disabled:opacity-50" disabled={isTransparent} value={baseForInputColor}
+              onChange={(e) => { setTemp(e.target.value); onChange(compose(e.target.value, alpha)); }} />
           </div>
-
           <div className="mb-2">
             <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-              <SPAN>Opacidad (alpha)</SPAN>
-              <SPAN>{Math.round(effectiveAlpha * 100)}%</SPAN>
+              <SPAN>Transparencia (alpha)</SPAN><SPAN>{Math.round(alpha * 100)}%</SPAN>
             </div>
-            <INPUT
-              type="range"
-              min={0}
-              max={100}
-              value={Math.round(effectiveAlpha * 100)}
-              disabled={isTransparent}
-              onChange={(e) => {
-                const a = clamp01(Number((e.target as HTMLInputElement).value) / 100);
-                setAlpha(a);
-              }}
-              className="w-full"
-            />
+            <INPUT type="range" min={0} max={100} value={Math.round(alpha * 100)} disabled={isTransparent}
+              onChange={(e) => { const a = clamp01(Number(e.target.value) / 100); setAlpha(a); onChange(compose(normalizeHex(temp || "#ffffff"), a)); }} className="w-full" />
           </div>
-
           <div>
-            <INPUT
-              type="text"
-              className="w-full rounded-lg border border-gray-300 bg-white text-black px-2 py-2 font-mono text-xs"
+            <INPUT type="text" className="w-full rounded-lg border border-gray-300 bg-white text-black px-2 py-2 font-mono text-xs"
               placeholder={placeholder || "#111827 | rgba(...) | hsla(...) | transparent"}
-              value={isTransparent ? "transparent" : temp}
-              disabled={isTransparent}
-              onChange={(e) => {
-                setTemp((e.target as HTMLInputElement).value);
-              }}
-              onBlur={() => {
-                if (!isTransparent) {
-                  onChange(compose(temp || "#ffffff", alpha || 1));
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  if (!isTransparent) {
-                    onChange(compose(temp || "#ffffff", alpha || 1));
-                  }
-                  setOpen(false);
-                }
-              }}
-            />
+              value={isTransparent ? "transparent" : temp} disabled={isTransparent} onChange={(e) => setTemp(e.target.value)}
+              onBlur={() => onChange(compose(normalizeHex(temp || "#ffffff"), alpha))}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onChange(compose(normalizeHex(temp || "#ffffff"), alpha)); setOpen(false); } }} />
           </div>
-
           <div className="flex justify-end gap-2 mt-3">
-            <BUTTON
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpen(false);
-              }}
-              className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700"
-            >
-              Cerrar
-            </BUTTON>
-            <BUTTON
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleApply();
-              }}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
-            >
-              Aplicar
-            </BUTTON>
+            <BUTTON type="button" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setTemp(value ?? ""); setOpen(false); }} className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700">Cerrar</BUTTON>
+            <BUTTON type="button" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); applyAndClose(); }} className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Aplicar</BUTTON>
           </div>
         </div>
       )}
@@ -684,20 +582,25 @@ const ChipToggle: React.FC<{ label: string; active: boolean; onToggle: () => voi
   </BUTTON>
 );
 
-/** input color compacto usando el ColorField (no se cierra al primer clic) */
-const TinyColor: React.FC<{ value?: string; onChange: (v: string) => void; title?: string }> = ({
-  value,
-  onChange,
-  title,
-}) => {
+/** input color que NO se cierra de inmediato (paramos propagación) */
+const TinyColor: React.FC<{ value?: string; onChange: (v: string) => void; title?: string }> = ({ value, onChange, title }) => {
+  const to6 = (v?: string) => {
+    const x = (v ?? "#ffffff").toLowerCase();
+    if (/^#[0-9a-f]{8}$/.test(x)) return "#" + x.slice(1, 7);
+    if (/^#[0-9a-f]{6}$/.test(x)) return x;
+    if (/^#[0-9a-f]{3,4}$/.test(x)) { const y = x.slice(1).split("").map(c=>c+c).join(""); return "#" + y.slice(0,6); }
+    return "#ffffff";
+  };
   return (
-    <div className="min-w-[110px]">
-      <ColorField
-        value={value}
-        onChange={onChange}
-        placeholder={title || "color"}
-      />
-    </div>
+    <INPUT
+      type="color"
+      title={title}
+      className="h-7 w-7 rounded border border-gray-300 dark:border-gray-700 p-0 bg-white"
+      value={to6(value)}
+      onClick={(e)=>e.stopPropagation()}
+      onMouseDown={(e)=>e.stopPropagation()}
+      onChange={(e)=>onChange((e.target as HTMLInputElement).value)}
+    />
   );
 };
 
@@ -773,20 +676,20 @@ const CONTROL_PROPS: PropDef[] = [
   { key: "textColor",       abbr: "FG",   label: "textColor",       type: "color",  width: 32 },
   { key: "borderColor",     abbr: "BCol", label: "borderColor",     type: "color",  width: 32 },
 
-  { key: "borderWidth",   abbr: "BWidth", label: "borderWidth",   type: "number", min: 0, max: 12, step: 1, width: 56 },
-  { key: "borderRadius",  abbr: "BRadius", label: "borderRadius",  type: "number", min: 0, max: 40, step: 1, width: 56 },
+  { key: "borderWidth",   abbr: "BWi", label: "borderWidth",   type: "number", min: 0, max: 12, step: 1, width: 56 },
+  { key: "borderRadius",  abbr: "BRa", label: "borderRadius",  type: "number", min: 0, max: 40, step: 1, width: 56 },
 
-  { key: "paddingX", abbr: "PadX", label: "paddingX", type: "number", min: 0, max: 40, step: 1, width: 56 },
-  { key: "paddingY", abbr: "PadY", label: "paddingY", type: "number", min: 0, max: 40, step: 1, width: 56 },
-  { key: "marginX",  abbr: "MrgX", label: "marginX",  type: "number", min: 0, max: 64, step: 1, width: 56 },
-  { key: "marginY",  abbr: "MrgY", label: "marginY",  type: "number", min: 0, max: 64, step: 1, width: 56 },
+  { key: "paddingX", abbr: "PX", label: "paddingX", type: "number", min: 0, max: 40, step: 1, width: 56 },
+  { key: "paddingY", abbr: "PY", label: "paddingY", type: "number", min: 0, max: 40, step: 1, width: 56 },
+  { key: "marginX",  abbr: "MX", label: "marginX",  type: "number", min: 0, max: 64, step: 1, width: 56 },
+  { key: "marginY",  abbr: "MY", label: "marginY",  type: "number", min: 0, max: 64, step: 1, width: 56 },
 
-  { key: "fontSize",      abbr: "FSize", label: "fontSize",      type: "number", min: 10, max: 64, step: 1, width: 56 },
-  { key: "fontWeight",    abbr: "FWeight", label: "fontWeight",    type: "number", min: 100, max: 900, step: 50, width: 64 },
-  { key: "letterSpacing", abbr: "LtrSp", label: "letterSpacing (em)", type: "number", min: -0.1, max: 0.3, step: 0.005, width: 64 },
-  { key: "lineHeight",    abbr: "LHeight",  label: "lineHeight",    type: "number", min: 1, max: 2.2, step: 0.05, width: 56 },
+  { key: "fontSize",      abbr: "FSz", label: "fontSize",      type: "number", min: 10, max: 64, step: 1, width: 56 },
+  { key: "fontWeight",    abbr: "FWt", label: "fontWeight",    type: "number", min: 100, max: 900, step: 50, width: 64 },
+  { key: "letterSpacing", abbr: "LSp", label: "letterSpacing (em)", type: "number", min: -0.1, max: 0.3, step: 0.005, width: 64 },
+  { key: "lineHeight",    abbr: "LH",  label: "lineHeight",    type: "number", min: 1, max: 2.2, step: 0.05, width: 56 },
 
-  { key: "boxShadow",     abbr: "BoxSdhw", label: "boxShadow",     type: "shadow", width: 210 },
+  { key: "boxShadow",     abbr: "BSh", label: "boxShadow",     type: "shadow", width: 210 },
 ];
 
 /* === Globales compactos (2 filas) === */
@@ -795,19 +698,17 @@ type GlobalDef = { key: keyof TokenSet; abbr: string; label: string; type: "colo
 const GLOBAL_PROPS_ROW1: GlobalDef[] = [
   { key: "backgroundColor", abbr: "BG",  label: "Global backgroundColor", type: "color" },
   { key: "textColor",       abbr: "FG",  label: "Global textColor",       type: "color" },
-  { key: "borderRadius",    abbr: "BRadius", label: "Global borderRadius",    type: "number", min: 0, max: 40, step: 1, width: 56 },
-  { key: "borderWidth",     abbr: "BWidth", label: "Global borderWidth",     type: "number", min: 0, max: 8,  step: 1, width: 56 },
-  { key: "marginX",         abbr: "MrgX",  label: "Global marginX",         type: "number", min: 0, max: 64, step: 1, width: 56 },
-  { key: "marginY",         abbr: "MrgY",  label: "Global marginY",         type: "number", min: 0, max: 64, step: 1, width: 56 },
+  { key: "borderRadius",    abbr: "BRa", label: "Global borderRadius",    type: "number", min: 0, max: 40, step: 1, width: 56 },
+  { key: "borderWidth",     abbr: "BWi", label: "Global borderWidth",     type: "number", min: 0, max: 8,  step: 1, width: 56 },
+  { key: "marginX",         abbr: "MX",  label: "Global marginX",         type: "number", min: 0, max: 64, step: 1, width: 56 },
+  { key: "marginY",         abbr: "MY",  label: "Global marginY",         type: "number", min: 0, max: 64, step: 1, width: 56 },
 ];
 
 const GLOBAL_PROPS_ROW2: GlobalDef[] = [
-  { key: "paddingX",      abbr: "PadX",  label: "Global paddingX",            type: "number", min: 0,   max: 40,  step: 1,     width: 56 },
-  { key: "paddingY",      abbr: "PadY",  label: "Global paddingY",            type: "number", min: 0,   max: 40,  step: 1,     width: 56 },
-  { key: "fontSize",      abbr: "FSize", label: "Global fontSize",            type: "number", min: 10,  max: 64,  step: 1,     width: 56 },
-  { key: "lineHeight",    abbr: "LHeight",  label: "Global lineHeight",          type: "number", min: 1,   max: 2.2, step: 0.05,  width: 56 },
-  { key: "fontWeight",    abbr: "FWeight", label: "Global fontWeight",          type: "number", min: 100, max: 900, step: 50,    width: 64 },
-  { key: "letterSpacing", abbr: "LtrSp", label: "Global letterSpacing (em)",  type: "number", min: -0.1, max: 0.3, step: 0.005, width: 64 },
+  { key: "paddingX",   abbr: "PX",  label: "Global paddingX",   type: "number", min: 0, max: 40, step: 1, width: 56 },
+  { key: "paddingY",   abbr: "PY",  label: "Global paddingY",   type: "number", min: 0, max: 40, step: 1, width: 56 },
+  { key: "fontSize",   abbr: "FSz", label: "Global fontSize",   type: "number", min: 10, max: 64, step: 1, width: 56 },
+  { key: "lineHeight", abbr: "LH",  label: "Global lineHeight", type: "number", min: 1,  max: 2.2, step: 0.05, width: 56 },
 ];
 
 /* === Cabecera de columna compacta === */

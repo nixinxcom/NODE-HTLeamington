@@ -12,13 +12,12 @@ const PERMISSIONS_PROD = PERMISSIONS_DEV;
 /* ── CSP ────────────────────────────────────────────────────────── */
 const CSP_PROD = [
   "default-src 'self';",
-  // ⬇️ AÑADIDOS (mantengo el resto igual que enviaste)
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://cdn.brevo.com https://sibautomation.com https://conversations-widget.brevo.com https://conversations-widget.sendinblue.com https://www.gstatic.com https://apis.google.com https://accounts.google.com;",
-  "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://www.google.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://sibautomation.com https://*.brevo.com https://*.sendinblue.com https://www.gstatic.com https://apis.google.com https://accounts.google.com wss: wss://*.brevo.com wss://*.sendinblue.com https://api.emailjs.com;",
+  // ⬇️ AQUI AGREGO fonts.googleapis.com y fonts.gstatic.com
+  "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://www.google.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://sibautomation.com https://*.brevo.com https://*.sendinblue.com https://www.gstatic.com https://apis.google.com https://accounts.google.com https://fonts.googleapis.com https://fonts.gstatic.com wss: wss://*.brevo.com wss://*.sendinblue.com https://api.emailjs.com;",
   "img-src 'self' data: blob: https:;",
   "style-src 'self' 'unsafe-inline' https:;",
   "font-src 'self' data: https:;",
-  // ⬇️ **CAMBIO ADITIVO**: se agregan dominios de Firebase Hosting usados por Auth
   "frame-src 'self' https://www.googletagmanager.com https://www.google.com https://accounts.google.com https://*.google.com https://recaptcha.google.com https://www.gstatic.com https://*.firebaseapp.com https://*.web.app https://conversations-widget.brevo.com https://conversations-widget.sendinblue.com https://www.youtube.com https://player.vimeo.com;",
   "media-src 'self' blob: https://firebasestorage.googleapis.com;",
   "worker-src 'self' blob:;"
