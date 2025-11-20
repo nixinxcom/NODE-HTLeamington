@@ -11,7 +11,7 @@
 .Logo{
   width: 40px;
   height: var(--nav-h);
-  background-color: black;
+  background-color: var(--body-backgroundColor);
 }
 .LogoHiden{
   display: none;
@@ -24,7 +24,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: stretch;
-  background-color: rgba(var(--basecolor), 1); /* Fondo sólido en mobile*/
+  background-color: var(--body-backgroundColor, 1); /* Fondo sólido en mobile*/
   box-sizing: border-box;
   width: 100%;
   overflow-x: hidden;
@@ -165,7 +165,7 @@
     width: auto;
   }
   .NavBarContainer {
-    background-color: rgba(var(--basecolor), 1);
+    background-color: red;
     flex-direction: row;
     justify-content: space-between;
     /* padding: 0.75rem 1.5rem; */
@@ -254,11 +254,11 @@
   color: var(--nav-fg, #fff) !important;
 }
 .navSolid{
-  background: var(--nav-bg, rgba(var(--basecolor), 1)) !important;
+  background: var(--nav-bg, rgba(var(--body-backgroundColor), 1)) !important;
   color: var(--nav-fg, rgba(var(--fontcolor), 1)) !important;
 }
 .NavBarContainer{
-  background-color: var(--nav-solid-bg, rgba(var(--basecolor), 1)) !important;
+  background-color: var(--body-backgroundColor, 1) !important;
   color: var(--nav-solid-fg, rgba(var(--fontcolor), 1)) !important;
 }
 .Logo{ background-color: var(--nav-logo-bg, #000) !important; }

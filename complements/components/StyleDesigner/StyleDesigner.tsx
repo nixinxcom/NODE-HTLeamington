@@ -1475,7 +1475,7 @@ const DynamicPropertyTableAccordion: React.FC<{
         <BUTTON style={style} disabled={disabled}>
           {label}
         </BUTTON>
-      );
+      )
     };
 
     return (
@@ -1483,7 +1483,6 @@ const DynamicPropertyTableAccordion: React.FC<{
         <div className="text-[11px] font-medium text-gray-200 mb-2">
           Preview {component} — {themeLabel} (<code>{themeKey}</code>)
         </div>
-
         {/* 1 por fila en muy chico, 2 en mediano, 3 en grande */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
           {STATES.map((st) => (
@@ -1494,7 +1493,7 @@ const DynamicPropertyTableAccordion: React.FC<{
                 (st === currentState ? "border-red-500" : "border-gray-700/60")
               }
             >
-              <div className="mb-0.5">{renderControlForState(st)}</div>
+            <div className="mb-0.5">{renderControlForState(st)}</div>
               <SPAN className="block text-[9px] uppercase tracking-wide text-center text-red-400">
                 {st}
               </SPAN>
@@ -1502,14 +1501,12 @@ const DynamicPropertyTableAccordion: React.FC<{
           ))}
         </div>
       </div>
-    );
-
+    )
   };
 
   // Panel por tema (light / dark): propiedades a la izq, previews a la der.
   const renderThemePanel = (themeKey: ThemeKey, label: "light" | "dark") => {
     const global = schema.global.body[themeKey] ?? {};
-
     return (
       <div
         className="rounded-3xl border border-gray-700/50 p-3"
@@ -1541,7 +1538,6 @@ const DynamicPropertyTableAccordion: React.FC<{
                 updateTokens(themeKey, component, currentState, patch)
               }
             />
-
             <div className="px-2 pt-1 text-[10px] text-gray-500">Hereda</div>
             <PropertyInheritRow
               schema={schema}
@@ -1557,7 +1553,6 @@ const DynamicPropertyTableAccordion: React.FC<{
               <SPAN className="text-[10px] uppercase tracking-wide text-gray-500 mr-2">
                 Acciones rápidas
               </SPAN>
-
               <BUTTON
                 type="button"
                 className="px-2 py-1 rounded-lg border text-xs bg-white text-black"
@@ -1568,9 +1563,8 @@ const DynamicPropertyTableAccordion: React.FC<{
                   )
                 }
               >
-                REST(Control/Tema) → {currentState}
+                REST(Ctrl/Tema) → {currentState}
               </BUTTON>
-
               <BUTTON
                 type="button"
                 className="px-2 py-1 rounded-lg border text-xs bg-white text-black"
@@ -1581,9 +1575,8 @@ const DynamicPropertyTableAccordion: React.FC<{
                   )
                 }
               >
-                REST(Control/Tema) → todos
+                REST(Ctrl/Tema) → todos
               </BUTTON>
-
               <BUTTON
                 type="button"
                 className="px-2 py-1 rounded-lg border border-red-400 text-xs text-red-600 bg-white"
@@ -1598,7 +1591,6 @@ const DynamicPropertyTableAccordion: React.FC<{
               </BUTTON>
             </div>
           </div>
-
           {/* ── COLUMNA DERECHA: PREVIEWS ── */}
           <div className="basis-1/2 min-w-0 min-h-0 overflow-y-auto bg-black/60 rounded-2xl border border-gray-700/80">
             {renderStatesMatrix(themeKey, label)}
@@ -1608,18 +1600,17 @@ const DynamicPropertyTableAccordion: React.FC<{
     );
   };
 
-return (
-  <Accordion title="Tabla de ajustes (sticky, compacta)" defaultOpen>
-    {/* Cada tema ocupa 100% de ancho; uno debajo del otro */}
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-3">
-      <div className="flex flex-col gap-4">
-        {renderThemePanel(thLight, "light")}
-        {renderThemePanel(thDark, "dark")}
+  return (
+    <Accordion title="Tabla de ajustes (sticky, compacta)" defaultOpen>
+      {/* Cada tema ocupa 100% de ancho; uno debajo del otro */}
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-3">
+        <div className="flex flex-col gap-4">
+          {renderThemePanel(thLight, "light")}
+          {renderThemePanel(thDark, "dark")}
+        </div>
       </div>
-    </div>
-  </Accordion>
-);
-
+    </Accordion>
+  );
 };
 
 /* === Componente principal: StyleDesigner (acordeones pedidos + correcciones) === */
@@ -2106,23 +2097,54 @@ const BulkCopyInner: React.FC<{
         {/* Fuente y estados */}
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-3">
           <div className="text-sm font-semibold mb-2">Fuente</div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <SPAN className="text-xs text-gray-600">Control</SPAN>
-            <SELECT className="rounded-lg border px-2 py-1.5 bg-white text-black"
-              value={source} onChange={(e)=>setSource((e.target as HTMLSelectElement).value as ComponentKey)}
-            >
-              {allComponents.map(c => <option key={c} value={c}>{c}</option>)}
-            </SELECT>
-            <SPAN className="ml-2 text-xs text-gray-600">Estados</SPAN>
-            <div className="flex flex-wrap gap-1.5">
-              {STATES.map(s => (
-                <LABEL key={s} className={`px-2 py-1 rounded-lg border text-xs bg-white ${statesSel.has(s) ? "bg-indigo-600 text-white border-indigo-600" : "text-black"}`}>
-                  <INPUT type="checkbox" className="mr-1" checked={statesSel.has(s)} onChange={()=>setStatesSel(toggle(statesSel, s))} />
-                  {s}
-                </LABEL>
-              ))}
+            <div className="flex items-center gap-2 flex-wrap">
+              <SPAN className="text-xs text-gray-600">Control</SPAN>
+              <SELECT className="rounded-lg border px-2 py-1.5 bg-white text-black"
+                value={source} onChange={(e)=>setSource((e.target as HTMLSelectElement).value as ComponentKey)}
+              >
+                {allComponents.map(c => <option key={c} value={c}>{c}</option>)}
+              </SELECT>
+
+              <SPAN className="ml-2 text-xs text-gray-600">Estados</SPAN>
+
+              {/* ✅ checkbox: seleccionar / limpiar todos los estados */}
+              <LABEL className="inline-flex items-center gap-1 text-[11px] text-gray-500 bg-white text-black px-2 py-1 rounded border">
+                <INPUT
+                  type="checkbox"
+                  checked={statesSel.size === STATES.length}
+                  onChange={(e) => {
+                    const checked = (e.target as HTMLInputElement).checked;
+                    setStatesSel(
+                      checked
+                        ? new Set<StyleState>(STATES)
+                        : new Set<StyleState>()
+                    );
+                  }}
+                />
+                todos
+              </LABEL>
+
+              <div className="flex flex-wrap gap-1.5">
+                {STATES.map((s) => (
+                  <LABEL
+                    key={s}
+                    className={`px-2 py-1 rounded-lg border text-xs bg-white ${
+                      statesSel.has(s)
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "text-black"
+                    }`}
+                  >
+                    <INPUT
+                      type="checkbox"
+                      className="mr-1"
+                      checked={statesSel.has(s)}
+                      onChange={() => setStatesSel(toggle(statesSel, s))}
+                    />
+                    {s}
+                  </LABEL>
+                ))}
+              </div>
             </div>
-          </div>
           <div className="mt-3 text-xs text-gray-600">
             Tema: <code>{themeScope === "both" ? `${aliasLight} + ${aliasDark}` : themeScope === "light" ? aliasLight : aliasDark}</code>
           </div>
@@ -2131,25 +2153,77 @@ const BulkCopyInner: React.FC<{
         {/* Destinos y propiedades */}
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-3">
           <div className="text-sm font-semibold mb-2">Destinos</div>
+
+          {/* ✅ checkbox: seleccionar / limpiar todos los destinos */}
+          <div className="mb-2">
+            <LABEL className="inline-flex items-center gap-1 text-[11px] text-gray-500 bg-white text-black px-2 py-1 rounded border">
+              <INPUT
+                type="checkbox"
+                checked={targets.size === allComponents.length}
+                onChange={(e) => {
+                  const checked = (e.target as HTMLInputElement).checked;
+                  setTargets(
+                    checked
+                      ? new Set<ComponentKey>(allComponents)
+                      : new Set<ComponentKey>()
+                  );
+                }}
+              />
+              todos
+            </LABEL>
+          </div>
+
           <div className="flex flex-wrap gap-2 mb-3">
-            {allComponents.map(c => (
-              <LABEL key={c} className="inline-flex items-center gap-1 text-xs border rounded px-2 py-1 bg-white text-black">
-                <INPUT type="checkbox" checked={targets.has(c)} onChange={()=>setTargets(toggle(targets, c))} />
+            {allComponents.map((c) => (
+              <LABEL
+                key={c}
+                className="inline-flex items-center gap-1 text-xs border rounded px-2 py-1 bg-white text-black"
+              >
+                <INPUT
+                  type="checkbox"
+                  checked={targets.has(c)}
+                  onChange={() => setTargets(toggle(targets, c))}
+                />
                 {c}
               </LABEL>
             ))}
           </div>
-
           <div className="text-sm font-semibold mb-2">Propiedades a copiar</div>
+          {/* ✅ checkbox: seleccionar / limpiar todas las propiedades */}
+          <div className="mb-2">
+            <LABEL className="inline-flex items-center gap-1 text-[11px] text-gray-500 bg-white text-black px-2 py-1 rounded border">
+              <INPUT
+                type="checkbox"
+                checked={propsSel.size === CONTROL_PROPS.length}
+                onChange={(e) => {
+                  const checked = (e.target as HTMLInputElement).checked;
+                  setPropsSel(
+                    checked
+                      ? new Set<keyof TokenSet>(CONTROL_PROPS.map((p) => p.key))
+                      : new Set<keyof TokenSet>()
+                  );
+                }}
+              />
+              todas
+            </LABEL>
+          </div>
+
           <div className="flex flex-wrap gap-2">
-            {CONTROL_PROPS.map(p => (
-              <LABEL key={String(p.key)} className="inline-flex items-center gap-1 text-xs border rounded px-2 py-1 bg-white text-black" title={p.label}>
-                <INPUT type="checkbox" checked={propsSel.has(p.key)} onChange={()=>setPropsSel(toggle(propsSel, p.key))} />
+            {CONTROL_PROPS.map((p) => (
+              <LABEL
+                key={String(p.key)}
+                className="inline-flex items-center gap-1 text-xs border rounded px-2 py-1 bg-white text-black"
+                title={p.label}
+              >
+                <INPUT
+                  type="checkbox"
+                  checked={propsSel.has(p.key)}
+                  onChange={() => setPropsSel(toggle(propsSel, p.key))}
+                />
                 {p.abbr}
               </LABEL>
             ))}
           </div>
-
           <div className="mt-3 text-sm font-semibold mb-2">Tema destino</div>
           <div className="flex items-center gap-2">
             <LABEL className="inline-flex items-center gap-1 text-xs border rounded px-2 py-1 bg-white text-black">
