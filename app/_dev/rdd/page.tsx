@@ -4,7 +4,7 @@ import { getSettingsEffective } from '@/complements/data/settingsFS';
 import { getStylesEffective } from '@/complements/data/stylesFS';
 import { normalizeToSupported } from '@/context/AppContext';
 import { toShortLocale, DEFAULT_LOCALE_SHORT } from '@/app/lib/i18n/locale';
-import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 
 export default async function RDDInspector({ searchParams }: { searchParams: { locale?: string } }) {
   const locale = normalizeToSupported(toShortLocale(searchParams?.locale || DEFAULT_LOCALE_SHORT));

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { saveSettingsClient } from "@/app/lib/settings/client";
 import Link from "next/link";
 import Image from "next/image";
-import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 
 /* ========= Tipos / Constantes ========= */
 type ThemeKey = string;
@@ -71,12 +71,20 @@ const BASE_COMPONENTS: ComponentKey[] = [
   "h6",
   "span",
   "div",
+  "div2",
+  "div3",
   "link",
+  "link2",
   "label",
+  "label2",
   "input",
+  "input2",
   "button",
+  "button2",
   "select",
+  "select2",
   "image",
+  "image2",
   "nextimage",
 ];
 const STATES: StyleState[] = [
@@ -224,6 +232,284 @@ function copyRestPropsToAllStates(
   }
   return next;
 }
+
+const CSSGlobalsGenerator: React.FC<{
+  schema: StylesSchema;
+  states: StyleState[];
+  components: ComponentKey[];
+  aliasLight: ThemeKey;
+  aliasDark: ThemeKey;
+}> = ({ schema, states, components, aliasLight, aliasDark }) => {
+  // Props globales (body)
+  const BODY_PROPS: (keyof TokenSet)[] = [
+    "backgroundColor",
+    "textColor",
+    "borderColor",
+    "borderWidth",
+    "borderRadius",
+    "fontFamily",
+    "fontSize",
+    "fontWeight",
+    "letterSpacing",
+    "lineHeight",
+    "paddingX",
+    "paddingY",
+    "marginX",
+    "marginY",
+    "transitionSpeed",
+  ];
+
+  // Props por control
+  const CONTROL_PROPS: (keyof TokenSet)[] = [
+    "backgroundColor",
+    "textColor",
+    "borderColor",
+    "borderWidth",
+    "borderRadius",
+    "boxShadow",
+    "paddingX",
+    "paddingY",
+    "marginX",
+    "marginY",
+    "fontFamily",
+    "fontSize",
+    "fontWeight",
+    "letterSpacing",
+    "lineHeight",
+    "outlineColor",
+    "outlineWidth",
+    "opacity",
+    "cursor",
+    "transitionSpeed",
+  ];
+
+  // ─────────────────────────────────────────────
+  // (1) Bloques de alias: html[data-theme="light/dark"]
+  // ─────────────────────────────────────────────
+  const buildAliasBlock = (slot: "light" | "dark"): string => {
+    const lines: string[] = [];
+
+    lines.push(`/* ${slot.toUpperCase()} */`);
+    lines.push(`html[data-theme="${slot}"]{`);
+
+    // BODY (sin estados)
+    for (const prop of BODY_PROPS) {
+      const p = String(prop);
+      lines.push(`  --body-${p}: var(--body-${p}-${slot});`);
+    }
+
+    lines.push("");
+
+    // COMPONENTES (con estados)
+    for (const comp of components) {
+      const c = String(comp); // respeta exactamente el nombre del componente
+
+      for (const prop of CONTROL_PROPS) {
+        const p = String(prop);
+        for (const st of states) {
+          lines.push(
+            `  --${c}-${p}-${st}: var(--${c}-${p}-${slot}-${st});`
+          );
+        }
+      }
+
+      lines.push("");
+    }
+
+    lines.push("}");
+    return lines.join("\n");
+  };
+
+  // ─────────────────────────────────────────────
+  // (2) Bloques de clases CSS para los wrappers
+  //     (.link, .button, .input, .select, .label,
+  //      .h1…h6, .a, .p, .div, .div2, .div3, etc.)
+  // ─────────────────────────────────────────────
+  const buildWrapperBlocks = (components: ComponentKey[]): string => {
+    const lines: string[] = [];
+
+    lines.push("");
+    lines.push("/* =====================================================================");
+    lines.push(" * Wrappers base (clases CSS que consumen los tokens RDD)");
+    lines.push(" * ===================================================================== */");
+    lines.push("");
+
+    const makeBlockFor = (raw: string): string[] => {
+      const c = raw;                 // nombre tal cual del componente: "link", "button2", "div3"
+      const upper = c.toUpperCase(); // título del comentario
+
+      const out: string[] = [];
+      out.push(`/* === ${upper} === */`);
+      out.push(`.${c}{`);
+      out.push(`  background-color: var(--${c}-backgroundColor-rest);`);
+      out.push(`  color:            var(--${c}-textColor-rest);`);
+      out.push("");
+      out.push("  border-style: solid;");
+      out.push(`  border-width: calc(var(--${c}-borderWidth-rest) * 1px);`);
+      out.push(`  border-color: var(--${c}-borderColor-rest);`);
+      out.push("");
+      out.push(
+        `  border-radius: calc(var(--${c}-borderRadius-rest) * 1px);`
+      );
+      out.push(`  box-shadow:    var(--${c}-boxShadow-rest);`);
+      out.push(
+        `  padding:       calc(var(--${c}-paddingY-rest) * 1px) calc(var(--${c}-paddingX-rest) * 1px);`
+      );
+
+      // Ajustes especiales por tipo (como en tu ejemplo)
+      if (c === "link" || c === "a") {
+        out.push("");
+        out.push("  text-decoration: none;");
+      }
+      if (c === "link") {
+        out.push("  display: inline-block;");
+      }
+
+      out.push("");
+      out.push(
+        `  transition: all var(--${c}-transitionSpeed-rest, 200ms) ease;`
+      );
+      out.push("}");
+
+      // :hover
+      out.push(`.${c}:hover{`);
+      out.push(`  background-color: var(--${c}-backgroundColor-hover);`);
+      out.push(`  color:            var(--${c}-textColor-hover);`);
+      out.push(`  border-color:     var(--${c}-borderColor-hover);`);
+      out.push("}");
+
+      // :active
+      out.push(`.${c}:active{`);
+      out.push(`  background-color: var(--${c}-backgroundColor-active);`);
+      out.push(`  color:            var(--${c}-textColor-active);`);
+      out.push(`  border-color:     var(--${c}-borderColor-active);`);
+      out.push("}");
+
+      // [disabled]
+      out.push(`.${c}[disabled],`);
+      out.push(`.${c}[aria-disabled="true"]{`);
+      out.push("  pointer-events: none;");
+      out.push(`  opacity:        var(--${c}-opacity-disabled, .6);`);
+      out.push(`  background-color: var(--${c}-backgroundColor-disabled);`);
+      out.push(`  color:            var(--${c}-textColor-disabled);`);
+      out.push(`  border-color:     var(--${c}-borderColor-disabled);`);
+      out.push("}");
+
+      // .{c}.c-highlight
+      out.push(`.${c}.${c}-highlight{`);
+      out.push(
+        `  background-color: var(--${c}-backgroundColor-highlight);`
+      );
+      out.push(`  color:            var(--${c}-textColor-highlight);`);
+      out.push(`  border-color:     var(--${c}-borderColor-highlight);`);
+      out.push("}");
+      out.push(`.${c}.${c}-highlight:hover{`);
+      out.push(
+        `  background-color: var(--${c}-backgroundColor-highhover);`
+      );
+      out.push(`  color:            var(--${c}-textColor-highhover);`);
+      out.push(`  border-color:     var(--${c}-borderColor-highhover);`);
+      out.push("}");
+
+      out.push("");
+      return out;
+    };
+
+    // generamos para todos los componentes que tengan tokens
+    for (const comp of components) {
+      lines.push(...makeBlockFor(String(comp)));
+    }
+
+    // Bloque html/body
+    lines.push("/* Consume los tokens globales en el layout */");
+    lines.push("html, body{");
+    lines.push("  background-color: var(--body-backgroundColor);");
+    lines.push("  color:            var(--body-textColor);");
+    lines.push("  font-family:      var(--body-fontFamily);");
+    lines.push("  font-size:        var(--body-fontSize);");
+    lines.push("  font-weight:      var(--body-fontWeight);");
+    lines.push("  letter-spacing:   var(--body-letterSpacing);");
+    lines.push("  line-height:      var(--body-lineHeight);");
+    lines.push("}");
+    lines.push("");
+    lines.push("/* Si tu wrapper principal pinta fondo, herédalo */");
+    lines.push("main, #__next, [data-app-root]{");
+    lines.push("  background: inherit;");
+    lines.push("  color: inherit;");
+    lines.push("}");
+
+    return lines.join("\n");
+  };
+
+  // ─────────────────────────────────────────────
+  // (3) Texto completo de globals.css
+  // ─────────────────────────────────────────────
+  const cssText = React.useMemo(() => {
+    const header = [
+      "/* =====================================================================",
+      " * globals.css generado desde StyleDesigner",
+      ` * Alias actuales: light → \"${aliasLight}\", dark → \"${aliasDark}\"`,
+      " * Ajusta / recorta lo que necesites y pégalo en tu globals.css",
+      " * =====================================================================",
+      " */",
+      "",
+    ].join("\n");
+
+    return [
+      header,
+      buildAliasBlock("light"),
+      "",
+      buildAliasBlock("dark"),
+      "",
+      buildWrapperBlocks(components),
+    ].join("\n");
+  }, [aliasLight, aliasDark, components, states]);
+
+  const [copyStatus, setCopyStatus] = React.useState<"idle" | "ok" | "error">(
+    "idle"
+  );
+
+  const handleCopyGlobals = async () => {
+    try {
+      await navigator.clipboard.writeText(cssText);
+      setCopyStatus("ok");
+      setTimeout(() => setCopyStatus("idle"), 2000);
+    } catch (e) {
+      console.error("No se pudo copiar al portapapeles", e);
+      setCopyStatus("error");
+      setTimeout(() => setCopyStatus("idle"), 3000);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <SPAN className="text-xs text-gray-600 dark:text-gray-300">
+          Este bloque genera el mapping de variables + wrappers base para{" "}
+          <code>html[data-theme=\"light/dark\"]</code> y clases (.link,
+          .button, .input, .div2, etc.).
+        </SPAN>
+        <BUTTON
+          type="button"
+          onClick={handleCopyGlobals}
+          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs hover:bg-indigo-700"
+        >
+          {copyStatus === "ok"
+            ? "Copiado ✓"
+            : copyStatus === "error"
+            ? "Error al copiar"
+            : "Copiar globals.css"}
+        </BUTTON>
+      </div>
+
+      <textarea
+        readOnly
+        className="w-full h-80 font-mono text-[11px] rounded-lg border border-gray-300 dark:border-gray-700 bg-white text-black p-3"
+        value={cssText}
+      />
+    </div>
+  );
+};
 
 /* ========= BoxShadow helpers ========= */
 type BoxShadowParts = { inset: boolean; x: number; y: number; blur: number; spread: number; color: string; };
@@ -1815,73 +2101,86 @@ export default function StyleDesigner({
     })(), null, 2), [schema, aliasLight, aliasDark, initial]);
 
     return (
-      <Accordion title="JSON y Variables CSS (con filtros)" defaultOpen={false}>
-        <div className="grid grid-cols-1 gap-4">
-          {/* JSON (misma construcción) */}
-          <div>
-            <textarea
-              readOnly
-              className="w-full h-64 font-mono text-xs rounded-lg border p-3 bg-white text-black"
-              value={jsonText}
-            />
-          </div>
-
-          {/* Filtros */}
-          <div className="rounded-lg border p-2 bg-white text-black">
-            <div className="flex flex-wrap items-center gap-2">
-              <LABEL className="text-xs text-gray-600">Tema</LABEL>
-              <SELECT className="rounded border px-2 py-1 bg-white text-black"
-                value={filterTheme}
-                onChange={(e)=>setFilterTheme((e.target as HTMLSelectElement).value as any)}
-              >
-                <option value="both">both (light+dark)</option>
-                <option value="light">light</option>
-                <option value="dark">dark</option>
-              </SELECT>
-
-              <LABEL className="text-xs text-gray-600 ml-2">Control</LABEL>
-              <SELECT className="rounded border px-2 py-1 bg-white text-black"
-                value={filterComp}
-                onChange={(e)=>setFilterComp((e.target as HTMLSelectElement).value)}
-              >
-                <option value="*">Todos</option>
-                {comps.map(c => <option key={c} value={c}>{c}</option>)}
-              </SELECT>
-
-              <LABEL className="text-xs text-gray-600 ml-2">Estado</LABEL>
-              <SELECT className="rounded border px-2 py-1 bg-white text-black"
-                value={filterState}
-                onChange={(e)=>setFilterState((e.target as HTMLSelectElement).value as any)}
-              >
-                <option value="*">Todos</option>
-                {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-              </SELECT>
-
-              <LABEL className="text-xs text-gray-600 ml-2">Propiedad</LABEL>
-              <SELECT className="rounded border px-2 py-1 bg-white text-black"
-                value={filterProp}
-                onChange={(e)=>setFilterProp((e.target as HTMLSelectElement).value as any)}
-              >
-                <option value="*">Todas</option>
-                {compProps.map(p => <option key={p} value={p}>{p}</option>)}
-              </SELECT>
-
-              <INPUT
-                className="ml-auto rounded border px-2 py-1 text-xs bg-white text-black"
-                placeholder="Buscar…"
-                value={search}
-                onChange={(e)=>setSearch((e.target as HTMLInputElement).value)}
+      <>
+        <Accordion title="JSON y Variables CSS (con filtros)" defaultOpen={false}>
+          <div className="grid grid-cols-1 gap-4">
+            {/* JSON (misma construcción) */}
+            <div>
+              <textarea
+                readOnly
+                className="w-full h-64 font-mono text-xs rounded-lg border p-3 bg-white text-black"
+                value={jsonText}
               />
             </div>
-          </div>
 
-          {/* Resultado filtrado */}
-          <div className="h-56 overflow-auto rounded-lg border p-3 bg-white text-black">
-            <div className="text-[11px] text-gray-600 mb-1">{list.length} variables</div>
-            <pre className="text-xs leading-5 whitespace-pre-wrap">{list.join("\n")}</pre>
+            {/* Filtros */}
+            <div className="rounded-lg border p-2 bg-white text-black">
+              <div className="flex flex-wrap items-center gap-2">
+                <LABEL className="text-xs text-gray-600">Tema</LABEL>
+                <SELECT className="rounded border px-2 py-1 bg-white text-black"
+                  value={filterTheme}
+                  onChange={(e)=>setFilterTheme((e.target as HTMLSelectElement).value as any)}
+                >
+                  <option value="both">both (light+dark)</option>
+                  <option value="light">light</option>
+                  <option value="dark">dark</option>
+                </SELECT>
+
+                <LABEL className="text-xs text-gray-600 ml-2">Control</LABEL>
+                <SELECT className="rounded border px-2 py-1 bg-white text-black"
+                  value={filterComp}
+                  onChange={(e)=>setFilterComp((e.target as HTMLSelectElement).value)}
+                >
+                  <option value="*">Todos</option>
+                  {comps.map(c => <option key={c} value={c}>{c}</option>)}
+                </SELECT>
+
+                <LABEL className="text-xs text-gray-600 ml-2">Estado</LABEL>
+                <SELECT className="rounded border px-2 py-1 bg-white text-black"
+                  value={filterState}
+                  onChange={(e)=>setFilterState((e.target as HTMLSelectElement).value as any)}
+                >
+                  <option value="*">Todos</option>
+                  {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </SELECT>
+
+                <LABEL className="text-xs text-gray-600 ml-2">Propiedad</LABEL>
+                <SELECT className="rounded border px-2 py-1 bg-white text-black"
+                  value={filterProp}
+                  onChange={(e)=>setFilterProp((e.target as HTMLSelectElement).value as any)}
+                >
+                  <option value="*">Todas</option>
+                  {compProps.map(p => <option key={p} value={p}>{p}</option>)}
+                </SELECT>
+
+                <INPUT
+                  className="ml-auto rounded border px-2 py-1 text-xs bg-white text-black"
+                  placeholder="Buscar…"
+                  value={search}
+                  onChange={(e)=>setSearch((e.target as HTMLInputElement).value)}
+                />
+              </div>
+            </div>
+
+            {/* Resultado filtrado */}
+            <div className="h-56 overflow-auto rounded-lg border p-3 bg-white text-black">
+              <div className="text-[11px] text-gray-600 mb-1">{list.length} variables</div>
+              <pre className="text-xs leading-5 whitespace-pre-wrap">{list.join("\n")}</pre>
+            </div>
           </div>
-        </div>
-      </Accordion>
+        </Accordion>
+
+        {/* (6) Generador dinámico de globals.css */}
+        <Accordion title="Generar globals.css (auto)" defaultOpen={false}>
+          <CSSGlobalsGenerator
+            schema={schema}
+            states={STATES}
+            components={[...BASE_COMPONENTS]}
+            aliasLight={aliasLight}
+            aliasDark={aliasDark}
+          />
+        </Accordion>
+      </>
     );
   };
 
@@ -1917,7 +2216,13 @@ export default function StyleDesigner({
 
       {/* (1) CRUD de temas + asignación por Drag&Drop */}
       <Accordion title="Temas: CRUD y asignación de aliases (Drag & Drop)" defaultOpen={false}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="
+          rounded-2xl border border-gray-700/60 
+          bg-gradient-to-b from-gray-900/90 to-gray-800/60
+          shadow-xl p-5 gap-4
+          grid grid-cols-1 md:grid-cols-3
+          backdrop-blur-sm
+        ">
           {/* lista de temas arrastrables */}
           <div className="rounded-xl border p-3">
             <div className="text-xs font-medium mb-2">Temas disponibles (arrastra a Light/Dark)</div>
@@ -1927,7 +2232,12 @@ export default function StyleDesigner({
                   key={t}
                   draggable
                   onDragStart={(e:any) => e.dataTransfer.setData("text/plain", t)}
-                  className="px-2 py-1 rounded-full border text-xs cursor-grab bg-white text-black"
+                  className="
+                    border-2 border-dashed rounded-2xl p-5
+                    bg-gray-800/40 hover:bg-gray-700/40
+                    text-gray-300 transition-colors
+                    min-h-[120px] flex items-center justify-center text-lg
+                  "
                   title="Arrastra a Light o Dark"
                 >{t}</SPAN>
               ))}
@@ -2240,7 +2550,7 @@ const BulkCopyInner: React.FC<{
       </div>
 
       <div className="mt-3 flex justify-end">
-        <BUTTON className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700" onClick={apply}>Aplicar</BUTTON>
+        <BUTTON onClick={apply}>Aplicar</BUTTON>
       </div>
     </div>
   );

@@ -1,6 +1,4 @@
 'use client';
-
-import * as React from 'react';
 import { useAppContext } from '@/context/AppContext';
 
 export function cx(...xs: Array<string | false | null | undefined>) {

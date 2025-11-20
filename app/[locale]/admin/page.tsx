@@ -1,6 +1,6 @@
 'use client';
 
-import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 import { useParams } from 'next/navigation';
 import AdminGuard from '@/complements/admin/AdminGuard'; 
 import styles from './admin-home.module.css';
@@ -34,13 +34,6 @@ export default function AdminHome() {
       desc: <FM id="styling.description" defaultMessage="Configuración de Estilos" />,
       href: L('/admin/styles'),
       enabled: Settings?.faculties?.styles ?? true,
-    },
-    {
-      key: 'agent',
-      title: <FM id="agent.title" defaultMessage="Agentes" />,
-      desc: <FM id="agent.description" defaultMessage="Configurar el agente de IA" />,
-      href: L('/admin/agent'),
-      enabled: Settings?.faculties?.agentAI ?? true,
     },
     {
       key: 'cloud',

@@ -18,7 +18,7 @@ import {
 } from "@/app/lib/i18n/store";
 import { normalizeRouteKey } from "@/app/lib/i18n/utils";
 import FM from "../i18n/FM";
-import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 
 
 /* Wrappers defensivos (por si el store aún no exporta algo) */

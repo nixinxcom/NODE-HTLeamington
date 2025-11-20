@@ -7,7 +7,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import FM from "@/complements/i18n/FM";
 import { JsonLd } from "@/complements/components/Seo/JsonLd";
 import { buildVenueSchema, buildWebSiteSchema } from "@/app/lib/seo/schema";
-import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 
 type Props = { locale: string };
 

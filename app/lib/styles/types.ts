@@ -2,15 +2,28 @@
 // Tipos fuente del documento de Styles (alineados con StyleDesigner y seeds)
 
 export type UIComponent =
-  | "input"
-  | "select"
-  | "button"
-  | "label"
   | "h1"
   | "h2"
   | "h3"
+  | "h4"
+  | "h5"
+  | "h6"
+  | "div"
+  | "div2"
+  | "div3"
+  | "input"
+  | "input2"
+  | "select"
+  | "select2"
+  | "button"
+  | "button2"
+  | "label"
+  | "label2"
+  | "link"
+  | "link2"
   | "a"
   | "p"
+  | "b"
   | "image";
 
 export type StyleState =
@@ -19,8 +32,13 @@ export type StyleState =
   | "active"
   | "disabled"
   | "highlight"
-  | "highhover" // coincide con globals.css
-  | "highactive"; // opcional por compatibilidad
+  | "highhover"
+  | "highactive"
+  | "inert"
+  | "focus"
+  | "visited"
+  | "warning"
+  | "error";
 
 export type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
@@ -115,15 +133,28 @@ export type StylesDocLoose = DeepPartial<StylesSchema>;
 export const BASE_THEMES = ["light", "dark"] as const;
 
 export const UI_COMPONENTS: UIComponent[] = [
-  "input",
-  "select",
-  "button",
-  "label",
   "h1",
   "h2",
   "h3",
+  "h4",
+  "h5",
+  "h6",
+  "div",
+  "div2",
+  "div3",
+  "input",
+  "input2",
+  "select",
+  "select2",
+  "button",
+  "button2",
+  "label",
+  "label2",
+  "link",
+  "link2",
   "a",
   "p",
+  "b",
   "image",
 ];
 
@@ -135,7 +166,13 @@ export const STATES: StyleState[] = [
   "highlight",
   "highhover",
   "highactive",
+  "inert",
+  "focus",
+  "visited",
+  "warning",
+  "error",
 ];
+
 
 export const DEFAULT_TOKENS: TokenSet = {
   backgroundColor: "#ffffff",

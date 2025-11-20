@@ -19,7 +19,6 @@ export { default as FMsTab } from "./complements/admin/FMsTab";
 export { default as BrandingTab } from "./complements/admin/BrandingTab";
 export { default as RDDInspectorTab } from "./complements/admin/RDDInspectorTab";
 export { default as AgentCatalogTab } from "./complements/admin/AgentCatalogTab";
-export { default as AgentConfigForm } from "./complements/admin/AgentConfigForm";
 
 // ────────────────────
 // Seeds TS

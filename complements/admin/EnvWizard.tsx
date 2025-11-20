@@ -4,7 +4,7 @@ import { envSchema, envMeta, type iEnvVars } from '../../app/lib/env';
 import { FbDB, FbAuth } from '../../app/lib/services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { resolveTenantFromHost } from '../../app/lib/tenant/resolve';
-import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 
 // En UI todo se maneja como string
 type EnvValues = Partial<Record<keyof iEnvVars, string>>;

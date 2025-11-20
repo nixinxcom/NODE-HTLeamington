@@ -5,7 +5,7 @@ import type iSettings from '@/app/lib/settings/interface';
 // Carga por regla (FS > TSX(FM) > JSON > TSX). En settings normalmente no hay FM, pero respetamos el orden.
 import { getSettingsEffectiveForUI } from '@/complements/data/ruleUI';
 import { saveSettingsClient } from '@/app/lib/settings/client';       // writer a FS
-import { BUTTON, LINK, NEXTIMAGE, IMAGE, DIV, INPUT, SELECT, LABEL, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 import { getStorage, ref, uploadBytes, getDownloadURL, listAll } from "firebase/storage";
 
 // ----------------- helpers -----------------
