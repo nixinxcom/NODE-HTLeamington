@@ -1,30 +1,11 @@
 //complements\admin\BrandingTab.tsx
 'use client';
-
 import React, { useEffect, useState, useCallback } from 'react';
-
-import {
-  brandingSchema,
-  brandingSections,
-  type FieldMeta,
-  type FieldShape,
-  type ScalarFieldMeta,
-} from '@/complements/data/branding.schema';
-
+import { brandingSchema, brandingSections, type FieldMeta, type FieldShape, type ScalarFieldMeta } from '@/complements/data/branding.schema';
 import { loadBrandingGlobal, saveBrandingGlobal } from '@/complements/data/brandingFS';
 import { ensureAnon } from '@/app/lib/services/firebase';
 import { deepMerge } from '@/complements/utils/deep-merge';
-
-import {
-  BUTTON,
-  INPUT,
-  LABEL,
-  SPAN,
-  DIV,
-  P,
-  H2,
-  H3,
-} from '@/complements/components/ui/wrappers';
+import { BUTTON, BUTTON2, INPUT, INPUT2, LABEL, LABEL2, SPAN, SPAN1, SPAN2, DIV, DIV2, DIV3, P, H1, H2, H3, H4, H5, H6, A, B, IMAGE, NEXTIMAGE } from '@/complements/components/ui/wrappers';
 
 import FM from '@/complements/i18n/FM';
 

@@ -72,8 +72,8 @@ export async function buildSlices(locale:Locale){
 
 // Acceso granular (server)
 const _mem = new Map<string, {ts:number, v:any}>();
-const TTL = Number(process.env.AI_CACHE_TTL_SEC ?? 300);
-function getMemo(k:string){ const e=_mem.get(k); return e && (Date.now()-e.ts<TTL*1000) ? e.v : null; }
+const TTL = Number(process.env.AI_CACHE_MINUTES ?? 7) * 60 * 1000;
+function getMemo(k:string){ const e=_mem.get(k); return e && (Date.now()-e.ts<TTL) ? e.v : null; }
 function setMemo(k:string, v:any){ _mem.set(k,{ts:Date.now(),v}); }
 
 export async function getSliceServer(locale:Locale, scope:Scope){

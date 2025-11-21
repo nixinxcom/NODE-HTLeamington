@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { toShort } from '@/app/lib/i18n/locale';
 
-const MAX_AGE_MS = (Number(process.env.CACHE_HOURS) ?? 12 * 60 * 60 * 1000); // 12h
+const MAX_AGE_MS = (Number(process.env.CLIENT_RDD_CACHE_MIN) ?? 7) * 60 * 1000; // 7 min
 
 export default function BrandingCacheHydrator() {
   const { Locale, setBranding, setSettings } = useAppContext();

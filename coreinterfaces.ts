@@ -39,8 +39,9 @@ export interface iEnVars{
     SITE_NAME: string;
     OPENAI_API_KEY: string;
     OPENAI_MODEL: "gpt-5-nano";
-    AI_CACHE_TTL_SEC: number;
-    CACHE_HOURS: number;
+    AI_CACHE_MINUTES: number;
+    SERVER_RDD_CACHE_MIN: number;
+    CLIENT_RDD_CACHE_MIN: number;
     PAYPAL_SANDBOX_APIKEY?: string;
     PAYPAL_SANDBOX_SECRET?: string;
     PAYPAL_LIVE_APIKEY?: string;

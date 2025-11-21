@@ -12,7 +12,7 @@ import { fsGetDoc } from "@/app/lib/firestoreRest";
 import { getBrandingEffectivePWA } from "@/complements/data/brandingFS";
 import { toShortLocale, DEFAULT_LOCALE_SHORT } from '@/app/lib/i18n/locale';
 
-export const AI_CACHE_TTL_SEC = Number(process.env.AI_CACHE_TTL_SEC ?? 300);
+export const AI_CACHE_MINUTES = Number(process.env.AI_CACHE_MINUTES ?? 5);
 const ROOT = process.cwd();
 
 /* ─────────────────────────── Utils base ─────────────────────────── */
@@ -191,7 +191,7 @@ const _memCache: Record<string, CacheEntry> = Object.create(null);
 function getCache(key: string) {
   const e = _memCache[key];
   if (!e) return null;
-  if (Date.now() - e.ts > AI_CACHE_TTL_SEC * 1000) return null;
+  if (Date.now() - e.ts > AI_CACHE_MINUTES * 60 * 1000) return null;
   return e.data;
 }
 function setCache(key: string, data: any) {

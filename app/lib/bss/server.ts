@@ -6,7 +6,7 @@ import { getSettingsEffective } from '@/complements/data/settingsFS';
 type Short = 'es'|'en'|'fr';
 type BssData = { branding: any; settings: any; version: string; updatedAt: string };
 
-const TTL_MS = Number(process.env.BSS_TTL_SEC ?? 300) * 1000; // 5 min por defecto
+const TTL_MS = Number(process.env.SERVER_RDD_CACHE_MIN ?? 7) * 60 * 1000; // 10 min por defecto
 const cache = new Map<string, { ts: number; data: BssData }>();
 
 function toShort(v?: string): Short {
