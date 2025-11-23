@@ -110,7 +110,7 @@ function normalizeSchemaForFui(input: PanelSchema): PanelSchema {
 function buildI18nIds(schema: PanelSchema): Record<string, string> {
   const out: Record<string, string> = {};
 
-  // Título del panel
+  // ── Título del panel (lo dejo igual que antes) ──
   if (schema.labelKey) {
     out[schema.labelKey] = schema.id;
   }
@@ -160,10 +160,17 @@ function buildI18nIds(schema: PanelSchema): Record<string, string> {
       const shortName =
         segments[segments.length - 1] || field.name || 'items';
 
-      const base = `panels.${schema.id}.${group}.${shortName}`;
-      out[`${base}.label`] = field.labelKey || shortName;
-      out[`${base}.description`] =
-        field.descriptionKey || `${shortName}.description`;
+      const base = `${schema.id}.${group}.${shortName}`;
+
+      const labelDefault =
+        (field as any).labelKey?.trim() || shortName;
+      const descDefault =
+        (field as any).descriptionKey?.trim() ||
+        `${shortName}.Description`;
+
+      // ⬇️ Claves finales que vas a copiar al JSON de i18n
+      out[`${base}.Labelkey`] = labelDefault;
+      out[`${base}.Description`] = descDefault;
 
       return;
     }
@@ -174,11 +181,18 @@ function buildI18nIds(schema: PanelSchema): Record<string, string> {
     const shortName =
       segments[segments.length - 1] || field.name || 'field';
 
-    const base = `panels.${schema.id}.${group}.${shortName}`;
-    out[`${base}.label`] = field.labelKey || shortName;
-    out[`${base}.description`] =
-      field.descriptionKey || `${shortName}.description`;
+    const base = `${schema.id}.${group}.${shortName}`;
 
+    const labelDefault =
+      (field as any).labelKey?.trim() || shortName;
+    const descDefault =
+      (field as any).descriptionKey?.trim() ||
+      `${shortName}.Description`;
+
+    out[`${base}.Labelkey`] = labelDefault;
+    out[`${base}.Description`] = descDefault;
+
+    // Opciones para selects / radios
     const widget = field.widget as PanelFieldWidget | undefined;
     const type = field.type as PanelFieldType;
 
@@ -203,12 +217,11 @@ function buildI18nIds(schema: PanelSchema): Record<string, string> {
     const rawName = field.name || '';
     const segs = rawName.split('.').filter(Boolean);
 
-    // Grupo: primero usamos groupKey, si no hay caemos a primer segmento o 'root'
+    // Grupo: usamos groupKey o primer segmento o 'root'
     const group = field.groupKey || segs[0] || 'root';
 
     let relPath = '';
     if (segs.length > 0 && segs[0] === group) {
-      // Si el primer segmento es igual al group, lo quitamos
       relPath = segs.slice(1).join('.');
     } else {
       relPath = segs.join('.');
@@ -399,6 +412,27 @@ export function FuiPanel({ locale }: FuiPanelProps) {
     setSchema({ ...schema, fields: [...schema.fields, newField] });
     setCopiedI18n(false);
     setCopiedSchema(false);
+  };
+
+  const handleAddGroupWithField = () => {
+    if (!schema) return;
+
+    const raw = window.prompt(
+      'Nombre interno del nuevo grupo (groupKey). Ej: company, contact, pwa...',
+    );
+    if (!raw) return;
+
+    const g = raw.trim();
+    if (!g) return;
+
+    // Crea el primer campo del grupo usando el mismo mecanismo
+    handleAddField(g);
+
+    // Asegura que el acordeón de ese grupo salga abierto
+    setOpenGroups((prev) => ({
+      ...prev,
+      [g]: true,
+    }));
   };
 
   const handleUpdateField = (idx: number, patch: Partial<PanelField>) => {
@@ -808,17 +842,26 @@ export function FuiPanel({ locale }: FuiPanelProps) {
 
           {/* CAMPOS AGRUPADOS CON ACORDEONES */}
           <DIV className="border border-white/10 rounded-lg p-4 flex flex-col gap-4 bg-black/40">
-            <DIV className="flex items-center justify-between">
+            <DIV className="flex items-center justify-between gap-2 flex-wrap">
               <SPAN className="font-semibold text-sm uppercase tracking-wide">
                 Campos
               </SPAN>
-              <BUTTON
-                type="button"
-                kind="button"
-                onClick={() => handleAddField()}
-              >
-                + Campo (general)
-              </BUTTON>
+              <DIV className="flex gap-2">
+                <BUTTON
+                  type="button"
+                  kind="button"
+                  onClick={() => handleAddField()}
+                >
+                  + Campo (general)
+                </BUTTON>
+                <BUTTON
+                  type="button"
+                  kind="button"
+                  onClick={handleAddGroupWithField}
+                >
+                  + Grupo nuevo
+                </BUTTON>
+              </DIV>
             </DIV>
 
             <DIV className="flex flex-col gap-3">
@@ -865,57 +908,52 @@ export function FuiPanel({ locale }: FuiPanelProps) {
                         {indexes.map((idx) => {
                           const field = schema.fields[idx];
                           const fullName = field.name || '';
-                          const pathSegments = fullName
-                            .split('.')
-                            .filter(Boolean);
-                          const shortName =
-                            pathSegments[pathSegments.length - 1] || '';
+                          const pathSegments = fullName.split('.').filter(Boolean);
+                          const shortName = pathSegments[pathSegments.length - 1] || '';
+                          const isTextLike =
+                            field.type === 'string' || field.type === 'text';
 
                           return (
                             <DIV
                               key={idx}
-                              className="flex flex-col gap-2 border border-white/10 rounded-md p-3 bg-black/30"
+                              className="relative flex flex-col gap-2 border border-white/10 rounded-md p-3 bg-black/30"
                             >
-                              <DIV className="flex justify-between items-center">
-                                <SPAN className="text-xs font-mono opacity-70">
-                                  {fullName || '(sin nombre)'}
-                                </SPAN>
+                              {/* Botón de eliminar fijo en la esquina superior derecha */}
+                              <DIV className="absolute top-2 right-2">
                                 <BUTTON
                                   type="button"
                                   kind="button"
                                   onClick={() => handleDeleteField(idx)}
+                                  aria-label="Eliminar campo"
                                 >
-                                  Eliminar
+                                  🗑
                                 </BUTTON>
                               </DIV>
 
-                              <DIV className="grid md:grid-cols-4 gap-2">
-                                <DIV className="flex flex-col gap-1">
+                              {/* Fila principal del campo (un solo row en desktop) */}
+                              <DIV className="grid md:grid-cols-12 gap-2 items-end">
+                                {/* Nombre interno */}
+                                <DIV className="flex flex-col gap-1 md:col-span-3">
                                   <LABEL className="text-xs font-semibold">
-                                    Nombre interno (sin el grupo)
+                                    Nombre
                                   </LABEL>
                                   <INPUT
                                     type="text"
                                     value={shortName}
                                     onChange={(e) =>
-                                      handleChangeFieldNameShort(
-                                        idx,
-                                        e.target.value,
-                                      )
+                                      handleChangeFieldNameShort(idx, e.target.value)
                                     }
                                   />
                                 </DIV>
 
-                                <DIV className="flex flex-col gap-1">
-                                  <LABEL className="text-xs font-semibold">
-                                    Tipo (type)
-                                  </LABEL>
+                                {/* Tipo */}
+                                <DIV className="flex flex-col gap-1 md:col-span-2">
+                                  <LABEL className="text-xs font-semibold">Tipo</LABEL>
                                   <SELECT
                                     value={field.type}
                                     onChange={(e) =>
                                       handleUpdateField(idx, {
-                                        type: e.target
-                                          .value as PanelFieldType,
+                                        type: e.target.value as PanelFieldType,
                                       })
                                     }
                                   >
@@ -925,33 +963,15 @@ export function FuiPanel({ locale }: FuiPanelProps) {
                                     <option value="boolean">boolean</option>
                                     <option value="date">date</option>
                                     <option value="select">select</option>
-                                    <option value="multiselect">
-                                      multiselect
-                                    </option>
+                                    <option value="multiselect">multiselect</option>
                                     <option value="object">object</option>
                                     <option value="array">array</option>
                                   </SELECT>
                                 </DIV>
 
-                                <DIV className="flex flex-col gap-1">
-                                  <LABEL className="text-xs font-semibold">
-                                    GroupKey
-                                  </LABEL>
-                                  <INPUT
-                                    type="text"
-                                    value={field.groupKey || groupLabel}
-                                    onChange={(e) =>
-                                      handleUpdateField(idx, {
-                                        groupKey: e.target.value,
-                                      })
-                                    }
-                                  />
-                                </DIV>
-
-                                <DIV className="flex flex-col gap-1">
-                                  <LABEL className="text-xs font-semibold">
-                                    Orden
-                                  </LABEL>
+                                {/* Orden */}
+                                <DIV className="flex flex-col gap-1 md:col-span-1">
+                                  <LABEL className="text-xs font-semibold">Orden</LABEL>
                                   <INPUT
                                     type="number"
                                     value={(field as any).order ?? idx + 1}
@@ -965,70 +985,40 @@ export function FuiPanel({ locale }: FuiPanelProps) {
                                     }
                                   />
                                 </DIV>
-                              </DIV>
 
-                              <DIV className="grid md:grid-cols-2 gap-2">
-                                <DIV className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={field.required === true}
-                                    onChange={(e) =>
-                                      handleUpdateField(idx, {
-                                        required: e.target.checked,
-                                      })
-                                    }
-                                  />
-                                  <LABEL className="text-xs">Required</LABEL>
+                                {/* Flags */}
+                                <DIV className="flex flex-col gap-1 md:col-span-2">
+                                  <LABEL className="text-xs font-semibold">Flags</LABEL>
+                                  <DIV className="flex flex-wrap items-center gap-3">
+                                    <label className="flex items-center gap-1 text-xs">
+                                      <input
+                                        type="checkbox"
+                                        checked={field.required === true}
+                                        onChange={(e) =>
+                                          handleUpdateField(idx, {
+                                            required: e.target.checked,
+                                          })
+                                        }
+                                      />
+                                      <span>Required</span>
+                                    </label>
+                                    <label className="flex items-center gap-1 text-xs">
+                                      <input
+                                        type="checkbox"
+                                        checked={field.translatable === true}
+                                        onChange={(e) =>
+                                          handleUpdateField(idx, {
+                                            translatable: e.target.checked,
+                                          })
+                                        }
+                                      />
+                                      <span>Translatable</span>
+                                    </label>
+                                  </DIV>
                                 </DIV>
-                                <DIV className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={field.translatable === true}
-                                    onChange={(e) =>
-                                      handleUpdateField(idx, {
-                                        translatable: e.target.checked,
-                                      })
-                                    }
-                                  />
-                                  <LABEL className="text-xs">
-                                    Translatable (valor por idioma)
-                                  </LABEL>
-                                </DIV>
-                              </DIV>
 
-                              <DIV className="grid md:grid-cols-2 gap-2">
-                                <DIV className="flex flex-col gap-1">
-                                  <LABEL className="text-xs font-semibold">
-                                    Label key (i18n – opcional)
-                                  </LABEL>
-                                  <INPUT
-                                    type="text"
-                                    value={field.labelKey || ''}
-                                    onChange={(e) =>
-                                      handleUpdateField(idx, {
-                                        labelKey: e.target.value,
-                                      })
-                                    }
-                                  />
-                                </DIV>
-                                <DIV className="flex flex-col gap-1">
-                                  <LABEL className="text-xs font-semibold">
-                                    Descripción key (i18n – opcional)
-                                  </LABEL>
-                                  <INPUT
-                                    type="text"
-                                    value={field.descriptionKey || ''}
-                                    onChange={(e) =>
-                                      handleUpdateField(idx, {
-                                        descriptionKey: e.target.value,
-                                      })
-                                    }
-                                  />
-                                </DIV>
-                              </DIV>
-
-                              <DIV className="grid md:grid-cols-2 gap-2">
-                                <DIV className="flex flex-col gap-1">
+                                {/* Widget sugerido */}
+                                <DIV className="flex flex-col gap-1 md:col-span-2">
                                   <LABEL className="text-xs font-semibold">
                                     Widget sugerido
                                   </LABEL>
@@ -1040,54 +1030,30 @@ export function FuiPanel({ locale }: FuiPanelProps) {
                                       })
                                     }
                                   >
-                                    <option value="">
-                                      (auto por tipo)
-                                    </option>
-                                    <option value="input">
-                                      input
-                                    </option>
-                                    <option value="textarea">
-                                      textarea
-                                    </option>
-                                    <option value="color">
-                                      color
-                                    </option>
-                                    <option value="image">
-                                      image (URL)
-                                    </option>
-                                    <option value="file">
-                                      file
-                                    </option>
-                                    <option value="select">
-                                      select
-                                    </option>
-                                    <option value="multiselect">
-                                      multiselect
-                                    </option>
-                                    <option value="radio">
-                                      radio
-                                    </option>
-                                    <option value="code">
-                                      code
-                                    </option>
-                                    <option value="json">
-                                      json
-                                    </option>
+                                    <option value="">(auto por tipo)</option>
+                                    <option value="input">input</option>
+                                    <option value="textarea">textarea</option>
+                                    <option value="color">color</option>
+                                    <option value="image">image (URL)</option>
+                                    <option value="file">file</option>
+                                    <option value="select">select</option>
+                                    <option value="multiselect">multiselect</option>
+                                    <option value="radio">radio</option>
+                                    <option value="code">code</option>
+                                    <option value="json">json</option>
                                   </SELECT>
                                 </DIV>
 
-                                {(field.type === 'string' ||
-                                  field.type === 'text') && (
-                                  <DIV className="grid grid-cols-2 gap-2">
-                                    <DIV className="flex flex-col gap-1">
+                                {/* Min / Max solo para string/text, en el mismo row */}
+                                {isTextLike && (
+                                  <>
+                                    <DIV className="flex flex-col gap-1 md:col-span-1">
                                       <LABEL className="text-xs font-semibold">
                                         Min length (texto)
                                       </LABEL>
                                       <INPUT
                                         type="number"
-                                        value={
-                                          (field as any).minLength ?? ''
-                                        }
+                                        value={(field as any).minLength ?? ''}
                                         onChange={(e) =>
                                           handleUpdateField(idx, {
                                             minLength:
@@ -1098,15 +1064,13 @@ export function FuiPanel({ locale }: FuiPanelProps) {
                                         }
                                       />
                                     </DIV>
-                                    <DIV className="flex flex-col gap-1">
+                                    <DIV className="flex flex-col gap-1 md:col-span-1">
                                       <LABEL className="text-xs font-semibold">
                                         Max length (texto)
                                       </LABEL>
                                       <INPUT
                                         type="number"
-                                        value={
-                                          (field as any).maxLength ?? ''
-                                        }
+                                        value={(field as any).maxLength ?? ''}
                                         onChange={(e) =>
                                           handleUpdateField(idx, {
                                             maxLength:
@@ -1117,10 +1081,11 @@ export function FuiPanel({ locale }: FuiPanelProps) {
                                         }
                                       />
                                     </DIV>
-                                  </DIV>
+                                  </>
                                 )}
                               </DIV>
 
+                              {/* Opciones para selects/multiselect/radio: se quedan como segundo bloque debajo del row principal */}
                               {(field.type === 'select' ||
                                 field.type === 'multiselect' ||
                                 field.widget === 'select' ||
@@ -1128,21 +1093,15 @@ export function FuiPanel({ locale }: FuiPanelProps) {
                                 field.widget === 'radio') && (
                                 <DIV className="flex flex-col gap-1">
                                   <LABEL className="text-xs font-semibold">
-                                    Opciones (value:labelKey, una por
-                                    línea)
+                                    Opciones (value:labelKey, una por línea)
                                   </LABEL>
                                   <textarea
                                     className="w-full min-h-[80px] text-xs font-mono bg-black/60 text-white px-2 py-1 rounded"
-                                    value={Array.isArray(
-                                      (field as any).options,
-                                    )
-                                      ? ((field as any)
-                                          .options as PanelFieldOption[])
+                                    value={Array.isArray((field as any).options)
+                                      ? ((field as any).options as PanelFieldOption[])
                                           .map(
                                             (opt) =>
-                                              `${opt.value}:${
-                                                opt.labelKey || ''
-                                              }`,
+                                              `${opt.value}:${opt.labelKey || ''}`,
                                           )
                                           .join('\n')
                                       : ''}
@@ -1152,16 +1111,13 @@ export function FuiPanel({ locale }: FuiPanelProps) {
                                         .map((l) => l.trim())
                                         .filter(Boolean);
 
-                                      const opts: PanelFieldOption[] =
-                                        lines.map((line) => {
-                                          const [v, label] =
-                                            line.split(':');
-                                          return {
-                                            value: v.trim(),
-                                            labelKey:
-                                              label?.trim() || undefined,
-                                          };
-                                        });
+                                      const opts: PanelFieldOption[] = lines.map((line) => {
+                                        const [v, label] = line.split(':');
+                                        return {
+                                          value: v.trim(),
+                                          labelKey: label?.trim() || undefined,
+                                        };
+                                      });
 
                                       handleUpdateField(idx, {
                                         options: opts as any,
