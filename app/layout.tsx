@@ -17,6 +17,7 @@ import { getBssEffectiveCached } from '@/app/lib/bss/server';
 import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 import { NotificationsProvider } from "@/app/lib/notifications/provider";
 import './globals.css';
+import FdvProvider from "./providers/FdvProvider";
 
 // 1) Metadata global para toda la app (usa tus defaults y, si tienes, FS/meta_*).
 export const generateMetadata = withSitesLayoutMetadata();
@@ -181,58 +182,60 @@ export default async function RootLayout({children}: Readonly<{ children: React.
               initialBranding={branding}
               initialSettings={settings}
             >
-              <ThemeProviders>
-                <BrandingCacheHydrator/> 
-                <AuthProvider>
-                  <NotificationsProvider>
-                    <InterComp
-                      Langs={[
-                        {
-                          language: "Español",
-                          locale: "es",
-                          icon: "/Icons/es.png",
-                          country: "MXN",
-                          alt: "Español",
-                          prioritario: true,
-                          width: 35,
-                          height: 35,
-                          fill: false,
-                        },
-                        {
-                          language: "English",
-                          locale: "en",
-                          icon: "/Icons/en.png",
-                          country: "USA",
-                          alt: "English",
-                          prioritario: true,
-                          width: 35,
-                          height: 35,
-                          fill: false,
-                        },
-                        // {
-                        //   language: "French",
-                        //   locale: "fr",
-                        //   icon: "/Icons/fr.png",
-                        //   country: "FR",
-                        //   alt: "French",
-                        //   prioritario: true,
-                        //   width: 40,
-                        //   height: 40,
-                        //   fill: false,
-                        // },
-                      ]}
-                      Position="fixed"
-                      BackgroundColor="black"
-                      Bottom="1rem"
-                      Left="7px"
-                      ShowLangs="oneBYone"
-                    />
-                    <AppHydrators />
-                    {children}
-                    <Analytics />
-                  </NotificationsProvider>
-                </AuthProvider>
-              </ThemeProviders>
+              <FdvProvider>
+                <ThemeProviders>
+                  <BrandingCacheHydrator/> 
+                  <AuthProvider>
+                    <NotificationsProvider>
+                      <InterComp
+                        Langs={[
+                          {
+                            language: "Español",
+                            locale: "es",
+                            icon: "/Icons/es.png",
+                            country: "MXN",
+                            alt: "Español",
+                            prioritario: true,
+                            width: 35,
+                            height: 35,
+                            fill: false,
+                          },
+                          {
+                            language: "English",
+                            locale: "en",
+                            icon: "/Icons/en.png",
+                            country: "USA",
+                            alt: "English",
+                            prioritario: true,
+                            width: 35,
+                            height: 35,
+                            fill: false,
+                          },
+                          // {
+                          //   language: "French",
+                          //   locale: "fr",
+                          //   icon: "/Icons/fr.png",
+                          //   country: "FR",
+                          //   alt: "French",
+                          //   prioritario: true,
+                          //   width: 40,
+                          //   height: 40,
+                          //   fill: false,
+                          // },
+                        ]}
+                        Position="fixed"
+                        BackgroundColor="black"
+                        Bottom="1rem"
+                        Left="7px"
+                        ShowLangs="oneBYone"
+                      />
+                      <AppHydrators />
+                      {children}
+                      <Analytics />
+                    </NotificationsProvider>
+                  </AuthProvider>
+                </ThemeProviders>
+              </FdvProvider>
             </ContextProvider>
           </GTMProvider>
         </Suspense>
