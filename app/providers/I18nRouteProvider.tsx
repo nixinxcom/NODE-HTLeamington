@@ -1,3 +1,4 @@
+// app/providers/I18nRouteProvider.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -5,10 +6,15 @@ import { IntlProvider } from "react-intl";
 import { usePathname, useParams } from "next/navigation";
 import { loadFMsGlobal, loadFMsPage } from "@/app/lib/i18n/store";
 import { normalizeRouteKey } from "@/app/lib/i18n/utils";
-import { toShortLocale, DEFAULT_LOCALE_SHORT } from '@/app/lib/i18n/locale';
+import { toShortLocale, DEFAULT_LOCALE_SHORT } from "@/app/lib/i18n/locale";
 
-// Seeds TS (no JSON)
-import seedDicts from "@/app/[locale]/ElPatron/i18n";
+// Seeds TS (no JSON) por "tenant"/contexto
+import orgDicts       from "@/app/[locale]/(org)/i18n";
+import elPatronDicts  from "@/app/[locale]/ElPatron/i18n";
+import htWindsorDicts from "@/app/[locale]/HTWindsor/i18n";
+import htLeamDicts    from "@/app/[locale]/HTLeamington/i18n";
+import nixinxDicts    from "@/app/[locale]/NIXINX/i18n";
+
 import { pickSeedDict } from "@/complements/data/ruleHelpers"; // elige exacto o base(lang)
 
 // ===================== Normalizador a corto =====================
@@ -24,6 +30,17 @@ function toShort(input?: string | null): Locale {
 // ===================== Cache por sesión =====================
 const packCache = new Map<string, Record<string, string>>();
 
+// Mapa de seeds por primer segmento después del locale
+const TENANT_SEEDS: Record<string, any> = {
+  // Tenants
+  ElPatron: elPatronDicts,
+  HTWindsor: htWindsorDicts,
+  HTLeamington: htLeamDicts,
+  NIXINX: nixinxDicts,
+
+  // Cualquier otra cosa (admin, offline, etc.) caerá al (org) por defecto
+};
+
 export default function I18nRouteProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { locale: routeParam } = useParams<{ locale?: string }>();
@@ -37,25 +54,46 @@ export default function I18nRouteProvider({ children }: { children: React.ReactN
   // Locale efectivo por URL (si viene largo, se normaliza a corto)
   const short: Locale = toShort(routeParam);
 
-  // Clave de página sin el primer segmento /{locale}
-  const routeKey = useMemo(() => {
+  // Segmento tenant (primer segmento después del locale)
+  const { tenantSegment, routeKey } = useMemo(() => {
     const parts = (pathname || "/").split("/").filter(Boolean);
-    const afterLocale = parts.slice(1).join("/");
-    const raw = afterLocale ? `/${afterLocale}` : "/";
-    return normalizeRouteKey(raw);
+    // parts[0] = locale, parts[1] = posible tenant/contexto
+    const afterLocaleParts = parts.slice(1); // puede estar vacío
+    const tenant = afterLocaleParts[0] || ""; // "" = rutas como /es, /es/(org) público, etc.
+    const rawPath = afterLocaleParts.length > 0
+      ? `/${afterLocaleParts.join("/")}`
+      : "/";
+
+    return {
+      tenantSegment: tenant,
+      routeKey: normalizeRouteKey(rawPath),
+    };
   }, [pathname]);
 
   // Seeds inmediatas por locale (TS) para evitar flash
   const seeds: Record<string, string> = useMemo(() => {
+    // Elegimos el diccionario base según el segmento
+    const baseDicts =
+      TENANT_SEEDS[tenantSegment] !== undefined
+        ? TENANT_SEEDS[tenantSegment]
+        : orgDicts;
+
     // Preferimos corto
-    const s = pickSeedDict(seedDicts as any, short) as Record<string, string> | undefined;
+    const s = pickSeedDict(baseDicts as any, short) as Record<
+      string,
+      string
+    > | undefined;
     if (s && Object.keys(s).length) return s;
 
-    // Compat: si aún tienes seeds con claves largas, resolvemos aquí
+    // Compat (por si en algún momento regresan claves largas)
     const compatMap = { es: "es", en: "en", fr: "fr" } as const;
-    const legacy = pickSeedDict(seedDicts as any, compatMap[short]) as Record<string, string> | undefined;
+    const legacy = pickSeedDict(
+      baseDicts as any,
+      compatMap[short]
+    ) as Record<string, string> | undefined;
+
     return legacy ?? {};
-  }, [short]);
+  }, [short, tenantSegment]);
 
   // Estado con caché por (locale corto + routeKey)
   const cacheKey = `${short}|${routeKey}`;
@@ -75,12 +113,14 @@ export default function I18nRouteProvider({ children }: { children: React.ReactN
       packCache.set(cacheKey, merged);
       if (alive) setMessages(merged);
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [short, routeKey, seeds]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    // lógica que usa cacheKey/autoSubmit
+    // lógica que usa cacheKey/autoSubmit (si la necesitas)
   }, []);
 
   return (
@@ -89,7 +129,9 @@ export default function I18nRouteProvider({ children }: { children: React.ReactN
       locale={short}
       defaultLocale={brandDefaultShort}
       messages={messages}
-      onError={() => { /* silenciar missing translation si quieres */ }}
+      onError={() => {
+        /* silenciar missing translation si quieres */
+      }}
     >
       {children}
     </IntlProvider>
