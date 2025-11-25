@@ -6,9 +6,6 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 import { FbDB } from '@/app/lib/services/firebase';
 
-// Ajusta este import si tu tipo se llama distinto o está en otra ruta
-import type { Role as AclRole } from '@/app/lib/authz';
-
 import {
   DIV,
   SPAN,
@@ -19,16 +16,15 @@ import {
   BUTTON,
 } from '@/complements/components/ui/wrappers';
 
-import {
-  PANEL_FS_COLLECTION_PROVIDERS,
-  PANEL_FS_COLLECTION_ADMIN,
-  type PanelSchema,
-  type PanelField,
-  type PanelFieldType,
-  type PanelFieldWidget,
-  type PanelRole,
-  type PanelFieldOption,
-  type PanelScalarField,
+import FM from '@/complements/i18n/FM';
+
+import type {
+  PanelSchema,
+  PanelField,
+  PanelFieldType,
+  PanelFieldWidget,
+  PanelFieldOption,
+  PanelScalarField,
 } from './panelSchema.types';
 
 import { PANEL_SCHEMAS } from './panelSchemas';
@@ -36,30 +32,11 @@ import { PANEL_SCHEMAS } from './panelSchemas';
 // -------------------- Utils básicos --------------------
 
 type PanelData = Record<string, any>;
+type FieldErrors = Record<string, string | undefined>;
 
 type AdminPanelProps = {
   locale: string;
-  /** Si viene, NO usamos /api/acl/role y forzamos este rol para los paneles */
-  panelRoleOverride?: PanelRole;
 };
-
-function mapAclToPanelRole(role: AclRole): PanelRole {
-  // Mapeo inicial simple:
-  // - superadmin  → superadmin
-  // - admin       → admin
-  // - user        → client (admin del cliente)
-  // - anon        → enduser
-  switch (role) {
-    case 'superadmin':
-      return 'superadmin';
-    case 'admin':
-      return 'admin';
-    case 'user':
-      return 'client';
-    default:
-      return 'enduser';
-  }
-}
 
 function buildDefaultValue(field: PanelField): any {
   const t: PanelFieldType = field.type;
@@ -68,7 +45,7 @@ function buildDefaultValue(field: PanelField): any {
     case 'text':
       return '';
     case 'number':
-      return undefined; // o 0 si prefieres algo inicial
+      return '';
     case 'boolean':
       return false;
     case 'date':
@@ -78,11 +55,11 @@ function buildDefaultValue(field: PanelField): any {
     case 'multiselect':
       return [];
     case 'object':
-      return {};
     case 'array':
-      return [];
+      // se stringify-ará después
+      return '';
     default:
-      return undefined;
+      return '';
   }
 }
 
@@ -94,15 +71,13 @@ function buildDefaultsFromSchema(schema: PanelSchema): PanelData {
   return out;
 }
 
-// type guard: este campo es escalar (string/number/bool/etc.), NO object/array
+// campo escalar (string/number/bool/etc.)
 function isScalarField(field: PanelField): field is PanelScalarField {
   return field.type !== 'object' && field.type !== 'array';
 }
 
-// Campo visible amigable (no usamos i18n aquí para no complicar)
-function getFieldLabel(field: PanelField): string {
-  if (field.labelKey) return field.labelKey;
-  // Fallback tonto: NameCase → "Name", "Logo Url", etc.
+// Label “bonito” por fallback
+function getFieldLabelFallback(field: PanelField): string {
   const n = field.name || '';
   return n
     .replace(/([A-Z])/g, ' $1')
@@ -112,70 +87,47 @@ function getFieldLabel(field: PanelField): string {
     .replace(/^./, (c) => c.toUpperCase());
 }
 
+// Render de label usando i18n si hay labelKey
+function FieldTitle({ field }: { field: PanelField }) {
+  if (field.labelKey) {
+    return (
+      <FM id={field.labelKey} defaultMessage={getFieldLabelFallback(field)} />
+    );
+  }
+  return <>{getFieldLabelFallback(field)}</>;
+}
+
+// Hint / descripción (i18n)
+function FieldHint({ field }: { field: PanelField }) {
+  if (!('descriptionKey' in field)) return null;
+  const key = (field as any).descriptionKey as string | undefined;
+  if (!key) return null;
+  return (
+    <P className="text-[11px] opacity-70 mt-0.5">
+      <FM id={key} defaultMessage="" />
+    </P>
+  );
+}
+
 // -------------------- Componente principal --------------------
 
-export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
-  const [aclRole, setAclRole] = useState<AclRole>('anon');
-  // Si tenemos override, no hay que “cargar” rol
-  const [roleLoading, setRoleLoading] = useState<boolean>(
-    panelRoleOverride ? false : true,
-  );
-
+export function AdminPanel({ locale }: AdminPanelProps) {
   const [selectedId, setSelectedId] = useState<string>('');
   const [data, setData] = useState<PanelData>({});
   const [loadingDoc, setLoadingDoc] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  // 1) Resolver rol:
-  //    - Si viene panelRoleOverride → usamos ese y NO llamamos /api/acl/role
-  //    - Si no, seguimos pidiendo /api/acl/role como antes
-  useEffect(() => {
-    if (panelRoleOverride) {
-      // Forzamos el rol de panel directamente
-      setAclRole(panelRoleOverride as AclRole);
-      setRoleLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/acl/role', { method: 'GET' });
-        const json = (await res.json()) as { role?: AclRole };
-        if (!cancelled && json && typeof json.role === 'string') {
-          setAclRole(json.role);
-        }
-      } catch {
-        if (!cancelled) {
-          setAclRole('anon');
-        }
-      } finally {
-        if (!cancelled) {
-          setRoleLoading(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [panelRoleOverride]);
-
-  const panelRole: PanelRole = useMemo(
-    () => panelRoleOverride ?? mapAclToPanelRole(aclRole),
-    [panelRoleOverride, aclRole],
+  // 🔹 YA NO HAY ROLES AQUÍ. AdminGuard es el único que decide si entras o no.
+  const availableSchemas: PanelSchema[] = useMemo(
+    () => Object.values(PANEL_SCHEMAS),
+    [],
   );
 
-  const availableSchemas: PanelSchema[] = useMemo(() => {
-    const all = Object.values(PANEL_SCHEMAS);
-    if (!all.length) return [];
-    return all.filter((schema) =>
-      schema.access?.allowedRoles?.includes(panelRole),
-    );
-  }, [panelRole]);
-
-  // 2) Seleccionar panel por default cuando haya alguno disponible
+  // 1) Selección de panel por defecto
   useEffect(() => {
     if (!selectedId && availableSchemas.length > 0) {
       setSelectedId(availableSchemas[0].id);
@@ -183,7 +135,6 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
       selectedId &&
       !availableSchemas.some((s) => s.id === selectedId)
     ) {
-      // Si el panel deja de ser accesible por cambio de rol, lo limpiamos
       setSelectedId('');
       setData({});
     }
@@ -194,10 +145,12 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
     [availableSchemas, selectedId],
   );
 
-  // 3) Cargar documento de FS cuando cambia el schema o el locale
+  // 2) Cargar documento de Firestore cuando cambia schema o locale
   useEffect(() => {
     if (!currentSchema) {
       setData({});
+      setFieldErrors({});
+      setOpenGroups({});
       return;
     }
 
@@ -207,6 +160,7 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
       setLoadingDoc(true);
       setError(null);
       setSaved(false);
+      setFieldErrors({});
       try {
         const ref = doc(
           FbDB,
@@ -217,12 +171,43 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
 
         const defaults = buildDefaultsFromSchema(currentSchema);
 
+        let merged: PanelData;
         if (snap.exists()) {
           const fsDoc = snap.data() as PanelData;
-          const merged = { ...defaults, ...fsDoc };
-          if (!cancelled) setData(merged);
+          merged = { ...defaults, ...fsDoc };
         } else {
-          if (!cancelled) setData(defaults);
+          merged = defaults;
+        }
+
+        // Para fields object/array guardamos STRING (JSON bonito)
+        for (const f of currentSchema.fields) {
+          if (f.type === 'object' || f.type === 'array') {
+            const raw = merged[f.name];
+            try {
+              merged[f.name] = JSON.stringify(
+                raw ?? (f.type === 'array' ? [] : {}),
+                null,
+                2,
+              );
+            } catch {
+              merged[f.name] = f.type === 'array' ? '[]' : '{}';
+            }
+          }
+        }
+
+        if (!cancelled) {
+          setData(merged);
+
+          // abrir todos los grupos por default
+          const groups: Record<string, boolean> = {};
+          for (const f of currentSchema.fields) {
+            const g =
+              f.groupKey && f.groupKey.trim().length > 0
+                ? f.groupKey
+                : 'General';
+            groups[g] = true;
+          }
+          setOpenGroups(groups);
         }
       } catch (e) {
         console.error('[AdminPanel] error al cargar doc:', e);
@@ -247,13 +232,170 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
       [field.name]: value,
     }));
     setSaved(false);
+    setFieldErrors((prev) => ({
+      ...prev,
+      [field.name]: undefined,
+    }));
   };
+
+  // -------------------- Validaciones y guardado --------------------
 
   const handleSave = async () => {
     if (!currentSchema) return;
     setSaving(true);
     setError(null);
     setSaved(false);
+
+    const newErrors: FieldErrors = {};
+    const jsonParsed: Record<string, any> = {};
+
+    const setErr = (name: string, msg: string) => {
+      if (!newErrors[name]) newErrors[name] = msg;
+    };
+
+    for (const field of currentSchema.fields) {
+      const { name, type, required } = field;
+      const v = data[name];
+
+      // número: min/max desde el schema si existen
+      const min = (field as any).min as number | undefined;
+      const max = (field as any).max as number | undefined;
+
+      switch (type) {
+        case 'string':
+        case 'text': {
+          const s =
+            typeof v === 'string'
+              ? v
+              : v == null
+              ? ''
+              : String(v);
+          if (required && s.trim() === '') {
+            setErr(name, 'Campo requerido.');
+          }
+
+          const pattern = (field as any).pattern as string | undefined;
+          if (pattern && s.trim() !== '') {
+            try {
+              const re = new RegExp(pattern);
+              if (!re.test(s)) {
+                setErr(name, 'Formato inválido.');
+              }
+            } catch {
+              // regex mal formado → se ignora
+            }
+          }
+          break;
+        }
+
+        case 'date': {
+          const s =
+            typeof v === 'string'
+              ? v
+              : v == null
+              ? ''
+              : String(v);
+          if (required && s.trim() === '') {
+            setErr(name, 'Campo requerido.');
+          }
+          break;
+        }
+
+        case 'number': {
+          const raw = v;
+          const num =
+            typeof raw === 'number'
+              ? raw
+              : raw === '' || raw == null
+              ? NaN
+              : Number(raw);
+
+          if (required && (isNaN(num) || raw === '' || raw == null)) {
+            setErr(name, 'Campo numérico requerido.');
+            break;
+          }
+
+          if (!isNaN(num)) {
+            if (min != null && num < min) {
+              setErr(name, `Debe ser ≥ ${min}.`);
+            }
+            if (max != null && num > max) {
+              setErr(name, `Debe ser ≤ ${max}.`);
+            }
+          }
+          break;
+        }
+
+        case 'boolean': {
+          // false es válido; solo invalidamos null/undefined si es requerido
+          if (required && v === undefined) {
+            setErr(name, 'Campo requerido.');
+          }
+          break;
+        }
+
+        case 'select': {
+          const s =
+            typeof v === 'string'
+              ? v
+              : v == null
+              ? ''
+              : String(v);
+          if (required && s.trim() === '') {
+            setErr(name, 'Selecciona un valor.');
+          }
+          break;
+        }
+
+        case 'multiselect': {
+          const arr: any[] = Array.isArray(v)
+            ? v
+            : v == null
+            ? []
+            : [v];
+          if (required && arr.length === 0) {
+            setErr(name, 'Selecciona al menos un valor.');
+          }
+          break;
+        }
+
+        case 'object':
+        case 'array': {
+          const txt =
+            typeof v === 'string'
+              ? v
+              : v == null
+              ? ''
+              : String(v);
+
+          if (required && txt.trim() === '') {
+            setErr(name, 'Campo requerido.');
+            break;
+          }
+
+          if (txt.trim() !== '') {
+            try {
+              jsonParsed[name] = JSON.parse(txt);
+            } catch {
+              setErr(name, 'JSON inválido.');
+            }
+          } else {
+            jsonParsed[name] = type === 'array' ? [] : {};
+          }
+          break;
+        }
+
+        default:
+          break;
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
+      setError('validation');
+      setSaving(false);
+      return;
+    }
 
     try {
       const ref = doc(
@@ -265,11 +407,20 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
       const out: PanelData = {
         ...data,
         _updatedAt: Date.now(),
-        _updatedByRole: panelRole,
       };
+
+      // Sustituimos los string JSON por objetos reales
+      for (const field of currentSchema.fields) {
+        if (field.type === 'object' || field.type === 'array') {
+          if (field.name in jsonParsed) {
+            out[field.name] = jsonParsed[field.name];
+          }
+        }
+      }
 
       await setDoc(ref, out, { merge: true });
       setSaved(true);
+      setError(null);
     } catch (e) {
       console.error('[AdminPanel] error al guardar:', e);
       setError('save');
@@ -282,13 +433,13 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
 
   const renderFieldInput = (field: PanelField) => {
     const value = data[field.name];
-
     const widget: PanelFieldWidget | undefined = field.widget;
     const type: PanelFieldType = field.type;
 
     // STRING / TEXT
     if (type === 'string' || type === 'text') {
-      // widget textarea / markdown / code / json => textarea
+      const pattern = (field as any).pattern as string | undefined;
+
       if (
         widget === 'textarea' ||
         widget === 'markdown' ||
@@ -310,7 +461,6 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
         );
       }
 
-      // widget color
       if (widget === 'color') {
         const strVal =
           typeof value === 'string'
@@ -327,7 +477,6 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
         );
       }
 
-      // widget image / file → por ahora URL simple
       if (widget === 'image' || widget === 'file') {
         const strVal =
           typeof value === 'string'
@@ -338,14 +487,13 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
         return (
           <INPUT
             type="text"
-            placeholder={widget === 'image' ? 'URL de imagen' : 'URL de archivo'}
+            placeholder={'URL'}
             value={strVal}
             onChange={(e) => handleFieldChange(field, e.target.value)}
           />
         );
       }
 
-      // default → input de texto
       const strVal =
         typeof value === 'string'
           ? value
@@ -356,6 +504,7 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
         <INPUT
           type="text"
           value={strVal}
+          pattern={pattern}
           onChange={(e) => handleFieldChange(field, e.target.value)}
         />
       );
@@ -363,19 +512,43 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
 
     // NUMBER
     if (type === 'number') {
+      const min = (field as any).min as number | undefined;
+      const max = (field as any).max as number | undefined;
+      const step = (field as any).step as number | undefined;
+
+      const placeholder =
+        (field as any).placeholder ??
+        (min != null && max != null ? `${min} – ${max}` : '');
+
       const numVal =
-        typeof value === 'number'
-          ? value
-          : value == null
-          ? ''
-          : Number(value) || '';
+        typeof value === 'number' || typeof value === 'string' ? value : '';
+
       return (
         <INPUT
           type="number"
           value={numVal}
+          min={min}
+          max={max}
+          step={step}
+          placeholder={placeholder}
           onChange={(e) => {
-            const v = e.target.value;
-            handleFieldChange(field, v === '' ? undefined : Number(v));
+            // guardamos tal cual lo que escribe
+            handleFieldChange(field, e.target.value);
+          }}
+          onBlur={(e) => {
+            const raw = e.target.value.trim();
+            if (!raw) {
+              handleFieldChange(field, '');
+              return;
+            }
+            let num = Number(raw);
+            if (isNaN(num)) {
+              handleFieldChange(field, '');
+              return;
+            }
+            if (min != null && num < min) num = min;
+            if (max != null && num > max) num = max;
+            handleFieldChange(field, num);
           }}
         />
       );
@@ -417,13 +590,11 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
 
     // SELECT / MULTISELECT
     if (type === 'select' || type === 'multiselect') {
-      // Solo los campos escalares pueden tener options
       const opts: PanelFieldOption[] =
         isScalarField(field) && Array.isArray(field.options)
           ? field.options
           : [];
 
-      // MULTISELECT
       if (type === 'multiselect' || widget === 'multiselect') {
         const arrVal: string[] = Array.isArray(value)
           ? value
@@ -451,7 +622,6 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
         );
       }
 
-      // RADIO
       if (widget === 'radio') {
         const curVal = value == null ? '' : String(value);
         return (
@@ -459,7 +629,7 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
             {opts.map((opt: PanelFieldOption) => (
               <label
                 key={opt.value}
-                className="flex items-center gap-1 text-sm"
+                className="flex.items-center gap-1 text-sm"
               >
                 <input
                   type="radio"
@@ -474,7 +644,6 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
         );
       }
 
-      // SELECT normal
       const curVal = value == null ? '' : String(value);
       return (
         <SELECT
@@ -491,39 +660,21 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
       );
     }
 
-    // OBJECT / ARRAY → JSON plano por ahora
+    // OBJECT / ARRAY → string JSON plano (sin parse en cada tecla)
     if (type === 'object' || type === 'array') {
-      let jsonValue = '';
-      try {
-        jsonValue = JSON.stringify(
-          value ?? (type === 'array' ? [] : {}),
-          null,
-          2,
-        );
-      } catch {
-        jsonValue = '';
-      }
+      const txt =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? ''
+          : String(value);
+
       return (
         <textarea
           className="w-full min-h-[120px] text-xs font-mono bg-black/60 text-white px-2 py-1 rounded"
-          value={jsonValue}
-          onChange={(e) => {
-            const txt = e.target.value;
-            try {
-              const parsed = txt
-                ? JSON.parse(txt)
-                : type === 'array'
-                ? []
-                : {};
-              handleFieldChange(field, parsed);
-            } catch (err) {
-              console.error(
-                `[AdminPanel] JSON inválido en campo ${field.name}:`,
-                err,
-              );
-              // si el JSON es inválido, no actualizamos el estado
-            }
-          }}
+          value={txt}
+          onChange={(e) => handleFieldChange(field, e.target.value)}
+          placeholder={type === 'array' ? '[ ]' : '{ }'}
         />
       );
     }
@@ -538,22 +689,29 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
     );
   };
 
-  // -------------------- Render principal --------------------
+  // Agrupar campos por groupKey solo para UI
+  const groupedFields: [string, PanelField[]][] = useMemo(() => {
+    if (!currentSchema) return [];
+    const map = new Map<string, PanelField[]>();
 
-  if (roleLoading) {
-    return (
-      <DIV className="p-4">
-        <P className="text-sm opacity-70">Cargando permisos…</P>
-      </DIV>
-    );
-  }
+    for (const f of currentSchema.fields) {
+      const key =
+        f.groupKey && f.groupKey.trim().length > 0 ? f.groupKey : 'General';
+      const arr = map.get(key) ?? [];
+      arr.push(f);
+      map.set(key, arr);
+    }
+
+    return Array.from(map.entries());
+  }, [currentSchema]);
+
+  // -------------------- Render principal --------------------
 
   if (!availableSchemas.length) {
     return (
       <DIV className="p-4">
         <P className="text-sm">
-          No hay paneles disponibles para tu rol actual (
-          <SPAN className="font-mono">{panelRole}</SPAN>).
+          No hay esquemas de panel registrados en el core.
         </P>
       </DIV>
     );
@@ -586,6 +744,7 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
               setData({});
               setError(null);
               setSaved(false);
+              setFieldErrors({});
             }}
           >
             <option value="">— Selecciona un panel —</option>
@@ -599,12 +758,6 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
         </DIV>
 
         <DIV className="text-xs opacity-70">
-          <P>
-            Rol actual:{' '}
-            <SPAN className="font-mono">
-              {panelRoleOverride ?? panelRole}
-            </SPAN>
-          </P>
           {currentSchema && (
             <P>
               FS:{' '}
@@ -621,6 +774,8 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
         <DIV className="border border-red-700 bg-red-950/40 text-red-200 text-xs px-3 py-2 rounded">
           {error === 'load' && 'Error al cargar los datos desde Firestore.'}
           {error === 'save' && 'Error al guardar los datos en Firestore.'}
+          {error === 'validation' &&
+            'Hay errores en el formulario. Revisa los campos marcados.'}
         </DIV>
       )}
 
@@ -640,26 +795,77 @@ export function AdminPanel({ locale, panelRoleOverride }: AdminPanelProps) {
       {currentSchema && !loadingDoc && (
         <DIV className="border border-white/10 rounded-lg p-4 flex flex-col gap-4 bg-black/40">
           <SPAN className="font-semibold text-sm uppercase tracking-wide">
-            Campos ({currentSchema.id})
+            ({currentSchema.id})
           </SPAN>
 
-          <DIV className="grid gap-4 md:grid-cols-2">
-            {currentSchema.fields.map((field) => (
-              <DIV
-                key={field.name}
-                className="flex flex-col gap-1 bg-black/30 border border-white/10 rounded-md p-3"
-              >
-                <LABEL className="text-xs font-semibold flex justify-between">
-                  <span>{getFieldLabel(field)}</span>
-                  <span className="opacity-60 font-mono text-[10px]">
-                    {field.type}
-                    {field.required ? ' · req' : ''}
-                    {field.translatable ? ' · i18n' : ''}
-                  </span>
-                </LABEL>
-                {renderFieldInput(field)}
-              </DIV>
-            ))}
+          {/* Grupos por groupKey con acordeón */}
+          <DIV className="flex flex-col gap-4 mt-2">
+            {groupedFields.map(([groupKey, fields]) => {
+              const isOpen = openGroups[groupKey] ?? true;
+              return (
+                <DIV
+                  key={groupKey}
+                  className="border border-white/10 rounded-md bg-black/30"
+                >
+                  <button
+                    type="button"
+                    className="w-full flex justify-between items-center px-3 py-2 text-xs font-semibold uppercase tracking-wide"
+                    onClick={() =>
+                      setOpenGroups((prev) => ({
+                        ...prev,
+                        [groupKey]: !isOpen,
+                      }))
+                    }
+                  >
+                    <SPAN className="opacity-80">{groupKey}</SPAN>
+                    <SPAN className="text-[10px] opacity-60">
+                      {isOpen ? '▲' : '▼'}
+                    </SPAN>
+                  </button>
+
+                  {isOpen && (
+                    <DIV className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 px-3 pb-3">
+                      {fields.map((field) => {
+                        const err = fieldErrors[field.name];
+                        const hasErr = !!err;
+                        return (
+                          <DIV
+                            key={field.name}
+                            className={`flex flex-col gap-1 rounded-md p-3 bg-black/40 border ${
+                              hasErr
+                                ? 'border-red-500'
+                                : 'border-white/10'
+                            }`}
+                          >
+                            <LABEL className="text-xs font-semibold flex justify-between">
+                              <span className="flex items-center gap-1">
+                                <FieldTitle field={field} />
+                                {field.required && (
+                                  <SPAN className="text-red-400">*</SPAN>
+                                )}
+                              </span>
+                              <span className="opacity-60 font-mono text-[10px]">
+                                {field.type}
+                              </span>
+                            </LABEL>
+
+                            <FieldHint field={field} />
+
+                            {renderFieldInput(field)}
+
+                            {hasErr && (
+                              <P className="text-[11px] text-red-400 mt-1">
+                                {err}
+                              </P>
+                            )}
+                          </DIV>
+                        );
+                      })}
+                    </DIV>
+                  )}
+                </DIV>
+              );
+            })}
           </DIV>
 
           <DIV className="flex items-center justify-between mt-2">

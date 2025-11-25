@@ -44,6 +44,10 @@ function isPanelRole(v: string): v is PanelRole {
   return (PANEL_ROLES as string[]).includes(v);
 }
 
+const stopClickPropagation: React.MouseEventHandler<HTMLElement> = (e) => {
+  e.stopPropagation();
+};
+
 /**
  * Normaliza un PanelSchema para que el FUI sea consistente,
  * pero SIN tocar nada que ya exista (idempotente para esquemas ya normalizados).
@@ -247,6 +251,585 @@ type GroupBucket = {
   indexes: number[];
 };
 
+type FieldEditorProps = {
+  field: PanelField;
+  onChange: (field: PanelField) => void;
+  onDelete?: () => void;
+  level?: number;
+  defaultOrder?: number;
+  globalSubschemaToggle?: 'expand' | 'collapse' | null;
+};
+
+function FieldEditor({
+  field,
+  onChange,
+  onDelete,
+  level = 0,
+  defaultOrder = 1,
+  globalSubschemaToggle = null,
+}: FieldEditorProps) {
+  const [openSubschema, setOpenSubschema] = useState(true);
+  
+  useEffect(() => {
+    if (!globalSubschemaToggle) return;
+    setOpenSubschema(globalSubschemaToggle === 'expand');
+  }, [globalSubschemaToggle]);
+
+  const isTextLike = field.type === 'string' || field.type === 'text';
+  const isNumber = field.type === 'number';
+  const indentClass =
+    level > 0 ? 'ml-4 border-l border-white/15' : '';
+
+  const fullName = field.name || '';
+  const pathSegments = fullName.split('.').filter(Boolean);
+  const shortName = pathSegments[pathSegments.length - 1] || '';
+
+  const orderValue = (field as any).order ?? defaultOrder;
+
+  const patchField = (patch: Partial<PanelField>) => {
+    onChange({ ...(field as any), ...(patch as any) });
+  };
+
+  const handleChangeFieldNameShort = (shortName: string) => {
+    const trimmed = shortName.trim() || 'field';
+
+    const rawName = field.name || '';
+    const segments = rawName.split('.').filter(Boolean);
+
+    let prefixSegments: string[] = [];
+    if (segments.length > 1) {
+      prefixSegments = segments.slice(0, -1);
+    }
+
+    const newFullName = prefixSegments.length
+      ? `${prefixSegments.join('.')}.${trimmed}`
+      : trimmed;
+
+    patchField({ name: newFullName });
+  };
+
+  const handleTypeChange = (newType: PanelFieldType) => {
+    const clone: any = { ...(field as any), type: newType };
+
+    // Si ya no es array, limpiamos element
+    if (newType !== 'array') {
+      delete clone.element;
+    }
+    // Si ya no es object, limpiamos fields
+    if (newType !== 'object') {
+      delete clone.fields;
+    }
+
+    onChange(clone as PanelField);
+  };
+
+  // Subcampos para OBJECT
+  const objectSubFields: PanelField[] =
+    field.type === 'object' && Array.isArray((field as any).fields)
+      ? ((field as any).fields as PanelField[])
+      : [];
+
+  const handleAddSubField = () => {
+    const index = objectSubFields.length + 1;
+    const newSub: PanelField = {
+      name: `field${index}`,
+      type: 'string',
+      required: false,
+      widget: 'input',
+    } as any;
+
+    patchField({
+      fields: [...objectSubFields, newSub] as any,
+    });
+  };
+
+  const handleUpdateSubField = (idx: number, sub: PanelField) => {
+    const next = [...objectSubFields];
+    next[idx] = sub;
+    patchField({ fields: next as any });
+  };
+
+  const handleDeleteSubField = (idx: number) => {
+    const next = [...objectSubFields];
+    next.splice(idx, 1);
+    patchField({ fields: next as any });
+  };
+
+  // Elemento para ARRAY
+  const elementField: PanelField | undefined =
+    field.type === 'array'
+      ? ((field as any).element as PanelField | undefined)
+      : undefined;
+
+  const handleCreateDefaultElement = () => {
+    const newEl: PanelField = {
+      name: 'item',
+      type: 'string',
+      required: false,
+      widget: 'input',
+    } as any;
+
+    patchField({ element: newEl } as any);
+  };
+
+  const handleUpdateElement = (el: PanelField) => {
+    patchField({ element: el } as any);
+  };
+
+  const handleDeleteElement = () => {
+    patchField({ element: undefined } as any);
+  };
+
+  return (
+    <DIV
+      className={`relative flex flex-col gap-2 border border-white/10 rounded-md p-3 bg-black/30 ${indentClass}`}
+    >
+      {/* Botón eliminar campo (si el padre lo permite) */}
+      {onDelete && (
+        <DIV className="absolute top-2 right-2">
+          <BUTTON
+            type="button"
+            kind="button"
+            onClick={onDelete}
+            aria-label="Eliminar campo"
+          >
+            🗑
+          </BUTTON>
+        </DIV>
+      )}
+
+      {/* Fila principal */}
+      <DIV className="grid md:grid-cols-12 gap-2 items-end">
+        {/* Nombre interno (short) */}
+        <DIV className="flex flex-col gap-1 md:col-span-3">
+          <LABEL className="text-xs font-semibold">
+            <FM
+              id="admin.FuiPanel.field.internalName"
+              defaultMessage="Titulo (Title)"
+            />
+          </LABEL>
+          <INPUT
+            type="text"
+            value={shortName}
+            onChange={(e) =>
+              handleChangeFieldNameShort(e.target.value)
+            }
+          />
+        </DIV>
+
+        {/* Tipo */}
+        <DIV className="flex flex-col gap-1 md:col-span-2">
+          <LABEL className="text-xs font-semibold">
+            <FM
+              id="admin.FuiPanel.field.type"
+              defaultMessage="Tipo (type)"
+            />
+          </LABEL>
+          <SELECT
+            value={field.type}
+            onChange={(e) =>
+              handleTypeChange(e.target.value as PanelFieldType)
+            }
+          >
+            <option value="string">string</option>
+            <option value="text">text</option>
+            <option value="number">number</option>
+            <option value="boolean">boolean</option>
+            <option value="date">date</option>
+            <option value="select">select</option>
+            <option value="multiselect">multiselect</option>
+            <option value="object">object</option>
+            <option value="array">array</option>
+          </SELECT>
+        </DIV>
+
+        {/* Orden */}
+        <DIV className="flex flex-col gap-1 md:col-span-1">
+          <LABEL className="text-xs font-semibold">
+            <FM
+              id="admin.FuiPanel.field.order"
+              defaultMessage="Orden"
+            />
+          </LABEL>
+          <INPUT
+            type="number"
+            value={orderValue}
+            onChange={(e) =>
+              patchField({
+                order:
+                  e.target.value === ''
+                    ? undefined
+                    : Number(e.target.value),
+              } as any)
+            }
+          />
+        </DIV>
+
+        {/* Flags */}
+        <DIV className="flex flex-col gap-1 md:col-span-2">
+          <LABEL className="text-xs font-semibold">
+            <FM
+              id="admin.FuiPanel.field.flags"
+              defaultMessage="Flags"
+            />
+          </LABEL>
+          <DIV className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                checked={field.required === true}
+                onChange={(e) =>
+                  patchField({ required: e.target.checked })
+                }
+              />
+              <span>
+                <FM
+                  id="admin.FuiPanel.field.flags.required"
+                  defaultMessage="Required"
+                />
+              </span>
+            </label>
+            <label className="flex items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                checked={field.translatable === true}
+                onChange={(e) =>
+                  patchField({ translatable: e.target.checked })
+                }
+              />
+              <span>
+                <FM
+                  id="admin.FuiPanel.field.flags.translatable"
+                  defaultMessage="Translatable (valor por idioma)"
+                />
+              </span>
+            </label>
+          </DIV>
+        </DIV>
+
+        {/* Widget sugerido */}
+        <DIV className="flex flex-col gap-1 md:col-span-2">
+          <LABEL className="text-xs font-semibold">
+            <FM
+              id="admin.FuiPanel.field.widget"
+              defaultMessage="Widget sugerido"
+            />
+          </LABEL>
+          <SELECT
+            value={field.widget || ''}
+            onChange={(e) =>
+              patchField({
+                widget: e.target.value || undefined,
+              })
+            }
+          >
+            <option value="">(auto por tipo)</option>
+            <option value="input">input</option>
+            <option value="textarea">textarea</option>
+            <option value="color">color</option>
+            <option value="image">image (URL)</option>
+            <option value="file">file</option>
+            <option value="select">select</option>
+            <option value="multiselect">multiselect</option>
+            <option value="radio">radio</option>
+            <option value="code">code</option>
+            <option value="json">json</option>
+          </SELECT>
+        </DIV>
+
+        {/* Min/Max number */}
+        {isNumber && (
+          <>
+            <DIV className="flex flex-col gap-1 md:col-span-1">
+              <LABEL className="text-xs font-semibold">
+                Min value (number)
+              </LABEL>
+              <INPUT
+                type="number"
+                value={(field as any).min ?? ''}
+                onChange={(e) =>
+                  patchField({
+                    min:
+                      e.target.value === ''
+                        ? undefined
+                        : Number(e.target.value),
+                  } as any)
+                }
+              />
+            </DIV>
+
+            <DIV className="flex flex-col gap-1 md:col-span-1">
+              <LABEL className="text-xs font-semibold">
+                Max value (number)
+              </LABEL>
+              <INPUT
+                type="number"
+                value={(field as any).max ?? ''}
+                onChange={(e) =>
+                  patchField({
+                    max:
+                      e.target.value === ''
+                        ? undefined
+                        : Number(e.target.value),
+                  } as any)
+                }
+              />
+            </DIV>
+
+            <DIV className="flex flex-col gap-1 md:col-span-1">
+              <LABEL className="text-xs font-semibold">
+                Step
+              </LABEL>
+              <INPUT
+                type="number"
+                value={(field as any).step ?? ''}
+                onChange={(e) =>
+                  patchField({
+                    step:
+                      e.target.value === ''
+                        ? undefined
+                        : Number(e.target.value),
+                  } as any)
+                }
+              />
+            </DIV>
+          </>
+        )}
+
+        {/* Min/Max texto */}
+        {isTextLike && (
+          <>
+            <DIV className="flex flex-col gap-1 md:col-span-1">
+              <LABEL className="text-xs font-semibold">
+                <FM
+                  id="admin.FuiPanel.field.minLength"
+                  defaultMessage="Min length (texto)"
+                />
+              </LABEL>
+              <INPUT
+                type="number"
+                value={(field as any).minLength ?? ''}
+                onChange={(e) =>
+                  patchField({
+                    minLength:
+                      e.target.value === ''
+                        ? undefined
+                        : Number(e.target.value),
+                  } as any)
+                }
+              />
+            </DIV>
+            <DIV className="flex flex-col gap-1 md:col-span-1">
+              <LABEL className="text-xs font-semibold">
+                <FM
+                  id="admin.FuiPanel.field.maxLength"
+                  defaultMessage="Max length (texto)"
+                />
+              </LABEL>
+              <INPUT
+                type="number"
+                value={(field as any).maxLength ?? ''}
+                onChange={(e) =>
+                  patchField({
+                    maxLength:
+                      e.target.value === ''
+                        ? undefined
+                        : Number(e.target.value),
+                  } as any)
+                }
+              />
+            </DIV>
+          </>
+        )}
+
+        {/* Regex / pattern */}
+        {isTextLike && (
+          <DIV className="flex flex-col gap-1 md:col-span-2">
+            <LABEL className="text-xs font-semibold">
+              Regex / pattern (opcional)
+            </LABEL>
+            <INPUT
+              type="text"
+              placeholder="^https?://.*$   ·   ^[^@]+@[^@]+\.[^@]+$"
+              value={(field as any).pattern ?? ''}
+              onChange={(e) =>
+                patchField({
+                  pattern: e.target.value || undefined,
+                } as any)
+              }
+            />
+          </DIV>
+        )}
+      </DIV>
+
+      {/* Opciones para selects/multiselect/radio */}
+      {(field.type === 'select' ||
+        field.type === 'multiselect' ||
+        field.widget === 'select' ||
+        field.widget === 'multiselect' ||
+        field.widget === 'radio') && (
+        <DIV className="flex flex-col gap-1">
+          <LABEL className="text-xs font-semibold">
+            <FM
+              id="admin.FuiPanel.field.options"
+              defaultMessage="Opciones (value:labelKey, una por línea)"
+            />
+          </LABEL>
+          <textarea
+            className="w-full min-h-[80px] text-xs font-mono bg-black/60 text-white px-2 py-1 rounded"
+            value={Array.isArray((field as any).options)
+              ? ((field as any).options as PanelFieldOption[])
+                  .map(
+                    (opt) =>
+                      `${opt.value}:${opt.labelKey || ''}`,
+                  )
+                  .join('\n')
+              : ''}
+            onChange={(e) => {
+              const lines = e.target.value
+                .split('\n')
+                .map((l) => l.trim())
+                .filter(Boolean);
+
+              const opts: PanelFieldOption[] = lines.map(
+                (line) => {
+                  const [v, label] = line.split(':');
+                  return {
+                    value: v.trim(),
+                    labelKey: label?.trim() || undefined,
+                  };
+                },
+              );
+
+              patchField({ options: opts as any } as any);
+            }}
+          />
+        </DIV>
+      )}
+
+      {/* SUBESQUEMA: OBJECT */}
+      {field.type === 'object' && (
+        <DIV className="mt-3 pl-3 border-l border-dashed border-white/20 flex flex-col gap-2">
+          {/* HEADER DEL SUBESQUEMA OBJECT */}
+          <DIV className="flex items-center justify-between gap-2">
+            <SPAN className="text-[11px] font-semibold uppercase opacity-70">
+              <FM
+                id="admin.FuiPanel.field.objectSubschema.title"
+                defaultMessage="Object subfields"
+              />
+            </SPAN>
+            <BUTTON
+              type="button"
+              kind="button"
+              onClick={() => setOpenSubschema((prev) => !prev)}
+            >
+              {openSubschema ? (
+                <FM
+                  id="admin.FuiPanel.field.subschema.collapse"
+                  defaultMessage="Collapse"
+                />
+              ) : (
+                <FM
+                  id="admin.FuiPanel.field.subschema.expand"
+                  defaultMessage="Expand"
+                />
+              )}
+            </BUTTON>
+          </DIV>
+
+          {/* CONTENIDO SOLO SI ESTÁ ABIERTO */}
+          {openSubschema && (
+            <>
+              <DIV className="flex gap-2">
+                <BUTTON
+                  type="button"
+                  kind="button"
+                  onClick={handleAddSubField}
+                >
+                  + Subcampo
+                </BUTTON>
+              </DIV>
+              <DIV className="flex flex-col gap-2 mt-1">
+                {objectSubFields.map((sub, subIdx) => (
+                  <FieldEditor
+                    key={subIdx}
+                    field={sub}
+                    onChange={(updated) =>
+                      handleUpdateSubField(subIdx, updated)
+                    }
+                    onDelete={() => handleDeleteSubField(subIdx)}
+                    level={level + 1}
+                    defaultOrder={subIdx + 1}
+                    globalSubschemaToggle={globalSubschemaToggle}
+                  />
+                ))}
+              </DIV>
+            </>
+          )}
+        </DIV>
+      )}
+
+      {/* SUBESQUEMA: ARRAY */}
+      {field.type === 'array' && (
+        <DIV className="mt-3 pl-3 border-l border-dashed border-white/20 flex flex-col gap-2">
+          {/* HEADER DEL SUBESQUEMA ARRAY */}
+          <DIV className="flex items-center justify-between gap-2">
+            <SPAN className="text-[11px] font-semibold uppercase opacity-70">
+              <FM
+                id="admin.FuiPanel.field.arraySubschema.title"
+                defaultMessage="Element definition (subschema)"
+              />
+            </SPAN>
+            <BUTTON
+              type="button"
+              kind="button"
+              onClick={() => setOpenSubschema((prev) => !prev)}
+            >
+              {openSubschema ? (
+                <FM
+                  id="admin.FuiPanel.field.subschema.collapse"
+                  defaultMessage="Collapse"
+                />
+              ) : (
+                <FM
+                  id="admin.FuiPanel.field.subschema.expand"
+                  defaultMessage="Expand"
+                />
+              )}
+            </BUTTON>
+          </DIV>
+
+          {openSubschema && (
+            <>
+              {!elementField && (
+                <BUTTON
+                  type="button"
+                  kind="button"
+                  onClick={handleCreateDefaultElement}
+                >
+                  + Definir elemento
+                </BUTTON>
+              )}
+              {elementField && (
+                <DIV className="flex flex-col gap-2 mt-1">
+                  <FieldEditor
+                    field={elementField}
+                    onChange={handleUpdateElement}
+                    onDelete={handleDeleteElement}
+                    level={level + 1}
+                    defaultOrder={1}
+                    globalSubschemaToggle={globalSubschemaToggle}
+                  />
+                </DIV>
+              )}
+            </>
+          )}
+        </DIV>
+      )}
+    </DIV>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -267,6 +850,13 @@ export function FuiPanel({ locale }: FuiPanelProps) {
 
   const [copiedI18n, setCopiedI18n] = useState(false);
   const [copiedSchema, setCopiedSchema] = useState(false);
+
+  const [subschemasExpanded, setSubschemasExpanded] = useState(true);
+  const [globalSubschemaToggle, setGlobalSubschemaToggle] =
+    useState<'expand' | 'collapse' | null>(null);
+
+  const [i18nSectionOpen, setI18nSectionOpen] = useState(true);
+  const [schemaSectionOpen, setSchemaSectionOpen] = useState(true);
 
   // ---- Cargar lista de schemas guardados en FactorySchemas ----
   useEffect(() => {
@@ -300,6 +890,8 @@ export function FuiPanel({ locale }: FuiPanelProps) {
     setCopiedI18n(false);
     setCopiedSchema(false);
     setOpenGroups({});
+    setI18nSectionOpen(false);
+    setSchemaSectionOpen(false);
 
     if (!id) {
       setSchema(null);
@@ -452,7 +1044,7 @@ export function FuiPanel({ locale }: FuiPanelProps) {
     } as any;
 
     // Nuevo campo al inicio
-    setSchema({ ...schema, fields: [newField, ...schema.fields] });
+    setSchema({ ...schema, fields: [...schema.fields, newField] });
     setCopiedI18n(false);
     setCopiedSchema(false);
   };
@@ -663,6 +1255,46 @@ export function FuiPanel({ locale }: FuiPanelProps) {
     }));
   };
 
+  function getAllGroupIds(panel: PanelSchema | null): string[] {
+    if (!panel) return [];
+    const ids = new Set<string>();
+
+    for (const field of panel.fields) {
+      const seg0 = field.name?.split('.').filter(Boolean)[0];
+      const bucketId = field.groupKey || seg0 || 'general';
+      ids.add(bucketId);
+    }
+    return Array.from(ids);
+  }
+
+  const allGroupsOpen = useMemo(() => {
+    if (!schema) return true;
+    const ids = getAllGroupIds(schema);
+    // Si no hay registro, asumimos abierto
+    return ids.every((id) => openGroups[id] ?? true);
+  }, [schema, openGroups]);
+
+  const handleToggleAllGroups = () => {
+    if (!schema) return;
+    const ids = getAllGroupIds(schema);
+
+    // ¿están todos abiertos ahora?
+    const currentlyAllOpen = ids.every((id) => openGroups[id] ?? true);
+    const next = !currentlyAllOpen; // si estaban todos abiertos → ahora todos cerrados, y viceversa
+
+    const map: Record<string, boolean> = {};
+    for (const id of ids) {
+      map[id] = next;
+    }
+    setOpenGroups(map);
+  };
+
+  const handleToggleAllSubschemas = () => {
+    const next = !subschemasExpanded;
+    setSubschemasExpanded(next);
+    setGlobalSubschemaToggle(next ? 'expand' : 'collapse');
+  };
+
   const handleCopyI18nIds = async () => {
     if (!i18nIdsText) return;
     try {
@@ -847,7 +1479,7 @@ export function FuiPanel({ locale }: FuiPanelProps) {
       )}
 
       {!schema && (
-        <DIV className="text-sm opacity-70">
+        <DIV className="text-sm.opacity-70">
           <FM
             id="admin.FuiPanel.emptyHint"
             defaultMessage="Elige un esquema guardado o un esquema base, o crea uno vacío para empezar."
@@ -930,25 +1562,25 @@ export function FuiPanel({ locale }: FuiPanelProps) {
 
             {/* isProvider + resumen técnico */}
             <DIV className="flex flex-col gap-1 mt-2">
-                <P className="text-[11px] opacity-60 mt-1">
-                  <SPAN className="font-mono">
-                    fsCollection: {schema.fsCollection || 'Providers'}
-                  </SPAN>{' '}
-                  ·{' '}
-                  <SPAN className="font-mono">
-                    fsDocId: {schema.fsDocId || schema.id || '—'}
-                  </SPAN>{' '}
-                  ·{' '}
-                  <SPAN className="font-mono">
-                    iconKey: {schema.iconKey || schema.id || '—'}
-                  </SPAN>{' '}
-                  ·{' '}
-                  <SPAN className="font-mono">
-                    labelKey:{' '}
-                    {schema.labelKey ||
-                      (schema.id ? `panels.${schema.id}.title` : '—')}
-                  </SPAN>
-                </P>
+              <P className="text-[11px] opacity-60 mt-1">
+                <SPAN className="font-mono">
+                  fsCollection: {schema.fsCollection || 'Providers'}
+                </SPAN>{' '}
+                ·{' '}
+                <SPAN className="font-mono">
+                  fsDocId: {schema.fsDocId || schema.id || '—'}
+                </SPAN>{' '}
+                ·{' '}
+                <SPAN className="font-mono">
+                  iconKey: {schema.iconKey || schema.id || '—'}
+                </SPAN>{' '}
+                ·{' '}
+                <SPAN className="font-mono">
+                  labelKey:{' '}
+                  {schema.labelKey ||
+                    (schema.id ? `panels.${schema.id}.title` : '—')}
+                </SPAN>
+              </P>
             </DIV>
           </DIV>
 
@@ -958,10 +1590,10 @@ export function FuiPanel({ locale }: FuiPanelProps) {
               <SPAN className="font-semibold text-sm uppercase tracking-wide">
                 <FM
                   id="admin.FuiPanel.section.fields"
-                  defaultMessage="Campos"
+                  defaultMessage="Esquema"
                 />
               </SPAN>
-              <DIV className="flex gap-2">
+              <DIV className="flex gap-2 flex-wrap">
                 <BUTTON
                   type="button"
                   kind="button"
@@ -982,429 +1614,242 @@ export function FuiPanel({ locale }: FuiPanelProps) {
                     defaultMessage="+ Grupo nuevo"
                   />
                 </BUTTON>
+
+                {/* NUEVO: expandir/colapsar todos */}
+                <BUTTON
+                  type="button"
+                  kind="button"
+                  onClick={handleToggleAllGroups}
+                >
+                  {allGroupsOpen ? (
+                    <FM
+                      id="admin.FuiPanel.button.collapseAllGroups"
+                      defaultMessage="Collapse all groups"
+                    />
+                  ) : (
+                    <FM
+                      id="admin.FuiPanel.button.expandAllGroups"
+                      defaultMessage="Expand all groups"
+                    />
+                  )}
+                </BUTTON>
+                <BUTTON
+                  type="button"
+                  kind="button"
+                  onClick={handleToggleAllSubschemas}
+                >
+                  {subschemasExpanded ? (
+                    <FM
+                      id="admin.FuiPanel.button.collapseAllSubschemas"
+                      defaultMessage="Collapse all sub-schemas"
+                    />
+                  ) : (
+                    <FM
+                      id="admin.FuiPanel.button.expandAllSubschemas"
+                      defaultMessage="Expand all sub-schemas"
+                    />
+                  )}
+                </BUTTON>
+              </DIV>
+            </DIV>
+            <DIV className="border border-white/10 rounded-lg p-4 flex flex-col gap-4 bg-black/40">
+              <DIV className="flex flex-col gap-3">
+                {groupedFields.map(({ id, label, indexes }) => {
+                  const isOpen = openGroups[id] ?? true;
+                  const groupLabel = label || id || 'Sin grupo';
+
+                  return (
+                    <DIV
+                      key={id}
+                      className="border border-white/15 rounded-md overflow-hidden bg-black/50"
+                    >
+                      {/* Header del acordeón (click = toggle) */}
+                      <DIV
+                        className="flex items-center justify-between px-3 py-2 bg-black/70 cursor-pointer select-none"
+                        onClick={() => toggleGroup(id)}
+                      >
+                        <DIV className="flex flex-col">
+                          <SPAN className="text-sm font-semibold">
+                            {(isOpen ? '▽ ' : '▷ ') + groupLabel}
+                          </SPAN>
+                          <SPAN className="text-[10px] opacity-60">
+                            <FM
+                              id="admin.FuiPanel.group.count"
+                              defaultMessage="{count, plural, one {# campo} other {# campos}}"
+                              values={{ count: indexes.length }}
+                            />
+                          </SPAN>
+                        </DIV>
+                        <DIV className="flex items-center gap-2">
+                          <BUTTON
+                            type="button"
+                            kind="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddField(id);
+                            }}
+                          >
+                            <FM
+                              id="admin.FuiPanel.button.addFieldGroup"
+                              defaultMessage="+ Campo"
+                            />
+                          </BUTTON>
+                        </DIV>
+                      </DIV>
+
+                      {/* Contenido */}
+                      {isOpen && (
+                        <DIV className="p-3 flex flex-col gap-3">
+                          {indexes.map((idx) => {
+                            const field = schema.fields[idx];
+
+                            return (
+                              <FieldEditor
+                                key={idx}
+                                field={field}
+                                onChange={(updated) => handleUpdateField(idx, updated)}
+                                onDelete={() => handleDeleteField(idx)}
+                                level={0}
+                                defaultOrder={idx + 1}
+                                globalSubschemaToggle={globalSubschemaToggle}
+                              />
+                            );
+                          })}
+                        </DIV>
+                      )}
+                    </DIV>
+                  );
+                })}
+              </DIV>
+            </DIV>
+          </DIV>
+
+          {/* IDS DE I18N (ACORDEÓN) */}
+          <DIV className="border border-white/10 rounded-lg bg-black/40 overflow-hidden">
+            {/* HEADER CLICKABLE */}
+            <DIV
+              className="flex items-center justify-between px-4 py-2 bg-black/60 cursor-pointer select-none"
+              onClick={() => setI18nSectionOpen((prev) => !prev)}
+            >
+              <DIV className="flex items-center gap-2">
+                <SPAN className="text-xs">
+                  {i18nSectionOpen ? '▽' : '▷'}
+                </SPAN>
+                <SPAN className="font-semibold text-sm uppercase tracking-wide">
+                  <FM
+                    id="admin.FuiPanel.section.i18nIds"
+                    defaultMessage="IDs de i18n detectados para este panel"
+                  />
+                </SPAN>
+              </DIV>
+
+              {/* Botón de copiar, sin disparar el toggle */}
+              <DIV
+                onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+                  e.stopPropagation();
+                }}
+              >
+                <BUTTON
+                  type="button"
+                  kind="button"
+                  onClick={handleCopyI18nIds}
+                  disabled={!i18nIdsText}
+                >
+                  {copiedI18n ? (
+                    <FM
+                      id="admin.FuiPanel.button.copiedI18n"
+                      defaultMessage="Copiado"
+                    />
+                  ) : (
+                    <FM
+                      id="admin.FuiPanel.button.copyI18nIds"
+                      defaultMessage="Copiar IDs i18n"
+                    />
+                  )}
+                </BUTTON>
               </DIV>
             </DIV>
 
-            <DIV className="flex flex-col gap-3">
-              {groupedFields.map(({ id, label, indexes }) => {
-                const isOpen = openGroups[id] ?? true;
-                const groupLabel = label || id || 'Sin grupo';
-
-                return (
-                  <DIV
-                    key={id}
-                    className="border border-white/15 rounded-md overflow-hidden bg-black/50"
-                  >
-                    {/* Header del acordeón (click = toggle) */}
-                    <DIV
-                      className="flex items-center justify-between px-3 py-2 bg-black/70 cursor-pointer select-none"
-                      onClick={() => toggleGroup(id)}
-                    >
-                      <DIV className="flex flex-col">
-                        <SPAN className="text-sm font-semibold">
-                          {(isOpen ? '▽ ' : '▷ ') + groupLabel}
-                        </SPAN>
-                        <SPAN className="text-[10px] opacity-60">
-                          <FM
-                            id="admin.FuiPanel.group.count"
-                            defaultMessage="{count, plural, one {# campo} other {# campos}}"
-                            values={{ count: indexes.length }}
-                          />
-                        </SPAN>
-                      </DIV>
-                      <DIV className="flex items-center gap-2">
-                        <BUTTON
-                          type="button"
-                          kind="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAddField(id);
-                          }}
-                        >
-                          <FM
-                            id="admin.FuiPanel.button.addFieldGroup"
-                            defaultMessage="+ Campo"
-                          />
-                        </BUTTON>
-                      </DIV>
-                    </DIV>
-
-                    {/* Contenido */}
-                    {isOpen && (
-                      <DIV className="p-3 flex flex-col gap-3">
-                        {indexes.map((idx) => {
-                          const field = schema.fields[idx];
-                          const fullName = field.name || '';
-                          const pathSegments = fullName
-                            .split('.')
-                            .filter(Boolean);
-                          const shortName =
-                            pathSegments[pathSegments.length - 1] || '';
-                          const isTextLike =
-                            field.type === 'string' || field.type === 'text';
-
-                          return (
-                            <DIV
-                              key={idx}
-                              className="relative flex flex-col gap-2 border border-white/10 rounded-md p-3 bg-black/30"
-                            >
-                              {/* Botón de eliminar */}
-                              <DIV className="absolute top-2 right-2">
-                                <BUTTON
-                                  type="button"
-                                  kind="button"
-                                  onClick={() => handleDeleteField(idx)}
-                                  aria-label="Eliminar campo"
-                                >
-                                  🗑
-                                </BUTTON>
-                              </DIV>
-
-                              {/* Fila principal */}
-                              <DIV className="grid md:grid-cols-12 gap-2 items-end">
-                                {/* Nombre interno */}
-                                <DIV className="flex flex-col gap-1 md:col-span-3">
-                                  <LABEL className="text-xs font-semibold">
-                                    <FM
-                                      id="admin.FuiPanel.field.internalName"
-                                      defaultMessage="Titulo (Title)"
-                                    />
-                                  </LABEL>
-                                  <INPUT
-                                    type="text"
-                                    value={shortName}
-                                    onChange={(e) =>
-                                      handleChangeFieldNameShort(
-                                        idx,
-                                        e.target.value,
-                                      )
-                                    }
-                                  />
-                                </DIV>
-
-                                {/* Tipo */}
-                                <DIV className="flex flex-col gap-1 md:col-span-2">
-                                  <LABEL className="text-xs font-semibold">
-                                    <FM
-                                      id="admin.FuiPanel.field.type"
-                                      defaultMessage="Tipo (type)"
-                                    />
-                                  </LABEL>
-                                  <SELECT
-                                    value={field.type}
-                                    onChange={(e) =>
-                                      handleUpdateField(idx, {
-                                        type: e.target
-                                          .value as PanelFieldType,
-                                      })
-                                    }
-                                  >
-                                    <option value="string">string</option>
-                                    <option value="text">text</option>
-                                    <option value="number">number</option>
-                                    <option value="boolean">boolean</option>
-                                    <option value="date">date</option>
-                                    <option value="select">select</option>
-                                    <option value="multiselect">
-                                      multiselect
-                                    </option>
-                                    <option value="object">object</option>
-                                    <option value="array">array</option>
-                                  </SELECT>
-                                </DIV>
-
-                                {/* Orden */}
-                                <DIV className="flex flex-col gap-1 md:col-span-1">
-                                  <LABEL className="text-xs font-semibold">
-                                    <FM
-                                      id="admin.FuiPanel.field.order"
-                                      defaultMessage="Orden"
-                                    />
-                                  </LABEL>
-                                  <INPUT
-                                    type="number"
-                                    value={(field as any).order ?? idx + 1}
-                                    onChange={(e) =>
-                                      handleUpdateField(idx, {
-                                        order:
-                                          e.target.value === ''
-                                            ? undefined
-                                            : Number(e.target.value),
-                                      } as any)
-                                    }
-                                  />
-                                </DIV>
-
-                                {/* Flags */}
-                                <DIV className="flex flex-col gap-1 md:col-span-2">
-                                  <LABEL className="text-xs font-semibold">
-                                    <FM
-                                      id="admin.FuiPanel.field.flags"
-                                      defaultMessage="Flags"
-                                    />
-                                  </LABEL>
-                                  <DIV className="flex flex-wrap items-center gap-3">
-                                    <label className="flex items-center gap-1 text-xs">
-                                      <input
-                                        type="checkbox"
-                                        checked={field.required === true}
-                                        onChange={(e) =>
-                                          handleUpdateField(idx, {
-                                            required: e.target.checked,
-                                          })
-                                        }
-                                      />
-                                      <span>
-                                        <FM
-                                          id="admin.FuiPanel.field.flags.required"
-                                          defaultMessage="Required"
-                                        />
-                                      </span>
-                                    </label>
-                                    <label className="flex items-center gap-1 text-xs">
-                                      <input
-                                        type="checkbox"
-                                        checked={field.translatable === true}
-                                        onChange={(e) =>
-                                          handleUpdateField(idx, {
-                                            translatable: e.target.checked,
-                                          })
-                                        }
-                                      />
-                                      <span>
-                                        <FM
-                                          id="admin.FuiPanel.field.flags.translatable"
-                                          defaultMessage="Translatable (valor por idioma)"
-                                        />
-                                      </span>
-                                    </label>
-                                  </DIV>
-                                </DIV>
-
-                                {/* Widget sugerido */}
-                                <DIV className="flex flex-col gap-1 md:col-span-2">
-                                  <LABEL className="text-xs font-semibold">
-                                    <FM
-                                      id="admin.FuiPanel.field.widget"
-                                      defaultMessage="Widget sugerido"
-                                    />
-                                  </LABEL>
-                                  <SELECT
-                                    value={field.widget || ''}
-                                    onChange={(e) =>
-                                      handleUpdateField(idx, {
-                                        widget: e.target.value || undefined,
-                                      })
-                                    }
-                                  >
-                                    <option value="">
-                                      (auto por tipo)
-                                    </option>
-                                    <option value="input">input</option>
-                                    <option value="textarea">textarea</option>
-                                    <option value="color">color</option>
-                                    <option value="image">image (URL)</option>
-                                    <option value="file">file</option>
-                                    <option value="select">select</option>
-                                    <option value="multiselect">
-                                      multiselect
-                                    </option>
-                                    <option value="radio">radio</option>
-                                    <option value="code">code</option>
-                                    <option value="json">json</option>
-                                  </SELECT>
-                                </DIV>
-
-                                {/* Min / Max para texto */}
-                                {isTextLike && (
-                                  <>
-                                    <DIV className="flex flex-col gap-1 md:col-span-1">
-                                      <LABEL className="text-xs font-semibold">
-                                        <FM
-                                          id="admin.FuiPanel.field.minLength"
-                                          defaultMessage="Min length (texto)"
-                                        />
-                                      </LABEL>
-                                      <INPUT
-                                        type="number"
-                                        value={(field as any).minLength ?? ''}
-                                        onChange={(e) =>
-                                          handleUpdateField(idx, {
-                                            minLength:
-                                              e.target.value === ''
-                                                ? undefined
-                                                : Number(e.target.value),
-                                          } as any)
-                                        }
-                                      />
-                                    </DIV>
-                                    <DIV className="flex flex-col gap-1 md:col-span-1">
-                                      <LABEL className="text-xs font-semibold">
-                                        <FM
-                                          id="admin.FuiPanel.field.maxLength"
-                                          defaultMessage="Max length (texto)"
-                                        />
-                                      </LABEL>
-                                      <INPUT
-                                        type="number"
-                                        value={(field as any).maxLength ?? ''}
-                                        onChange={(e) =>
-                                          handleUpdateField(idx, {
-                                            maxLength:
-                                              e.target.value === ''
-                                                ? undefined
-                                                : Number(e.target.value),
-                                          } as any)
-                                        }
-                                      />
-                                    </DIV>
-                                  </>
-                                )}
-                              </DIV>
-
-                              {/* Opciones para selects/multiselect/radio */}
-                              {(field.type === 'select' ||
-                                field.type === 'multiselect' ||
-                                field.widget === 'select' ||
-                                field.widget === 'multiselect' ||
-                                field.widget === 'radio') && (
-                                <DIV className="flex flex-col gap-1">
-                                  <LABEL className="text-xs font-semibold">
-                                    <FM
-                                      id="admin.FuiPanel.field.options"
-                                      defaultMessage="Opciones (value:labelKey, una por línea)"
-                                    />
-                                  </LABEL>
-                                  <textarea
-                                    className="w-full min-h-[80px] text-xs font-mono bg-black/60 text-white px-2 py-1 rounded"
-                                    value={Array.isArray(
-                                      (field as any).options,
-                                    )
-                                      ? ((field as any)
-                                          .options as PanelFieldOption[])
-                                          .map(
-                                            (opt) =>
-                                              `${opt.value}:${
-                                                opt.labelKey || ''
-                                              }`,
-                                          )
-                                          .join('\n')
-                                      : ''}
-                                    onChange={(e) => {
-                                      const lines = e.target.value
-                                        .split('\n')
-                                        .map((l) => l.trim())
-                                        .filter(Boolean);
-
-                                      const opts: PanelFieldOption[] =
-                                        lines.map((line) => {
-                                          const [v, label] =
-                                            line.split(':');
-                                          return {
-                                            value: v.trim(),
-                                            labelKey:
-                                              label?.trim() || undefined,
-                                          };
-                                        });
-
-                                      handleUpdateField(idx, {
-                                        options: opts as any,
-                                      } as any);
-                                    }}
-                                  />
-                                </DIV>
-                              )}
-                            </DIV>
-                          );
-                        })}
-                      </DIV>
-                    )}
-                  </DIV>
-                );
-              })}
-            </DIV>
+            {/* CONTENIDO DEL ACORDEÓN */}
+            {i18nSectionOpen && (
+              <DIV className="p-4 flex flex-col gap-2">
+                <P className="text-xs opacity-70">
+                  <FM
+                    id="admin.FuiPanel.i18n.description"
+                    defaultMessage="Copia este JSON a tus archivos de traducción. Incluye el título del panel, campos y opciones de selects/multiselect."
+                  />
+                </P>
+                <textarea
+                  readOnly
+                  className="w-full min-h-[220px] text-xs font-mono bg-black/70 text-white px-3 py-2 rounded"
+                  value={i18nIdsText}
+                />
+              </DIV>
+            )}
           </DIV>
 
-          {/* IDS DE I18N */}
-          <DIV className="border border-white/10 rounded-lg p-4 flex flex-col gap-2 bg-black/40">
-            <DIV className="flex items-center justify-between">
-              <SPAN className="font-semibold text-sm uppercase tracking-wide">
-                <FM
-                  id="admin.FuiPanel.section.i18nIds"
-                  defaultMessage="IDs de i18n detectados para este panel"
-                />
-              </SPAN>
-              <BUTTON
-                type="button"
-                kind="button"
-                onClick={handleCopyI18nIds}
-                disabled={!i18nIdsText}
-              >
-                {copiedI18n ? (
+          {/* ESQUEMA PARA PUI / CORE (ACORDEÓN) */}
+          <DIV className="border border-white/10 rounded-lg bg-black/40 overflow-hidden">
+            {/* HEADER CLICKABLE */}
+            <DIV
+              className="flex items-center justify-between px-4 py-2 bg-black/60 cursor-pointer select-none"
+              onClick={() => setSchemaSectionOpen((prev) => !prev)}
+            >
+              <DIV className="flex items-center gap-2">
+                <SPAN className="text-xs">
+                  {schemaSectionOpen ? '▽' : '▷'}
+                </SPAN>
+                <SPAN className="font-semibold text-sm uppercase tracking-wide">
                   <FM
-                    id="admin.FuiPanel.button.copiedI18n"
-                    defaultMessage="Copiado"
+                    id="admin.FuiPanel.section.schemaForPui"
+                    defaultMessage="Esquema listo para PUI (guardar en el core)"
                   />
-                ) : (
-                  <FM
-                    id="admin.FuiPanel.button.copyI18nIds"
-                    defaultMessage="Copiar IDs i18n"
-                  />
-                )}
-              </BUTTON>
-            </DIV>
-            <P className="text-xs opacity-70">
-              <FM
-                id="admin.FuiPanel.i18n.description"
-                defaultMessage="Copia este JSON a tus archivos de traducción. Incluye el título del panel, campos y opciones de selects/multiselect."
-              />
-            </P>
-            <textarea
-              readOnly
-              className="w-full min-h-[220px] text-xs font-mono bg-black/70 text-white px-3 py-2 rounded"
-              value={i18nIdsText}
-            />
-          </DIV>
+                </SPAN>
+              </DIV>
 
-          {/* ESQUEMA PARA PUI / CORE */}
-          <DIV className="border border-white/10 rounded-lg p-4 flex flex-col gap-2 bg-black/40">
-            <DIV className="flex items-center justify-between">
-              <SPAN className="font-semibold text-sm uppercase tracking-wide">
-                <FM
-                  id="admin.FuiPanel.section.schemaForPui"
-                  defaultMessage="Esquema listo para PUI (guardar en el core)"
-                />
-              </SPAN>
-              <BUTTON
-                type="button"
-                kind="button"
-                onClick={handleCopySchemaCode}
-                disabled={!schemaCodeText}
+              {/* Botón copiar schema sin cerrar acordeón */}
+              <DIV
+                onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+                  e.stopPropagation();
+                }}
               >
-                {copiedSchema ? (
-                  <FM
-                    id="admin.FuiPanel.button.copiedSchema"
-                    defaultMessage="Copiado"
-                  />
-                ) : (
-                  <FM
-                    id="admin.FuiPanel.button.copySchema"
-                    defaultMessage="Copiar esquema"
-                  />
-                )}
-              </BUTTON>
+                <BUTTON
+                  type="button"
+                  kind="button"
+                  onClick={handleCopySchemaCode}
+                  disabled={!schemaCodeText}
+                >
+                  {copiedSchema ? (
+                    <FM
+                      id="admin.FuiPanel.button.copiedSchema"
+                      defaultMessage="Copiado"
+                    />
+                  ) : (
+                    <FM
+                      id="admin.FuiPanel.button.copySchema"
+                      defaultMessage="Copiar esquema"
+                    />
+                  )}
+                </BUTTON>
+              </DIV>
             </DIV>
-            <P className="text-xs opacity-70">
-              <FM
-                id="admin.FuiPanel.schema.description"
-                defaultMessage="Copia este bloque en panelSchemas del core. El nombre sugerido está derivado de schema.id."
-              />
-            </P>
-            <textarea
-              readOnly
-              className="w-full min-h-[260px] text-xs font-mono bg-black/70 text-white px-3 py-2 rounded"
-              value={schemaCodeText}
-            />
+
+            {/* CONTENIDO DEL ACORDEÓN */}
+            {schemaSectionOpen && (
+              <DIV className="p-4 flex flex-col gap-2">
+                <P className="text-xs opacity-70">
+                  <FM
+                    id="admin.FuiPanel.schema.description"
+                    defaultMessage="Copia este bloque en panelSchemas del core. El nombre sugerido está derivado de schema.id."
+                  />
+                </P>
+                <textarea
+                  readOnly
+                  className="w-full min-h-[260px] text-xs font-mono bg-black/70 text-white px-3 py-2 rounded"
+                  value={schemaCodeText}
+                />
+              </DIV>
+            )}
           </DIV>
         </>
       )}

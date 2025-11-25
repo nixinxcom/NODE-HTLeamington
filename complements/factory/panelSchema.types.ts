@@ -94,6 +94,10 @@ export interface PanelBaseField {
   /** Longitud mínima/máxima de texto (string/text) */
   minLength?: number;
   maxLength?: number;
+
+  /* regex para string/text */
+  step?: number;
+  pattern?: string;
 }
 
 // ============================================================================
