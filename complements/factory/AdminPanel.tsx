@@ -29,6 +29,9 @@ import type {
 
 import { PANEL_SCHEMAS } from './panelSchemas';
 
+// Locales soportados para campos translatable
+const SUPPORTED_LOCALES = ['en', 'es', 'fr'];
+
 // -------------------- Utils básicos --------------------
 
 type PanelData = Record<string, any>;
@@ -54,10 +57,20 @@ function buildDefaultValue(field: PanelField): any {
       return '';
     case 'multiselect':
       return [];
-    case 'object':
-    case 'array':
-      // se stringify-ará después
-      return '';
+    case 'object': {
+      const subFields = (field as any).fields as PanelField[] | undefined;
+      const obj: any = {};
+      if (Array.isArray(subFields)) {
+        for (const sf of subFields) {
+          if (!sf.name) continue;
+          obj[sf.name] = buildDefaultValue(sf);
+        }
+      }
+      return obj;
+    }
+    case 'array': {
+      return [];
+    }
     default:
       return '';
   }
@@ -109,9 +122,773 @@ function FieldHint({ field }: { field: PanelField }) {
   );
 }
 
+type ValidateOpts = {
+  baseLocale: string;
+};
+
+/**
+ * Validación recursiva de un field (incluye object/array y subcampos).
+ * path = key lógico para mapear errores (p.ej. "products[0].price").
+ */
+function validateFieldValue(
+  field: PanelField,
+  value: any,
+  path: string,
+  errors: FieldErrors,
+  opts: ValidateOpts,
+) {
+  const setErr = (msg: string) => {
+    if (!errors[path]) errors[path] = msg;
+  };
+
+  const t: PanelFieldType = field.type;
+  const required = !!field.required;
+  const min = (field as any).min as number | undefined;
+  const max = (field as any).max as number | undefined;
+
+  switch (t) {
+    case 'string':
+    case 'text': {
+      const isTrans = (field as any).translatable === true;
+
+      // Campo translatable: valor como map { [locale]: string }
+      if (
+        isTrans &&
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value)
+      ) {
+        const map = value as Record<string, any>;
+        const rawBase = map[opts.baseLocale];
+        const base =
+          typeof rawBase === 'string'
+            ? rawBase
+            : rawBase == null
+            ? ''
+            : String(rawBase);
+
+        if (required && base.trim() === '') {
+          setErr(`Campo requerido (${opts.baseLocale}).`);
+        }
+        return;
+      }
+
+      // Modo “simple”: string plano
+      const s =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? ''
+          : String(value);
+
+      if (required && s.trim() === '') {
+        setErr('Campo requerido.');
+      }
+
+      const pattern = (field as any).pattern as string | undefined;
+      if (pattern && s.trim() !== '') {
+        try {
+          const re = new RegExp(pattern);
+          if (!re.test(s)) {
+            setErr('Formato inválido.');
+          }
+        } catch {
+          // regex mal formado → ignoramos
+        }
+      }
+      break;
+    }
+
+    case 'date': {
+      const s =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? ''
+          : String(value);
+      if (required && s.trim() === '') {
+        setErr('Campo requerido.');
+      }
+      break;
+    }
+
+    case 'number': {
+      const raw = value;
+      const num =
+        typeof raw === 'number'
+          ? raw
+          : raw === '' || raw == null
+          ? NaN
+          : Number(raw);
+
+      if (required && (isNaN(num) || raw === '' || raw == null)) {
+        setErr('Campo numérico requerido.');
+        break;
+      }
+
+      if (!isNaN(num)) {
+        if (min != null && num < min) {
+          setErr(`Debe ser ≥ ${min}.`);
+        }
+        if (max != null && num > max) {
+          setErr(`Debe ser ≤ ${max}.`);
+        }
+      }
+      break;
+    }
+
+    case 'boolean': {
+      if (required && value === undefined) {
+        setErr('Campo requerido.');
+      }
+      break;
+    }
+
+    case 'select': {
+      const s =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? ''
+          : String(value);
+      if (required && s.trim() === '') {
+        setErr('Selecciona un valor.');
+      }
+      break;
+    }
+
+    case 'multiselect': {
+      const arr: any[] = Array.isArray(value)
+        ? value
+        : value == null
+        ? []
+        : [value];
+      if (required && arr.length === 0) {
+        setErr('Selecciona al menos un valor.');
+      }
+      break;
+    }
+
+    case 'object': {
+      const obj =
+        value && typeof value === 'object' && !Array.isArray(value)
+          ? (value as Record<string, any>)
+          : {};
+
+      if (required && (!value || Object.keys(obj).length === 0)) {
+        setErr('Campo requerido.');
+      }
+
+      const subFields = (field as any).fields as PanelField[] | undefined;
+      if (Array.isArray(subFields)) {
+        for (const sf of subFields) {
+          if (!sf.name) continue;
+          const subVal = obj[sf.name];
+          const subPath = `${path}.${sf.name}`;
+          validateFieldValue(sf, subVal, subPath, errors, opts);
+        }
+      }
+      break;
+    }
+
+    case 'array': {
+      const arr: any[] = Array.isArray(value) ? value : [];
+
+      if (required && arr.length === 0) {
+        setErr('Selecciona o agrega al menos un elemento.');
+      }
+
+      const elementField = (field as any).element as PanelField | undefined;
+      if (!elementField) break;
+
+      for (let i = 0; i < arr.length; i++) {
+        const item = arr[i];
+        const itemPath = `${path}[${i}]`;
+
+        if (elementField.type === 'object') {
+          const subFields = (elementField as any).fields as
+            | PanelField[]
+            | undefined;
+          const itemObj =
+            item && typeof item === 'object' && !Array.isArray(item)
+              ? (item as Record<string, any>)
+              : {};
+          if (Array.isArray(subFields)) {
+            for (const sf of subFields) {
+              if (!sf.name) continue;
+              const subVal = itemObj[sf.name];
+              const subPath = `${itemPath}.${sf.name}`;
+              validateFieldValue(sf, subVal, subPath, errors, opts);
+            }
+          }
+        } else {
+          validateFieldValue(elementField, item, itemPath, errors, opts);
+        }
+      }
+      break;
+    }
+
+    default:
+      break;
+  }
+}
+
+// -------------------- FieldControl (fuera de AdminPanel) --------------------
+
+type FieldControlProps = {
+  field: PanelField;
+  value: any;
+  onChange: (v: any) => void;
+  path: string;
+  baseLocale: string;
+  supportedLocales: string[];
+  globalSubToggle: 'expand' | 'collapse' | null;
+  fieldErrors: FieldErrors;
+};
+
+function FieldControl({
+  field,
+  value,
+  onChange,
+  path,
+  baseLocale,
+  supportedLocales,
+  globalSubToggle,
+  fieldErrors,
+}: FieldControlProps) {
+  const widget: PanelFieldWidget | undefined = field.widget;
+  const type: PanelFieldType = field.type;
+  const isContainer = type === 'object' || type === 'array';
+
+  const [open, setOpen] = useState<boolean>(true);
+  const [activeLocale, setActiveLocale] = useState<string>(baseLocale);
+  const [showJson, setShowJson] = useState<boolean>(false);
+
+  const err = fieldErrors[path];
+  const hasErr = !!err;
+
+  useEffect(() => {
+    if (!isContainer || !globalSubToggle) return;
+    if (globalSubToggle === 'expand') setOpen(true);
+    if (globalSubToggle === 'collapse') setOpen(false);
+  }, [isContainer, globalSubToggle]);
+
+  // STRING / TEXT (incluye translatable)
+  const renderStringOrText = () => {
+    const isTrans = (field as any).translatable === true;
+
+    if (isTrans) {
+      // Ahora tratamos el campo como un string del locale actual.
+      // Si llegara un objeto { en, es, fr }, tomamos baseLocale o el primero.
+      const isTextarea =
+        widget === 'textarea' ||
+        widget === 'markdown' ||
+        widget === 'code' ||
+        widget === 'json';
+
+      const strVal =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? ''
+          : typeof value === 'object' && !Array.isArray(value)
+          ? (() => {
+              const map = value as Record<string, any>;
+              const maybe =
+                map[baseLocale] ?? Object.values(map)[0];
+              return typeof maybe === 'string' ? maybe : '';
+            })()
+          : String(value);
+
+      if (isTextarea) {
+        return (
+          <textarea
+            className="w-full min-h-[80px] text-sm bg-black/60 text-white px-2 py-1 rounded resize-y"
+            value={strVal}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        );
+      }
+
+      return (
+        <INPUT
+          type="text"
+          value={strVal}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    }
+
+    // No translatable
+    const pattern = (field as any).pattern as string | undefined;
+    const isTextarea =
+      widget === 'textarea' ||
+      widget === 'markdown' ||
+      widget === 'code' ||
+      widget === 'json';
+
+    if (isTextarea) {
+      const strVal =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? ''
+          : String(value);
+      return (
+        <textarea
+          className="w-full min-h-[80px] text-sm bg-black/60 text-white px-2 py-1 rounded resize-y"
+          value={strVal}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    }
+
+    if (widget === 'color') {
+      const strVal =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? '#000000'
+          : String(value);
+      return (
+        <INPUT
+          type="color"
+          value={strVal}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    }
+
+    if (widget === 'image' || widget === 'file') {
+      const strVal =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? ''
+          : String(value);
+      return (
+        <INPUT
+          type="text"
+          placeholder="URL"
+          value={strVal}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    }
+
+    const strVal =
+      typeof value === 'string'
+        ? value
+        : value == null
+        ? ''
+        : String(value);
+    return (
+      <INPUT
+        type="text"
+        value={strVal}
+        pattern={pattern}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
+  };
+
+  const renderScalarInput = () => {
+    if (type === 'string' || type === 'text') {
+      return renderStringOrText();
+    }
+
+    if (type === 'number') {
+      const min = (field as any).min as number | undefined;
+      const max = (field as any).max as number | undefined;
+      const step = (field as any).step as number | undefined;
+
+      const placeholder =
+        (field as any).placeholder ??
+        (min != null && max != null ? `${min} – ${max}` : '');
+
+      const numVal =
+        typeof value === 'number' || typeof value === 'string' ? value : '';
+
+      return (
+        <INPUT
+          type="number"
+          value={numVal}
+          min={min}
+          max={max}
+          step={step}
+          placeholder={placeholder}
+          onChange={(e) => {
+            onChange(e.target.value);
+          }}
+          onBlur={(e) => {
+            const raw = e.target.value.trim();
+            if (!raw) {
+              onChange('');
+              return;
+            }
+            let num = Number(raw);
+            if (isNaN(num)) {
+              onChange('');
+              return;
+            }
+            if (min != null && num < min) num = min;
+            if (max != null && num > max) num = max;
+            onChange(num);
+          }}
+        />
+      );
+    }
+
+    if (type === 'boolean') {
+      const boolVal = value === true;
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={boolVal}
+            onChange={(e) => onChange(e.target.checked)}
+          />
+          <SPAN className="text-xs opacity-70">
+            {field.widget === 'switch' ? 'Switch' : 'Checkbox'}
+          </SPAN>
+        </div>
+      );
+    }
+
+    if (type === 'date') {
+      const strVal =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? ''
+          : String(value);
+      return (
+        <INPUT
+          type="date"
+          value={strVal}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    }
+
+    if (type === 'select' || type === 'multiselect') {
+      const opts: PanelFieldOption[] =
+        isScalarField(field) && Array.isArray(field.options)
+          ? field.options
+          : [];
+
+      if (type === 'multiselect' || widget === 'multiselect') {
+        const arrVal: string[] = Array.isArray(value)
+          ? value
+          : value == null
+          ? []
+          : [String(value)];
+
+        return (
+          <SELECT
+            multiple
+            value={arrVal}
+            onChange={(e) => {
+              const selected = Array.from(e.target.selectedOptions).map(
+                (o) => o.value,
+              );
+              onChange(selected);
+            }}
+          >
+            {opts.map((opt: PanelFieldOption) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.labelKey || opt.value}
+              </option>
+            ))}
+          </SELECT>
+        );
+      }
+
+      if (widget === 'radio') {
+        const curVal = value == null ? '' : String(value);
+        return (
+          <DIV className="flex flex-wrap gap-3">
+            {opts.map((opt: PanelFieldOption) => (
+              <label
+                key={opt.value}
+                className="flex items-center gap-1 text-sm"
+              >
+                <input
+                  type="radio"
+                  value={opt.value}
+                  checked={curVal === opt.value}
+                  onChange={() => onChange(opt.value)}
+                />
+                <SPAN>{opt.labelKey || opt.value}</SPAN>
+              </label>
+            ))}
+          </DIV>
+        );
+      }
+
+      const curVal = value == null ? '' : String(value);
+      return (
+        <SELECT value={curVal} onChange={(e) => onChange(e.target.value)}>
+          <option value="">— Selecciona —</option>
+          {opts.map((opt: PanelFieldOption) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.labelKey || opt.value}
+            </option>
+          ))}
+        </SELECT>
+      );
+    }
+
+    return (
+      <INPUT
+        type="text"
+        value={value == null ? '' : String(value)}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
+  };
+
+  const renderObjectField = () => {
+    const obj: Record<string, any> =
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? value
+        : {};
+
+    const subFields = (field as any).fields as PanelField[] | undefined;
+
+    if (!Array.isArray(subFields) || subFields.length === 0) {
+      return (
+        <P className="text-xs opacity-60">
+          (Este object no tiene subcampos definidos en el esquema.)
+        </P>
+      );
+    }
+
+    if (!open) return null;
+
+    return (
+      <DIV className="flex flex-col gap-3 border border-white/10 rounded-md p-2 bg-black/20 mt-1">
+        {subFields.map((sf) => {
+          if (!sf.name) return null;
+          const subPath = `${path}.${sf.name}`;
+          const subVal = obj[sf.name];
+          return (
+            <FieldControl
+              key={subPath}
+              field={sf}
+              value={subVal}
+              onChange={(newSubVal) => {
+                const next = { ...obj, [sf.name]: newSubVal };
+                onChange(next);
+              }}
+              path={subPath}
+              baseLocale={baseLocale}
+              supportedLocales={supportedLocales}
+              globalSubToggle={globalSubToggle}
+              fieldErrors={fieldErrors}
+            />
+          );
+        })}
+      </DIV>
+    );
+  };
+
+  const renderArrayField = () => {
+    const items: any[] = Array.isArray(value) ? value : [];
+    const elementField = (field as any).element as PanelField | undefined;
+
+    if (!elementField) {
+      return (
+        <P className="text-xs opacity-60">
+          (Este array no tiene esquema de elemento definido.)
+        </P>
+      );
+    }
+
+    if (!open) return null;
+
+    const handleItemChange = (index: number, newItem: any) => {
+      const next = [...items];
+      next[index] = newItem;
+      onChange(next);
+    };
+
+    const handleItemRemove = (index: number) => {
+      const next = items.filter((_, i) => i !== index);
+      onChange(next);
+    };
+
+    const handleAddItem = () => {
+      const newItem = buildDefaultValue(elementField);
+      onChange([...items, newItem]);
+    };
+
+    return (
+      <DIV className="flex flex-col gap-3 mt-1">
+        {items.length === 0 && (
+          <P className="text-xs opacity-60">No hay elementos.</P>
+        )}
+
+        {items.map((item, idx) => {
+          const itemPath = `${path}[${idx}]`;
+
+          if (elementField.type === 'object') {
+            const subFields = (elementField as any).fields as
+              | PanelField[]
+              | undefined;
+            const itemObj =
+              item && typeof item === 'object' && !Array.isArray(item)
+                ? (item as Record<string, any>)
+                : {};
+
+            return (
+              <DIV
+                key={itemPath}
+                className="border border-white/15 rounded-md p-2 bg-black/30"
+              >
+                <DIV className="flex justify-between items-center mb-1">
+                  <SPAN className="text-xs opacity-70">Item #{idx + 1}</SPAN>
+                  <button
+                    type="button"
+                    className="text-[10px] opacity-70 hover:opacity-100"
+                    onClick={() => handleItemRemove(idx)}
+                  >
+                    Eliminar
+                  </button>
+                </DIV>
+                {Array.isArray(subFields) && subFields.length > 0 ? (
+                  <DIV className="flex flex-col gap-2">
+                    {subFields.map((sf) => {
+                      if (!sf.name) return null;
+                      const subPath = `${itemPath}.${sf.name}`;
+                      const subVal = itemObj[sf.name];
+                      return (
+                        <FieldControl
+                          key={subPath}
+                          field={sf}
+                          value={subVal}
+                          onChange={(newSubVal) => {
+                            const nextItem = {
+                              ...itemObj,
+                              [sf.name]: newSubVal,
+                            };
+                            handleItemChange(idx, nextItem);
+                          }}
+                          path={subPath}
+                          baseLocale={baseLocale}
+                          supportedLocales={supportedLocales}
+                          globalSubToggle={globalSubToggle}
+                          fieldErrors={fieldErrors}
+                        />
+                      );
+                    })}
+                  </DIV>
+                ) : (
+                  <P className="text-xs opacity-60">
+                    (El esquema del elemento no define subcampos.)
+                  </P>
+                )}
+              </DIV>
+            );
+          }
+
+          return (
+            <DIV
+              key={itemPath}
+              className="border border-white/15 rounded-md p-2 bg-black/30"
+            >
+              <DIV className="flex justify-between items-center mb-1">
+                <SPAN className="text-xs opacity-70">Item #{idx + 1}</SPAN>
+                <button
+                  type="button"
+                  className="text-[10px] opacity-70 hover:opacity-100"
+                  onClick={() => handleItemRemove(idx)}
+                >
+                  Eliminar
+                </button>
+              </DIV>
+              <FieldControl
+                field={elementField}
+                value={item}
+                onChange={(newVal) => handleItemChange(idx, newVal)}
+                path={itemPath}
+                baseLocale={baseLocale}
+                supportedLocales={supportedLocales}
+                globalSubToggle={globalSubToggle}
+                fieldErrors={fieldErrors}
+              />
+            </DIV>
+          );
+        })}
+
+        <DIV>
+          <BUTTON kind="button" type="button" onClick={handleAddItem}>
+            + Agregar elemento
+          </BUTTON>
+        </DIV>
+      </DIV>
+    );
+  };
+
+  const renderControl = () => {
+    if (type === 'object') return renderObjectField();
+    if (type === 'array') return renderArrayField();
+    return renderScalarInput();
+  };
+
+  return (
+    <DIV
+      className={`flex flex-col gap-1 rounded-md p-3 bg-black/40 border ${
+        hasErr ? 'border-red-500' : 'border-white/10'
+      }`}
+    >
+      <LABEL className="text-xs font-semibold flex justify-between">
+        <span className="flex items-center gap-1">
+          <FieldTitle field={field} />
+          {field.required && <SPAN className="text-red-400">*</SPAN>}
+          {(field as any).translatable && (
+            <SPAN className="text-[10px] px-1 rounded bg-blue-500/30 text-blue-100">
+              Translation i18n Required
+            </SPAN>
+          )}
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="opacity-60 font-mono text-[10px]">
+            {field.type}
+          </span>
+          {isContainer && (
+            <button
+              type="button"
+              className="text-[10px] opacity-60 hover:opacity-100"
+              onClick={() => setOpen((o) => !o)}
+            >
+              {open ? '▲' : '▼'}
+            </button>
+          )}
+        </span>
+      </LABEL>
+
+      <FieldHint field={field} />
+
+      {renderControl()}
+
+      {hasErr && (
+        <P className="text-[11px] text-red-400 mt-1">{err}</P>
+      )}
+    </DIV>
+  );
+}
+
 // -------------------- Componente principal --------------------
 
 export function AdminPanel({ locale }: AdminPanelProps) {
+  const shortLocale = locale.split('-')[0].toLowerCase();
+
+  const availableSchemas: PanelSchema[] = useMemo(
+    () => Object.values(PANEL_SCHEMAS),
+    [],
+  );
+
   const [selectedId, setSelectedId] = useState<string>('');
   const [data, setData] = useState<PanelData>({});
   const [loadingDoc, setLoadingDoc] = useState(false);
@@ -120,14 +897,29 @@ export function AdminPanel({ locale }: AdminPanelProps) {
   const [saved, setSaved] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [globalSubToggle, setGlobalSubToggle] = useState<
+    'expand' | 'collapse' | null
+  >(null);
+  const [subSchemasExpanded, setSubSchemasExpanded] =
+    useState<boolean>(true);
 
-  // 🔹 YA NO HAY ROLES AQUÍ. AdminGuard es el único que decide si entras o no.
-  const availableSchemas: PanelSchema[] = useMemo(
-    () => Object.values(PANEL_SCHEMAS),
-    [],
-  );
+  const allGroupsOpen =
+    Object.keys(openGroups).length > 0 &&
+    Object.keys(openGroups).every(
+      (k) => openGroups[k] === undefined || openGroups[k] === true,
+    );
 
-  // 1) Selección de panel por defecto
+  const [showI18nExport, setShowI18nExport] = useState<boolean>(false);
+  const [copiedI18nExport, setCopiedI18nExport] =
+    useState<boolean>(false);
+
+  const [enJsonRaw, setEnJsonRaw] = useState<string>('');
+  const [frJsonRaw, setFrJsonRaw] = useState<string>('');
+  const [otherJsonRaw, setOtherJsonRaw] = useState<string>('');
+  const [i18nJsonGlobalError, setI18nJsonGlobalError] =
+    useState<string | null>(null);
+
+  // Selección de schema por defecto
   useEffect(() => {
     if (!selectedId && availableSchemas.length > 0) {
       setSelectedId(availableSchemas[0].id);
@@ -145,7 +937,7 @@ export function AdminPanel({ locale }: AdminPanelProps) {
     [availableSchemas, selectedId],
   );
 
-  // 2) Cargar documento de Firestore cuando cambia schema o locale
+  // Cargar Firestore
   useEffect(() => {
     if (!currentSchema) {
       setData({});
@@ -179,26 +971,9 @@ export function AdminPanel({ locale }: AdminPanelProps) {
           merged = defaults;
         }
 
-        // Para fields object/array guardamos STRING (JSON bonito)
-        for (const f of currentSchema.fields) {
-          if (f.type === 'object' || f.type === 'array') {
-            const raw = merged[f.name];
-            try {
-              merged[f.name] = JSON.stringify(
-                raw ?? (f.type === 'array' ? [] : {}),
-                null,
-                2,
-              );
-            } catch {
-              merged[f.name] = f.type === 'array' ? '[]' : '{}';
-            }
-          }
-        }
-
         if (!cancelled) {
           setData(merged);
 
-          // abrir todos los grupos por default
           const groups: Record<string, boolean> = {};
           for (const f of currentSchema.fields) {
             const g =
@@ -226,168 +1001,80 @@ export function AdminPanel({ locale }: AdminPanelProps) {
     };
   }, [currentSchema, locale]);
 
-  const handleFieldChange = (field: PanelField, value: any) => {
+  const setFieldValue = (rootName: string, newValue: any) => {
     setData((prev) => ({
       ...prev,
-      [field.name]: value,
+      [rootName]: newValue,
     }));
     setSaved(false);
-    setFieldErrors((prev) => ({
-      ...prev,
-      [field.name]: undefined,
-    }));
+    setFieldErrors((prev) => {
+      const copy: FieldErrors = { ...prev };
+      const prefixDot = `${rootName}.`;
+      const prefixArr = `${rootName}[`;
+      for (const key of Object.keys(copy)) {
+        if (
+          key === rootName ||
+          key.startsWith(prefixDot) ||
+          key.startsWith(prefixArr)
+        ) {
+          delete copy[key];
+        }
+      }
+      return copy;
+    });
   };
 
-  // -------------------- Validaciones y guardado --------------------
+  const toggleAllGroups = () => {
+    setOpenGroups((prev) => {
+      const keys = Object.keys(prev);
+      if (!keys.length) return prev;
 
+      const allOpen = keys.every(
+        (k) => prev[k] === undefined || prev[k] === true,
+      );
+
+      const next: Record<string, boolean> = {};
+      for (const k of keys) {
+        next[k] = !allOpen;
+      }
+      return next;
+    });
+  };
+
+  const toggleAllSubschemas = () => {
+    setSubSchemasExpanded((prev) => {
+      const next = !prev;
+      setGlobalSubToggle(next ? 'expand' : 'collapse');
+      return next;
+    });
+  };
+
+  const handleCopyI18nExport = async () => {
+    try {
+      if (!i18nExportText) return;
+      await navigator.clipboard.writeText(i18nExportText);
+      setCopiedI18nExport(true);
+      setTimeout(() => setCopiedI18nExport(false), 1500);
+    } catch (e) {
+      console.error('[AdminPanel] No se pudo copiar el JSON i18n', e);
+    }
+  };
+
+  // Guardar
   const handleSave = async () => {
     if (!currentSchema) return;
     setSaving(true);
     setError(null);
     setSaved(false);
+    setI18nJsonGlobalError(null);
 
     const newErrors: FieldErrors = {};
-    const jsonParsed: Record<string, any> = {};
-
-    const setErr = (name: string, msg: string) => {
-      if (!newErrors[name]) newErrors[name] = msg;
-    };
 
     for (const field of currentSchema.fields) {
-      const { name, type, required } = field;
-      const v = data[name];
-
-      // número: min/max desde el schema si existen
-      const min = (field as any).min as number | undefined;
-      const max = (field as any).max as number | undefined;
-
-      switch (type) {
-        case 'string':
-        case 'text': {
-          const s =
-            typeof v === 'string'
-              ? v
-              : v == null
-              ? ''
-              : String(v);
-          if (required && s.trim() === '') {
-            setErr(name, 'Campo requerido.');
-          }
-
-          const pattern = (field as any).pattern as string | undefined;
-          if (pattern && s.trim() !== '') {
-            try {
-              const re = new RegExp(pattern);
-              if (!re.test(s)) {
-                setErr(name, 'Formato inválido.');
-              }
-            } catch {
-              // regex mal formado → se ignora
-            }
-          }
-          break;
-        }
-
-        case 'date': {
-          const s =
-            typeof v === 'string'
-              ? v
-              : v == null
-              ? ''
-              : String(v);
-          if (required && s.trim() === '') {
-            setErr(name, 'Campo requerido.');
-          }
-          break;
-        }
-
-        case 'number': {
-          const raw = v;
-          const num =
-            typeof raw === 'number'
-              ? raw
-              : raw === '' || raw == null
-              ? NaN
-              : Number(raw);
-
-          if (required && (isNaN(num) || raw === '' || raw == null)) {
-            setErr(name, 'Campo numérico requerido.');
-            break;
-          }
-
-          if (!isNaN(num)) {
-            if (min != null && num < min) {
-              setErr(name, `Debe ser ≥ ${min}.`);
-            }
-            if (max != null && num > max) {
-              setErr(name, `Debe ser ≤ ${max}.`);
-            }
-          }
-          break;
-        }
-
-        case 'boolean': {
-          // false es válido; solo invalidamos null/undefined si es requerido
-          if (required && v === undefined) {
-            setErr(name, 'Campo requerido.');
-          }
-          break;
-        }
-
-        case 'select': {
-          const s =
-            typeof v === 'string'
-              ? v
-              : v == null
-              ? ''
-              : String(v);
-          if (required && s.trim() === '') {
-            setErr(name, 'Selecciona un valor.');
-          }
-          break;
-        }
-
-        case 'multiselect': {
-          const arr: any[] = Array.isArray(v)
-            ? v
-            : v == null
-            ? []
-            : [v];
-          if (required && arr.length === 0) {
-            setErr(name, 'Selecciona al menos un valor.');
-          }
-          break;
-        }
-
-        case 'object':
-        case 'array': {
-          const txt =
-            typeof v === 'string'
-              ? v
-              : v == null
-              ? ''
-              : String(v);
-
-          if (required && txt.trim() === '') {
-            setErr(name, 'Campo requerido.');
-            break;
-          }
-
-          if (txt.trim() !== '') {
-            try {
-              jsonParsed[name] = JSON.parse(txt);
-            } catch {
-              setErr(name, 'JSON inválido.');
-            }
-          } else {
-            jsonParsed[name] = type === 'array' ? [] : {};
-          }
-          break;
-        }
-
-        default:
-          break;
-      }
+      const v = data[field.name];
+      validateFieldValue(field, v, field.name, newErrors, {
+        baseLocale: shortLocale,
+      });
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -395,6 +1082,42 @@ export function AdminPanel({ locale }: AdminPanelProps) {
       setError('validation');
       setSaving(false);
       return;
+    }
+
+        // Si el panel tiene textos traducibles, forzamos que los 3 JSON se llenen bien
+    if (baseI18nKeys.length > 0) {
+      const locales = [
+        { label: 'EN', raw: enJsonRaw, info: enInfo },
+        { label: 'FR', raw: frJsonRaw, info: frInfo },
+        { label: 'Otro idioma', raw: otherJsonRaw, info: otherInfo },
+      ];
+
+      for (const loc of locales) {
+        if (!loc.raw.trim()) {
+          setI18nJsonGlobalError(
+            `Falta pegar el JSON traducido para ${loc.label}.`,
+          );
+          setError('validation');
+          setSaving(false);
+          return;
+        }
+        if (loc.info.error) {
+          setI18nJsonGlobalError(
+            `El JSON para ${loc.label} no es válido. Corrige el error antes de guardar.`,
+          );
+          setError('validation');
+          setSaving(false);
+          return;
+        }
+        if (loc.info.missingKeys.length > 0) {
+          setI18nJsonGlobalError(
+            `Al JSON de ${loc.label} le faltan ${loc.info.missingKeys.length} claves de las ${baseI18nKeys.length} requeridas.`,
+          );
+          setError('validation');
+          setSaving(false);
+          return;
+        }
+      }
     }
 
     try {
@@ -409,15 +1132,6 @@ export function AdminPanel({ locale }: AdminPanelProps) {
         _updatedAt: Date.now(),
       };
 
-      // Sustituimos los string JSON por objetos reales
-      for (const field of currentSchema.fields) {
-        if (field.type === 'object' || field.type === 'array') {
-          if (field.name in jsonParsed) {
-            out[field.name] = jsonParsed[field.name];
-          }
-        }
-      }
-
       await setDoc(ref, out, { merge: true });
       setSaved(true);
       setError(null);
@@ -427,266 +1141,6 @@ export function AdminPanel({ locale }: AdminPanelProps) {
     } finally {
       setSaving(false);
     }
-  };
-
-  // -------------------- Render helpers --------------------
-
-  const renderFieldInput = (field: PanelField) => {
-    const value = data[field.name];
-    const widget: PanelFieldWidget | undefined = field.widget;
-    const type: PanelFieldType = field.type;
-
-    // STRING / TEXT
-    if (type === 'string' || type === 'text') {
-      const pattern = (field as any).pattern as string | undefined;
-
-      if (
-        widget === 'textarea' ||
-        widget === 'markdown' ||
-        widget === 'code' ||
-        widget === 'json'
-      ) {
-        const strVal =
-          typeof value === 'string'
-            ? value
-            : value == null
-            ? ''
-            : String(value);
-        return (
-          <textarea
-            className="w-full min-h-[80px] text-sm bg-black/60 text-white px-2 py-1 rounded"
-            value={strVal}
-            onChange={(e) => handleFieldChange(field, e.target.value)}
-          />
-        );
-      }
-
-      if (widget === 'color') {
-        const strVal =
-          typeof value === 'string'
-            ? value
-            : value == null
-            ? '#000000'
-            : String(value);
-        return (
-          <INPUT
-            type="color"
-            value={strVal}
-            onChange={(e) => handleFieldChange(field, e.target.value)}
-          />
-        );
-      }
-
-      if (widget === 'image' || widget === 'file') {
-        const strVal =
-          typeof value === 'string'
-            ? value
-            : value == null
-            ? ''
-            : String(value);
-        return (
-          <INPUT
-            type="text"
-            placeholder={'URL'}
-            value={strVal}
-            onChange={(e) => handleFieldChange(field, e.target.value)}
-          />
-        );
-      }
-
-      const strVal =
-        typeof value === 'string'
-          ? value
-          : value == null
-          ? ''
-          : String(value);
-      return (
-        <INPUT
-          type="text"
-          value={strVal}
-          pattern={pattern}
-          onChange={(e) => handleFieldChange(field, e.target.value)}
-        />
-      );
-    }
-
-    // NUMBER
-    if (type === 'number') {
-      const min = (field as any).min as number | undefined;
-      const max = (field as any).max as number | undefined;
-      const step = (field as any).step as number | undefined;
-
-      const placeholder =
-        (field as any).placeholder ??
-        (min != null && max != null ? `${min} – ${max}` : '');
-
-      const numVal =
-        typeof value === 'number' || typeof value === 'string' ? value : '';
-
-      return (
-        <INPUT
-          type="number"
-          value={numVal}
-          min={min}
-          max={max}
-          step={step}
-          placeholder={placeholder}
-          onChange={(e) => {
-            // guardamos tal cual lo que escribe
-            handleFieldChange(field, e.target.value);
-          }}
-          onBlur={(e) => {
-            const raw = e.target.value.trim();
-            if (!raw) {
-              handleFieldChange(field, '');
-              return;
-            }
-            let num = Number(raw);
-            if (isNaN(num)) {
-              handleFieldChange(field, '');
-              return;
-            }
-            if (min != null && num < min) num = min;
-            if (max != null && num > max) num = max;
-            handleFieldChange(field, num);
-          }}
-        />
-      );
-    }
-
-    // BOOLEAN
-    if (type === 'boolean') {
-      const boolVal = value === true;
-      return (
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={boolVal}
-            onChange={(e) => handleFieldChange(field, e.target.checked)}
-          />
-          <SPAN className="text-xs opacity-70">
-            {field.widget === 'switch' ? 'Switch' : 'Checkbox'}
-          </SPAN>
-        </div>
-      );
-    }
-
-    // DATE
-    if (type === 'date') {
-      const strVal =
-        typeof value === 'string'
-          ? value
-          : value == null
-          ? ''
-          : String(value);
-      return (
-        <INPUT
-          type="date"
-          value={strVal}
-          onChange={(e) => handleFieldChange(field, e.target.value)}
-        />
-      );
-    }
-
-    // SELECT / MULTISELECT
-    if (type === 'select' || type === 'multiselect') {
-      const opts: PanelFieldOption[] =
-        isScalarField(field) && Array.isArray(field.options)
-          ? field.options
-          : [];
-
-      if (type === 'multiselect' || widget === 'multiselect') {
-        const arrVal: string[] = Array.isArray(value)
-          ? value
-          : value == null
-          ? []
-          : [String(value)];
-
-        return (
-          <SELECT
-            multiple
-            value={arrVal}
-            onChange={(e) => {
-              const selected = Array.from(e.target.selectedOptions).map(
-                (o) => o.value,
-              );
-              handleFieldChange(field, selected);
-            }}
-          >
-            {opts.map((opt: PanelFieldOption) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.labelKey || opt.value}
-              </option>
-            ))}
-          </SELECT>
-        );
-      }
-
-      if (widget === 'radio') {
-        const curVal = value == null ? '' : String(value);
-        return (
-          <DIV className="flex flex-wrap gap-3">
-            {opts.map((opt: PanelFieldOption) => (
-              <label
-                key={opt.value}
-                className="flex.items-center gap-1 text-sm"
-              >
-                <input
-                  type="radio"
-                  value={opt.value}
-                  checked={curVal === opt.value}
-                  onChange={() => handleFieldChange(field, opt.value)}
-                />
-                <SPAN>{opt.labelKey || opt.value}</SPAN>
-              </label>
-            ))}
-          </DIV>
-        );
-      }
-
-      const curVal = value == null ? '' : String(value);
-      return (
-        <SELECT
-          value={curVal}
-          onChange={(e) => handleFieldChange(field, e.target.value)}
-        >
-          <option value="">— Selecciona —</option>
-          {opts.map((opt: PanelFieldOption) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.labelKey || opt.value}
-            </option>
-          ))}
-        </SELECT>
-      );
-    }
-
-    // OBJECT / ARRAY → string JSON plano (sin parse en cada tecla)
-    if (type === 'object' || type === 'array') {
-      const txt =
-        typeof value === 'string'
-          ? value
-          : value == null
-          ? ''
-          : String(value);
-
-      return (
-        <textarea
-          className="w-full min-h-[120px] text-xs font-mono bg-black/60 text-white px-2 py-1 rounded"
-          value={txt}
-          onChange={(e) => handleFieldChange(field, e.target.value)}
-          placeholder={type === 'array' ? '[ ]' : '{ }'}
-        />
-      );
-    }
-
-    // fallback
-    return (
-      <INPUT
-        type="text"
-        value={value == null ? '' : String(value)}
-        onChange={(e) => handleFieldChange(field, e.target.value)}
-      />
-    );
   };
 
   // Agrupar campos por groupKey solo para UI
@@ -705,13 +1159,167 @@ export function AdminPanel({ locale }: AdminPanelProps) {
     return Array.from(map.entries());
   }, [currentSchema]);
 
+  const i18nExportText = useMemo(() => {
+    if (!currentSchema) return '';
+
+    const out: Record<string, string> = {};
+    const baseLocale = shortLocale;
+
+    const getStringFromValue = (val: any): string => {
+      if (typeof val === 'string') return val;
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        const maybe =
+          (val as any)[baseLocale] ?? Object.values(val as any)[0];
+        return typeof maybe === 'string' ? maybe : '';
+      }
+      return val == null ? '' : String(val);
+    };
+
+    const walk = (
+      field: PanelField,
+      value: any,
+      path: string,
+    ) => {
+      const isTrans = (field as any).translatable === true;
+      const t = field.type as PanelFieldType;
+
+      // 1) Campos string/text marcados como translatable
+      if ((t === 'string' || t === 'text') && isTrans) {
+        const s = getStringFromValue(value);
+        const key = `${currentSchema.id}.${path}`;
+        // Siempre registramos la clave, aunque el valor esté vacío
+        out[key] = s ?? '';
+        return;
+      }
+
+      // 2) object: bajar a subcampos
+      if (t === 'object') {
+        const obj =
+          value && typeof value === 'object' && !Array.isArray(value)
+            ? (value as Record<string, any>)
+            : {};
+        const subFields = (field as any).fields as PanelField[] | undefined;
+        if (!Array.isArray(subFields)) return;
+
+        for (const sf of subFields) {
+          if (!sf.name) continue;
+          walk(sf, obj[sf.name], `${path}.${sf.name}`);
+        }
+        return;
+      }
+
+      // 3) array: recorrer items
+      if (t === 'array') {
+        const arr: any[] = Array.isArray(value) ? value : [];
+        const elementField = (field as any).element as PanelField | undefined;
+        if (!elementField) return;
+
+        arr.forEach((item, idx) => {
+          const itemPath = `${path}[${idx}]`;
+
+          if (elementField.type === 'object') {
+            const itemObj =
+              item && typeof item === 'object' && !Array.isArray(item)
+                ? (item as Record<string, any>)
+                : {};
+            const subFields = (elementField as any).fields as
+              | PanelField[]
+              | undefined;
+            if (!Array.isArray(subFields)) return;
+
+            for (const sf of subFields) {
+              if (!sf.name) continue;
+              walk(sf, itemObj[sf.name], `${itemPath}.${sf.name}`);
+            }
+          } else {
+            walk(elementField, item, itemPath);
+          }
+        });
+        return;
+      }
+    };
+
+    for (const field of currentSchema.fields) {
+      const val = data[field.name];
+      walk(field, val, field.name);
+    }
+
+    const keys = Object.keys(out);
+    if (keys.length === 0) return '';
+
+    return JSON.stringify(out, null, 2);
+  }, [currentSchema, data, shortLocale]);
+
+  const baseI18nKeys = useMemo(() => {
+    if (!i18nExportText) return [] as string[];
+    try {
+      const obj = JSON.parse(i18nExportText) as Record<string, any>;
+      return Object.keys(obj);
+    } catch {
+      return [];
+    }
+  }, [i18nExportText]);
+
+  type LocaleJsonInfo = {
+    error: string | null;
+    missingKeys: string[];
+  };
+
+  const enInfo = useMemo<LocaleJsonInfo>(() => {
+    if (!enJsonRaw.trim()) {
+      return { error: null, missingKeys: baseI18nKeys };
+    }
+    try {
+      const obj = JSON.parse(enJsonRaw) as Record<string, any>;
+      const missing = baseI18nKeys.filter((k) => !(k in obj));
+      return { error: null, missingKeys: missing };
+    } catch {
+      return {
+        error: 'JSON inválido. Revisa comas, llaves y comillas dobles.',
+        missingKeys: [],
+      };
+    }
+  }, [enJsonRaw, baseI18nKeys]);
+
+  const frInfo = useMemo<LocaleJsonInfo>(() => {
+    if (!frJsonRaw.trim()) {
+      return { error: null, missingKeys: baseI18nKeys };
+    }
+    try {
+      const obj = JSON.parse(frJsonRaw) as Record<string, any>;
+      const missing = baseI18nKeys.filter((k) => !(k in obj));
+      return { error: null, missingKeys: missing };
+    } catch {
+      return {
+        error: 'JSON inválido. Revisa comas, llaves y comillas dobles.',
+        missingKeys: [],
+      };
+    }
+  }, [frJsonRaw, baseI18nKeys]);
+
+  const otherInfo = useMemo<LocaleJsonInfo>(() => {
+    if (!otherJsonRaw.trim()) {
+      return { error: null, missingKeys: baseI18nKeys };
+    }
+    try {
+      const obj = JSON.parse(otherJsonRaw) as Record<string, any>;
+      const missing = baseI18nKeys.filter((k) => !(k in obj));
+      return { error: null, missingKeys: missing };
+    } catch {
+      return {
+        error: 'JSON inválido. Revisa comas, llaves y comillas dobles.',
+        missingKeys: [],
+      };
+    }
+  }, [otherJsonRaw, baseI18nKeys]);
+
   // -------------------- Render principal --------------------
 
-  if (!availableSchemas.length) {
+  if (!currentSchema) {
     return (
       <DIV className="p-4">
         <P className="text-sm">
-          No hay esquemas de panel registrados en el core.
+          No hay un esquema de panel disponible para este AdminPanel.
         </P>
       </DIV>
     );
@@ -721,13 +1329,24 @@ export function AdminPanel({ locale }: AdminPanelProps) {
     <DIV className="p-4 flex flex-col gap-6">
       {/* Header */}
       <DIV className="mb-2">
-        <SPAN className="text-xl font-bold">
-          Panel de Administración Dinámico (PUI)
+        <SPAN className="text-xl font-bold flex items-center gap-2">
+          Admin Panel (FUI–PUI v3)
+          <SPAN className="text-xs opacity-60 font-mono">
+            ({currentSchema.id})
+          </SPAN>
         </SPAN>
-        <P className="text-sm opacity-75">
-          Elige un esquema para administrar sus datos en Firestore. Los que
-          marcan <SPAN className="font-mono">isProvider = true</SPAN> alimentan
-          la FDV bajo la colección <SPAN className="font-mono">Providers</SPAN>.
+        <P className="text-sm opacity-75 mt-1">
+          Este panel administra datos en Firestore para la colección{' '}
+          <SPAN className="font-mono">
+            {currentSchema.fsCollection}/{currentSchema.fsDocId}
+          </SPAN>
+          {currentSchema.isProvider && (
+            <>
+              {' '}
+              y alimenta la FDV (
+              <SPAN className="font-mono">isProvider = true</SPAN>).
+            </>
+          )}
         </P>
       </DIV>
 
@@ -748,10 +1367,9 @@ export function AdminPanel({ locale }: AdminPanelProps) {
             }}
           >
             <option value="">— Selecciona un panel —</option>
-            {availableSchemas.map((schema) => (
-              <option key={schema.id} value={schema.id}>
-                {schema.labelKey || schema.id}{' '}
-                {schema.isProvider ? ' (FDV)' : ''}
+            {availableSchemas.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.labelKey || s.id} {s.isProvider ? ' (FDV)' : ''}
               </option>
             ))}
           </SELECT>
@@ -791,14 +1409,32 @@ export function AdminPanel({ locale }: AdminPanelProps) {
         </DIV>
       )}
 
-      {/* Formulario dinámico */}
-      {currentSchema && !loadingDoc && (
-        <DIV className="border border-white/10 rounded-lg p-4 flex flex-col gap-4 bg-black/40">
-          <SPAN className="font-semibold text-sm uppercase tracking-wide">
-            ({currentSchema.id})
-          </SPAN>
+      {/* Controles globales de grupos y subesquemas */}
+      {!loadingDoc && (
+        <DIV className="flex justify-end gap-2 text-xs">
+          <BUTTON
+            kind="button"
+            type="button"
+            onClick={toggleAllGroups}
+          >
+            {allGroupsOpen ? 'Colapsar grupos' : 'Expandir grupos'}
+          </BUTTON>
 
-          {/* Grupos por groupKey con acordeón */}
+          <BUTTON
+            kind="button"
+            type="button"
+            onClick={toggleAllSubschemas}
+          >
+            {subSchemasExpanded
+              ? 'Colapsar subesquemas'
+              : 'Expandir subesquemas'}
+          </BUTTON>
+        </DIV>
+      )}
+
+      {/* Formulario dinámico */}
+      {!loadingDoc && (
+        <DIV className="border border-white/10 rounded-lg p-4 flex flex-col gap-4 bg-black/40">
           <DIV className="flex flex-col gap-4 mt-2">
             {groupedFields.map(([groupKey, fields]) => {
               const isOpen = openGroups[groupKey] ?? true;
@@ -825,48 +1461,274 @@ export function AdminPanel({ locale }: AdminPanelProps) {
 
                   {isOpen && (
                     <DIV className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 px-3 pb-3">
-                      {fields.map((field) => {
-                        const err = fieldErrors[field.name];
-                        const hasErr = !!err;
-                        return (
-                          <DIV
-                            key={field.name}
-                            className={`flex flex-col gap-1 rounded-md p-3 bg-black/40 border ${
-                              hasErr
-                                ? 'border-red-500'
-                                : 'border-white/10'
-                            }`}
-                          >
-                            <LABEL className="text-xs font-semibold flex justify-between">
-                              <span className="flex items-center gap-1">
-                                <FieldTitle field={field} />
-                                {field.required && (
-                                  <SPAN className="text-red-400">*</SPAN>
-                                )}
-                              </span>
-                              <span className="opacity-60 font-mono text-[10px]">
-                                {field.type}
-                              </span>
-                            </LABEL>
-
-                            <FieldHint field={field} />
-
-                            {renderFieldInput(field)}
-
-                            {hasErr && (
-                              <P className="text-[11px] text-red-400 mt-1">
-                                {err}
-                              </P>
-                            )}
-                          </DIV>
-                        );
-                      })}
+                      {fields.map((field) => (
+                        <FieldControl
+                          key={field.name}
+                          field={field}
+                          value={data[field.name]}
+                          onChange={(newVal) =>
+                            setFieldValue(field.name, newVal)
+                          }
+                          path={field.name}
+                          baseLocale={shortLocale}
+                          supportedLocales={SUPPORTED_LOCALES}
+                          globalSubToggle={globalSubToggle}
+                          fieldErrors={fieldErrors}
+                        />
+                      ))}
                     </DIV>
                   )}
                 </DIV>
               );
             })}
           </DIV>
+
+          {/* Sección de export de textos traducibles */}
+          {i18nExportText && (
+            <DIV className="mt-4 border border-white/15 rounded-md bg-black/30">
+              <button
+                type="button"
+                className="w-full flex justify-between items-center px-3 py-2 text-xs font-semibold uppercase tracking-wide"
+                onClick={() => setShowI18nExport((prev) => !prev)}
+              >
+                <SPAN className="opacity-80">
+                  JSON de textos traducibles ({shortLocale.toUpperCase()})
+                </SPAN>
+                <SPAN className="text-[10px] opacity-60">
+                  {showI18nExport ? '▲' : '▼'}
+                </SPAN>
+              </button>
+
+              {showI18nExport && (
+                <DIV className="p-3 flex flex-col gap-3">
+                  {/* JSON original */}
+                  <DIV className="flex justify-between items-center">
+                    <SPAN className="text-[11px] opacity-70">
+                      Copia este JSON y mándalo a traducir. Cada key es
+                      <SPAN className="font-mono">
+                        {' '}
+                        {currentSchema.id}.path
+                      </SPAN>{' '}
+                      del campo en {shortLocale.toUpperCase()}.
+                    </SPAN>
+                    <BUTTON
+                      kind="button"
+                      type="button"
+                      onClick={handleCopyI18nExport}
+                    >
+                      {copiedI18nExport ? 'Copiado' : 'Copiar JSON'}
+                    </BUTTON>
+                  </DIV>
+
+                  <textarea
+                    readOnly
+                    className="w-full h-48 text-[11px] font-mono bg-black/70 text-white px-2 py-1 rounded resize-y"
+                    value={i18nExportText}
+                  />
+
+                  {/* IDs requeridos */}
+                  {baseI18nKeys.length > 0 && (
+                    <DIV className="mt-2">
+                      <SPAN className="text-[11px] opacity-80">
+                        IDs requeridos ({baseI18nKeys.length}):
+                      </SPAN>
+                      <DIV className="max-h-32 overflow-auto border border-white/20 rounded mt-1 px-2 py-1 bg-black/40">
+                        {baseI18nKeys.map((k) => (
+                          <P key={k} className="text-[10px] font-mono break-all">
+                            {k}
+                          </P>
+                        ))}
+                      </DIV>
+                    </DIV>
+                  )}
+
+                  {/* Instrucciones para ChatGPT */}
+                  <DIV className="mt-2 border-t border-white/10 pt-3 flex flex-col gap-2">
+                    <SPAN className="text-[11px] opacity-80">
+                      1. Abre ChatGPT en una nueva pestaña y pega el JSON anterior.
+                    </SPAN>
+                    <SPAN className="text-[11px]">
+                      URL:{' '}
+                      <a
+                        href="https://chatgpt.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline"
+                      >
+                        https://chatgpt.com
+                      </a>
+                    </SPAN>
+
+                    <SPAN className="text-[11px] opacity-80">
+                      2. Pide algo similar a lo siguiente:
+                    </SPAN>
+                    <textarea
+                      readOnly
+                      className="w-full h-32 text-[11px] font-mono bg-black/60 text-white px-2 py-1 rounded resize-y"
+                      value={`Toma este JSON donde las keys son IDs de i18n y los valores están en ${shortLocale.toUpperCase()}.
+              Genera un JSON POR IDIOMA para los siguientes locales: en, fr.
+              Cada resultado debe ser un objeto plano { "id": "texto traducido" } conservando placeholders, nombres propios y formato.
+
+              Respóndeme en este formato exacto, sin explicaciones adicionales:
+
+              === en ===
+              { ...json para en... }
+
+              === fr ===
+              { ...json para fr... }`}
+                    />
+
+                    <SPAN className="text-[11px] opacity-80">
+                      3. Cuando ChatGPT te devuelva las traducciones, copia cada bloque
+                      de JSON y pégalo en los recuadros de abajo. Más adelante se podrán
+                      importar estos valores al nodo.
+                    </SPAN>
+
+                    {i18nJsonGlobalError && (
+                      <P className="text-[11px] text-red-400 mt-2">
+                        {i18nJsonGlobalError}
+                      </P>
+                    )}
+
+                    {/* Recuadros para pegar resultados por idioma */}
+                    <DIV className="grid gap-2 md:grid-cols-3 mt-1">
+                      {/* EN */}
+                      <DIV className="flex flex-col gap-1 border border-blue-500/60 rounded-md p-2 bg-black/40">
+                        <SPAN className="text-[11px] opacity-80">
+                          Resultado EN (JSON) *
+                        </SPAN>
+                        <textarea
+                          className="w-full h-32 text-[11px] font-mono bg-black/60 text-white px-2 py-1 rounded resize-y"
+                          placeholder='Pega aquí el JSON traducido a "en"'
+                          value={enJsonRaw}
+                          onChange={(e) => setEnJsonRaw(e.target.value)}
+                        />
+                        {enInfo.error && (
+                          <P className="text-[11px] text-red-400 mt-1">
+                            {enInfo.error}
+                          </P>
+                        )}
+                        {!enInfo.error && baseI18nKeys.length > 0 && (
+                          <>
+                            {enInfo.missingKeys.length === 0 ? (
+                              <P className="text-[10px] text-emerald-400 mt-1">
+                                Todas las claves base ({baseI18nKeys.length}) están
+                                presentes.
+                              </P>
+                            ) : (
+                              <DIV className="mt-1">
+                                <SPAN className="text-[10px] opacity-70">
+                                  Faltan {enInfo.missingKeys.length} claves:
+                                </SPAN>
+                                <DIV className="max-h-24 overflow-auto border border-yellow-500/40 rounded mt-1 px-1 py-1">
+                                  {enInfo.missingKeys.map((k) => (
+                                    <P
+                                      key={k}
+                                      className="text-[10px] font-mono break-all"
+                                    >
+                                      {k}
+                                    </P>
+                                  ))}
+                                </DIV>
+                              </DIV>
+                            )}
+                          </>
+                        )}
+                      </DIV>
+
+                      {/* FR */}
+                      <DIV className="flex flex-col gap-1 border border-green-500/60 rounded-md p-2 bg-black/40">
+                        <SPAN className="text-[11px] opacity-80">
+                          Resultado FR (JSON) *
+                        </SPAN>
+                        <textarea
+                          className="w-full h-32 text-[11px] font-mono bg-black/60 text-white px-2 py-1 rounded resize-y"
+                          placeholder='Pega aquí el JSON traducido a "fr"'
+                          value={frJsonRaw}
+                          onChange={(e) => setFrJsonRaw(e.target.value)}
+                        />
+                        {frInfo.error && (
+                          <P className="text-[11px] text-red-400 mt-1">
+                            {frInfo.error}
+                          </P>
+                        )}
+                        {!frInfo.error && baseI18nKeys.length > 0 && (
+                          <>
+                            {frInfo.missingKeys.length === 0 ? (
+                              <P className="text-[10px] text-emerald-400 mt-1">
+                                Todas las claves base ({baseI18nKeys.length}) están
+                                presentes.
+                              </P>
+                            ) : (
+                              <DIV className="mt-1">
+                                <SPAN className="text-[10px] opacity-70">
+                                  Faltan {frInfo.missingKeys.length} claves:
+                                </SPAN>
+                                <DIV className="max-h-24 overflow-auto border border-yellow-500/40 rounded mt-1 px-1 py-1">
+                                  {frInfo.missingKeys.map((k) => (
+                                    <P
+                                      key={k}
+                                      className="text-[10px] font-mono break-all"
+                                    >
+                                      {k}
+                                    </P>
+                                  ))}
+                                </DIV>
+                              </DIV>
+                            )}
+                          </>
+                        )}
+                      </DIV>
+
+                      {/* Otro */}
+                      <DIV className="flex flex-col gap-1 border border-purple-500/60 rounded-md p-2 bg-black/40">
+                        <SPAN className="text-[11px] opacity-80">
+                          Otro idioma (JSON) *
+                        </SPAN>
+                        <textarea
+                          className="w-full h-32 text-[11px] font-mono bg-black/60 text-white px-2 py-1 rounded resize-y"
+                          placeholder='Pega aquí otro JSON de idioma (por ejemplo "es-MX", "de", etc.)'
+                          value={otherJsonRaw}
+                          onChange={(e) => setOtherJsonRaw(e.target.value)}
+                        />
+                        {otherInfo.error && (
+                          <P className="text-[11px] text-red-400 mt-1">
+                            {otherInfo.error}
+                          </P>
+                        )}
+                        {!otherInfo.error && baseI18nKeys.length > 0 && (
+                          <>
+                            {otherInfo.missingKeys.length === 0 ? (
+                              <P className="text-[10px] text-emerald-400 mt-1">
+                                Todas las claves base ({baseI18nKeys.length}) están
+                                presentes.
+                              </P>
+                            ) : (
+                              <DIV className="mt-1">
+                                <SPAN className="text-[10px] opacity-70">
+                                  Faltan {otherInfo.missingKeys.length} claves:
+                                </SPAN>
+                                <DIV className="max-h-24 overflow-auto border border-yellow-500/40 rounded mt-1 px-1 py-1">
+                                  {otherInfo.missingKeys.map((k) => (
+                                    <P
+                                      key={k}
+                                      className="text-[10px] font-mono break-all"
+                                    >
+                                      {k}
+                                    </P>
+                                  ))}
+                                </DIV>
+                              </DIV>
+                            )}
+                          </>
+                        )}
+                      </DIV>
+                    </DIV>
+                  </DIV>
+                </DIV>
+              )}
+            </DIV>
+          )}
 
           <DIV className="flex items-center justify-between mt-2">
             <P className="text-xs opacity-70">

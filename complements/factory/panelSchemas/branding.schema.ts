@@ -22,7 +22,7 @@ export const BRANDING_PANEL_SCHEMA: PanelSchema = {
       "name": "legalName",
       "type": "string",
       "required": true,
-      "groupKey": "company"
+      "groupKey": "company",
     },
     {
       "name": "brandName",
