@@ -23,6 +23,7 @@ export const BRANDING_PANEL_SCHEMA: PanelSchema = {
       "type": "string",
       "required": true,
       "groupKey": "company",
+      "translatable": true
     },
     {
       "name": "brandName",

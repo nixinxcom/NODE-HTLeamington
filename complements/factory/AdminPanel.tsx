@@ -913,6 +913,7 @@ export function AdminPanel({ locale }: AdminPanelProps) {
   const [copiedI18nExport, setCopiedI18nExport] =
     useState<boolean>(false);
 
+  const [esJsonRaw, setEsJsonRaw] = useState<string>('');
   const [enJsonRaw, setEnJsonRaw] = useState<string>('');
   const [frJsonRaw, setFrJsonRaw] = useState<string>('');
   const [otherJsonRaw, setOtherJsonRaw] = useState<string>('');
@@ -1087,6 +1088,7 @@ export function AdminPanel({ locale }: AdminPanelProps) {
         // Si el panel tiene textos traducibles, forzamos que los 3 JSON se llenen bien
     if (baseI18nKeys.length > 0) {
       const locales = [
+        { label: 'ES', raw: esJsonRaw, info: esInfo },
         { label: 'EN', raw: enJsonRaw, info: enInfo },
         { label: 'FR', raw: frJsonRaw, info: frInfo },
         { label: 'Otro idioma', raw: otherJsonRaw, info: otherInfo },
@@ -1264,6 +1266,22 @@ export function AdminPanel({ locale }: AdminPanelProps) {
     error: string | null;
     missingKeys: string[];
   };
+
+  const esInfo = useMemo<LocaleJsonInfo>(() => {
+    if (!esJsonRaw.trim()) {
+      return { error: null, missingKeys: baseI18nKeys };
+    }
+    try {
+      const obj = JSON.parse(esJsonRaw) as Record<string, any>;
+      const missing = baseI18nKeys.filter((k) => !(k in obj));
+      return { error: null, missingKeys: missing };
+    } catch {
+      return {
+        error: 'JSON inválido. Revisa comas, llaves y comillas dobles.',
+        missingKeys: [],
+      };
+    }
+  }, [enJsonRaw, baseI18nKeys]);
 
   const enInfo = useMemo<LocaleJsonInfo>(() => {
     if (!enJsonRaw.trim()) {
@@ -1565,11 +1583,13 @@ export function AdminPanel({ locale }: AdminPanelProps) {
                     <textarea
                       readOnly
                       className="w-full h-32 text-[11px] font-mono bg-black/60 text-white px-2 py-1 rounded resize-y"
-                      value={`Toma este JSON donde las keys son IDs de i18n y los valores están en ${shortLocale.toUpperCase()}.
-              Genera un JSON POR IDIOMA para los siguientes locales: en, fr.
+                      value={`Toma este JSON donde las keys son IDs de i18n. Genera un JSON POR IDIOMA para los siguientes locales: es, en, fr.
               Cada resultado debe ser un objeto plano { "id": "texto traducido" } conservando placeholders, nombres propios y formato.
 
               Respóndeme en este formato exacto, sin explicaciones adicionales:
+
+              === es ===
+              { ...json para es... }
 
               === en ===
               { ...json para en... }
@@ -1592,6 +1612,50 @@ export function AdminPanel({ locale }: AdminPanelProps) {
 
                     {/* Recuadros para pegar resultados por idioma */}
                     <DIV className="grid gap-2 md:grid-cols-3 mt-1">
+                      {/* ES */}
+                      <DIV className="flex flex-col gap-1 border border-blue-500/60 rounded-md p-2 bg-black/40">
+                        <SPAN className="text-[11px] opacity-80">
+                          Resultado ES (JSON) *
+                        </SPAN>
+                        <textarea
+                          className="w-full h-32 text-[11px] font-mono bg-black/60 text-white px-2 py-1 rounded resize-y"
+                          placeholder='Pega aquí el JSON traducido a "es"'
+                          value={esJsonRaw}
+                          onChange={(e) => setEsJsonRaw(e.target.value)}
+                        />
+                        {esInfo.error && (
+                          <P className="text-[11px] text-red-400 mt-1">
+                            {esInfo.error}
+                          </P>
+                        )}
+                        {!esInfo.error && baseI18nKeys.length > 0 && (
+                          <>
+                            {esInfo.missingKeys.length === 0 ? (
+                              <P className="text-[10px] text-emerald-400 mt-1">
+                                Todas las claves base ({baseI18nKeys.length}) están
+                                presentes.
+                              </P>
+                            ) : (
+                              <DIV className="mt-1">
+                                <SPAN className="text-[10px] opacity-70">
+                                  Faltan {esInfo.missingKeys.length} claves:
+                                </SPAN>
+                                <DIV className="max-h-24 overflow-auto border border-yellow-500/40 rounded mt-1 px-1 py-1">
+                                  {esInfo.missingKeys.map((k) => (
+                                    <P
+                                      key={k}
+                                      className="text-[10px] font-mono break-all"
+                                    >
+                                      {k}
+                                    </P>
+                                  ))}
+                                </DIV>
+                              </DIV>
+                            )}
+                          </>
+                        )}
+                      </DIV>
+
                       {/* EN */}
                       <DIV className="flex flex-col gap-1 border border-blue-500/60 rounded-md p-2 bg-black/40">
                         <SPAN className="text-[11px] opacity-80">
