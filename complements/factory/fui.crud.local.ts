@@ -40,30 +40,56 @@ export async function deletePanelSchemaLocal(id: string): Promise<void> {
 
 /** Genera el código TypeScript del schema */
 function generateSchemaCode(schema: PanelSchema): string {
-  const roles = schema.access.allowedRoles.map((r) => `'${r}'`).join(', ');
+  // 1) Roles seguros (fallback si no hay access/allowedRoles)
+  const rawRoles =
+    schema.access?.allowedRoles && schema.access.allowedRoles.length
+      ? schema.access.allowedRoles
+      : ["superadmin", "admin", "client"];
+
+  const roles = rawRoles.map((r) => `'${r}'`).join(", ");
+
+  // 2) Campos
   const fields = schema.fields
     .map(
       (f) =>
         `    {
       name: '${f.name}',
       type: '${f.type}',
-      ${f.required ? 'required: true,' : ''}
-      ${f.widget ? `widget: '${f.widget}',` : ''}
-      ${f.groupKey ? `groupKey: '${f.groupKey}',` : ''}
+      ${f.required ? "required: true," : ""}
+      ${f.widget ? `widget: '${f.widget}',` : ""}
+      ${f.groupKey ? `groupKey: '${f.groupKey}',` : ""}
     },`
     )
-    .join('\n');
+    .join("\n");
+
+  // 3) fsCollection: si es Providers, usamos la constante; si no, string literal
+  const fsCollectionExpr =
+    schema.fsCollection && schema.fsCollection !== "Providers"
+      ? `'${schema.fsCollection}'`
+      : "PANEL_FS_COLLECTION_PROVIDERS";
+
+  // 4) Flags y metadatos con fallback
+  const isProvider = schema.isProvider ? "true" : "false";
+  const isAgentFDV = schema.isAgentFDV ? "true" : "false";
+  const iconKey = schema.iconKey ? `'${schema.iconKey}'` : `'${schema.id}'`;
+  const source = schema.source ? `'${schema.source}'` : "'core'";
+  const stage = schema.stage ? `'${schema.stage}'` : "'draft'";
+  const version = schema.version ?? 1;
 
   return `import { PANEL_FS_COLLECTION_PROVIDERS, type PanelSchema } from '../panelSchema.types';
 
 export const ${schema.id.toUpperCase()}_PANEL_SCHEMA: PanelSchema = {
   id: '${schema.id}',
   labelKey: '${schema.labelKey}',
-  fsCollection: ${schema.fsCollection || 'PANEL_FS_COLLECTION_PROVIDERS'},
+  iconKey: ${iconKey},
+  fsCollection: ${fsCollectionExpr},
   fsDocId: '${schema.fsDocId}',
-  isProvider: ${schema.isProvider},
+  isProvider: ${isProvider},
+  isAgentFDV: ${isAgentFDV},
+  source: ${source},
+  stage: ${stage},
   access: { allowedRoles: [${roles}] },
-  version: ${schema.version ?? 1},
+  version: ${version},
   fields: [
 ${fields}
   ],

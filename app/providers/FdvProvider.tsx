@@ -1,4 +1,4 @@
-// app/providers/FdvProvider.tsx
+//app\providers\FdvProvider.tsx
 "use client";
 
 import React, {
@@ -36,11 +36,14 @@ type Props = {
 /**
  * Provider maestro de Fuente De Verdad (FDV).
  *
+ * Pipeline:
+ *   PanelSchema (core, isProvider:true) → Firestore → FdvProvider → APP
+ *
  * - Lee todos los PanelSchema con isProvider = true.
  * - Por cada uno hace getDoc(FbDB, fsCollection, fsDocId).
  * - Coloca los resultados bajo data[schema.id].
  *
- * Ej: data.branding ← doc Providers/Branding
+ * Ej: data["branding"] ← doc Providers/Branding
  */
 export default function FdvProvider({ children }: Props) {
   const [data, setData] = useState<FdvRecord>({});
@@ -118,7 +121,30 @@ export default function FdvProvider({ children }: Props) {
   );
 }
 
-/** Hook base para leer el FDV genérico */
+/** Hook base para leer el contexto completo */
 export function useFdvData(): FdvContextValue {
   return useContext(FdvContext);
+}
+
+/**
+ * Hook genérico por panelId:
+ *
+ *   const { value: branding } = useProvider("branding");
+ *
+ * El id viene 100% del core (schema.id), no se define en el nodo.
+ */
+export function useProvider<T = unknown>(
+  id: string,
+): {
+  value: T | null;
+  loading: boolean;
+  error?: string;
+} {
+  const { data, loading, error } = useFdvData();
+
+  return {
+    value: (data[id] as T) ?? null,
+    loading,
+    error,
+  };
 }

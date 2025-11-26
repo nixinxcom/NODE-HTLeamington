@@ -916,7 +916,6 @@ export function AdminPanel({ locale }: AdminPanelProps) {
   const [esJsonRaw, setEsJsonRaw] = useState<string>('');
   const [enJsonRaw, setEnJsonRaw] = useState<string>('');
   const [frJsonRaw, setFrJsonRaw] = useState<string>('');
-  const [otherJsonRaw, setOtherJsonRaw] = useState<string>('');
   const [i18nJsonGlobalError, setI18nJsonGlobalError] =
     useState<string | null>(null);
 
@@ -1091,7 +1090,6 @@ export function AdminPanel({ locale }: AdminPanelProps) {
         { label: 'ES', raw: esJsonRaw, info: esInfo },
         { label: 'EN', raw: enJsonRaw, info: enInfo },
         { label: 'FR', raw: frJsonRaw, info: frInfo },
-        { label: 'Otro idioma', raw: otherJsonRaw, info: otherInfo },
       ];
 
       for (const loc of locales) {
@@ -1314,22 +1312,6 @@ export function AdminPanel({ locale }: AdminPanelProps) {
       };
     }
   }, [frJsonRaw, baseI18nKeys]);
-
-  const otherInfo = useMemo<LocaleJsonInfo>(() => {
-    if (!otherJsonRaw.trim()) {
-      return { error: null, missingKeys: baseI18nKeys };
-    }
-    try {
-      const obj = JSON.parse(otherJsonRaw) as Record<string, any>;
-      const missing = baseI18nKeys.filter((k) => !(k in obj));
-      return { error: null, missingKeys: missing };
-    } catch {
-      return {
-        error: 'JSON inválido. Revisa comas, llaves y comillas dobles.',
-        missingKeys: [],
-      };
-    }
-  }, [otherJsonRaw, baseI18nKeys]);
 
   // -------------------- Render principal --------------------
 
@@ -1730,50 +1712,6 @@ export function AdminPanel({ locale }: AdminPanelProps) {
                                 </SPAN>
                                 <DIV className="max-h-24 overflow-auto border border-yellow-500/40 rounded mt-1 px-1 py-1">
                                   {frInfo.missingKeys.map((k) => (
-                                    <P
-                                      key={k}
-                                      className="text-[10px] font-mono break-all"
-                                    >
-                                      {k}
-                                    </P>
-                                  ))}
-                                </DIV>
-                              </DIV>
-                            )}
-                          </>
-                        )}
-                      </DIV>
-
-                      {/* Otro */}
-                      <DIV className="flex flex-col gap-1 border border-purple-500/60 rounded-md p-2 bg-black/40">
-                        <SPAN className="text-[11px] opacity-80">
-                          Otro idioma (JSON) *
-                        </SPAN>
-                        <textarea
-                          className="w-full h-32 text-[11px] font-mono bg-black/60 text-white px-2 py-1 rounded resize-y"
-                          placeholder='Pega aquí otro JSON de idioma (por ejemplo "es-MX", "de", etc.)'
-                          value={otherJsonRaw}
-                          onChange={(e) => setOtherJsonRaw(e.target.value)}
-                        />
-                        {otherInfo.error && (
-                          <P className="text-[11px] text-red-400 mt-1">
-                            {otherInfo.error}
-                          </P>
-                        )}
-                        {!otherInfo.error && baseI18nKeys.length > 0 && (
-                          <>
-                            {otherInfo.missingKeys.length === 0 ? (
-                              <P className="text-[10px] text-emerald-400 mt-1">
-                                Todas las claves base ({baseI18nKeys.length}) están
-                                presentes.
-                              </P>
-                            ) : (
-                              <DIV className="mt-1">
-                                <SPAN className="text-[10px] opacity-70">
-                                  Faltan {otherInfo.missingKeys.length} claves:
-                                </SPAN>
-                                <DIV className="max-h-24 overflow-auto border border-yellow-500/40 rounded mt-1 px-1 py-1">
-                                  {otherInfo.missingKeys.map((k) => (
                                     <P
                                       key={k}
                                       className="text-[10px] font-mono break-all"

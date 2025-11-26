@@ -1,60 +1,77 @@
+//complements\components\AiComp\AiComp.tsx
 'use client';
 
 import React, {
   useEffect,
   useMemo,
-  useState,
   useRef,
-  useLayoutEffect,
-  useCallback,
+  useState,
 } from 'react';
 import s from './AiComp.module.css';
 
-import { getDownloadURL, ref as storageRef } from 'firebase/storage';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { FbDB, FbStorage } from '@/app/lib/services/firebase';
-
+import { useIntl } from 'react-intl';
 import { renderWithLinks } from '@/app/lib/ui/linkify';
 
-import { getSettingsEffective } from '@/complements/data/settingsFS';
-import { getBrandingEffectivePWA } from '@/complements/data/brandingFS';
+import { useFdvData } from '@/app/providers/FdvProvider';
+import { PANEL_SCHEMAS } from '@/complements/factory/panelSchemas';
 
-import { usePathname } from 'next/navigation';
-import { useIntl } from 'react-intl';
-import FM from '@/complements/i18n/FM';
+import { BUTTON, INPUT, SPAN } from "@/complements/components/ui/wrappers";
 
-import { resolveFMToStrings } from '@/complements/utils/resolveFM';
-import { getI18nEffective } from '@/complements/data/i18nFS';
-import { toShortLocale, DEFAULT_LOCALE_SHORT } from '@/app/lib/i18n/locale';
-import { useAppContext } from '@/context/AppContext';
-import { BUTTON, INPUT, LABEL, SPAN } from "@/complements/components/ui/wrappers";
+/* ╔══════════════════════════════════════════╗
+   ║           TELEMETRÍA POR SESIÓN          ║
+   ╚══════════════════════════════════════════╝ */
 
-// ===== Caché por sesión (solo pestaña abierta) =====
-const SS = typeof window !== 'undefined' ? window.sessionStorage : null;
+const SS: Storage | null =
+  typeof window !== 'undefined' ? window.sessionStorage : null;
+
 function ssGet<T = any>(k: string): T | null {
-  try { return SS ? JSON.parse(SS.getItem(k) || 'null') : null; } catch { return null; }
+  try {
+    return SS ? JSON.parse(SS.getItem(k) || 'null') : null;
+  } catch {
+    return null;
+  }
 }
-function ssSet(k: string, v: any) {
-  try { SS?.setItem(k, JSON.stringify(v)); } catch {}
-}
-function ssDel(k: string) { try { SS?.removeItem(k); } catch {} }
 
-// ===== Telemetría por sesión =====
+function ssSet(k: string, v: any) {
+  try {
+    SS?.setItem(k, JSON.stringify(v));
+  } catch {
+    // ignore
+  }
+}
+
+function ssDel(k: string) {
+  try {
+    SS?.removeItem(k);
+  } catch {
+    // ignore
+  }
+}
+
 const TELEMETRY_KEY = 'aai.telemetry';
+
 function pushTelemetry(e: Record<string, any>) {
   const arr = ssGet<any[]>(TELEMETRY_KEY) || [];
   arr.push({ ...e, ts: Date.now() });
   ssSet(TELEMETRY_KEY, arr);
 }
+
 function flushTelemetry() {
   const arr = ssGet<any[]>(TELEMETRY_KEY) || [];
   if (!arr.length) return;
+
   let sent = false;
   try {
     if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
-      sent = (navigator as any).sendBeacon('/api/log-aai', JSON.stringify(arr));
+      sent = (navigator as any).sendBeacon(
+        '/api/log-aai',
+        JSON.stringify(arr),
+      );
     }
-  } catch {}
+  } catch {
+    // ignore
+  }
+
   if (!sent) {
     try {
       fetch('/api/log-aai', {
@@ -63,217 +80,164 @@ function flushTelemetry() {
         body: JSON.stringify(arr),
         keepalive: true,
       }).catch(() => {});
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
+
   ssDel(TELEMETRY_KEY);
 }
 
-// ==== tipos mínimos ====
-type AgentCfg = {
-  displayName: string;
-  welcome?: string;
-  domain: string;
-  languages: string[];
-  showLeadForm: boolean;
-  openai: { model: string; temperature: number; max_tokens: number };
-  assets: { avatarPath: string; fabIconPath: string };
-  params: Record<string, any>;
-};
+/* ╔══════════════════════════════════════════╗
+   ║         DETECCIÓN SIMPLE DE IDIOMA       ║
+   ╚══════════════════════════════════════════╝ */
 
-type AiCompProps = {
-  locale?: string;
-  OpenAIConfigAgentId?: string;
-};
+type ShortLang = 'es' | 'en' | 'fr';
 
-// ===== idioma (persistencia/local) =====
-const LS_LANG = 'aai.lang';
-function shortFromLocale(l: string): 'es' | 'en' | 'fr' {
-  const low = (l || 'es').toLowerCase();
+function normalizeShortLocale(l: string | undefined | null): ShortLang {
+  const low = String(l || 'es').toLowerCase();
   if (low.startsWith('en')) return 'en';
   if (low.startsWith('fr')) return 'fr';
   return 'es';
 }
-function fullFromShort(s: 'es' | 'en' | 'fr'): 'es' | 'en' | 'fr' {
-  return s === 'en' ? 'en' : s === 'fr' ? 'fr' : 'es';
-}
 
-// Heurística ligera de idioma en cliente (no cambia el UI, solo el backend)
-function detectLangClient(text: string): 'es' | 'en' | 'fr' {
+/** Heurística ligera basada en el texto del usuario */
+function detectLangClient(text: string): ShortLang {
   const t = (text || '').toLowerCase();
   let es = 0, en = 0, fr = 0;
+
   if (/[¿¡ñáéíóú]/.test(t)) es += 2;
   if (/[àâçéèêëîïôùûüÿœ]/.test(t)) fr += 2;
+
   ['hola','gracias','horario','horarios','dirección','direccion','teléfono','telefono','sitio','web','menú','menu','reservar']
     .forEach(k => { if (t.includes(k)) es += 2; });
+
   ['bonjour','merci','horaire','horaires','adresse','téléphone','telephone','site','web','réserver','reserver']
     .forEach(k => { if (t.includes(k)) fr += 2; });
+
   ['hi','hello','thanks','hours','address','phone','website','menu','reserve','open','close']
     .forEach(k => { if (t.includes(k)) en += 2; });
-  const max = Math.max(es,en,fr);
+
+  const max = Math.max(es, en, fr);
   if (max === 0) return 'en';
   if (es === max && es >= en + 1 && es >= fr + 1) return 'es';
   if (fr === max && fr >= en + 1 && fr >= es + 1) return 'fr';
   return 'en';
 }
 
-// ===== helpers para cortar branding por paths "a.b.c" =====
-const getByPath = (obj: any, path: string) =>
-  path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
+/* ╔══════════════════════════════════════════╗
+   ║                TYPES & PROPS             ║
+   ╚══════════════════════════════════════════╝ */
 
-const buildContextSlice = (doc: any, paths: string | string[]) => {
-  const list = Array.isArray(paths) ? paths : [paths];
-  const out: Record<string, any> = {};
-  if (!doc) return out;
-  for (const p of list) {
-    const val = getByPath(doc, p);
-    if (val !== undefined) out[p] = val;
-  }
-  return out;
+type ChatMessage = {
+  from: 'user' | 'bot';
+  text: string;
 };
 
-export default function AiComp(props: AiCompProps) {
+type AiCompProps = {
+  /** Identificador lógico del agente (para logs/back-end) */
+  agentId?: string;
+
+  /** Paneles FDV a usar como contexto (branding, settings, training, etc.) */
+  sources?: string[];
+
+  /** Rol / propósito del agente (system prompt en el back-end) */
+  role?: string;
+
+  /** Título visible en el header del panel */
+  title?: string;
+
+  /** Avatar del bot dentro del panel */
+  avatarUrl?: string;
+
+  /** Icono de la marca / agente en el header y FAB */
+  fabIconUrl?: string;
+
+  /** Locale base; si no se indica, se toma de react-intl */
+  localeOverride?: string;
+
+  /** Panel abierto por defecto */
+  defaultOpen?: boolean;
+};
+
+/**
+ * AiComp:
+ * - UI igual (FAB + panel + mensajes + input).
+ * - Contexto desde FDV (FdvProvider) filtrado por isAgentFDV y `sources`.
+ * - Envía `context`, `agentId`, `role`, `locale` a `/api/ai-chat`.
+ * - Telemetría por sesión a `/api/log-aai`.
+ * - Locale que se manda al backend = detectLangClient(text) o locale de UI.
+ */
+export default function AiComp({
+  agentId = 'default-agent',
+  sources,
+  role,
+  title,
+  avatarUrl = '/Icons/ClustersIconMap.png',
+  fabIconUrl = '/Icons/NIXINIcon.png',
+  localeOverride,
+  defaultOpen = false,
+}: AiCompProps) {
   const intl = useIntl();
-  const { Branding } = useAppContext();
 
-  // ===== Locale activo (prop → URL → navegador) =====
-  const pathname = usePathname();
-  const urlSegment = useMemo(() => {
-    if (!pathname) return undefined;
-    const seg = pathname.split('/').filter(Boolean)[0]; // /es, /en, /fr...
-    return seg;
-  }, [pathname]);
-
-  const fallback = process.env.NEXT_PUBLIC_DEFAULT_LOCALE || DEFAULT_LOCALE_SHORT;
-
-  const initialLocale =
-    props.locale ||
-    (urlSegment && (urlSegment === 'es' || urlSegment === 'en' || urlSegment === 'fr' ? urlSegment : undefined)) ||
-    (typeof navigator !== 'undefined' ? navigator.language : fallback);
-
-  const initialShort = shortFromLocale(initialLocale);
-  const [lang, setLang] =
-    useState<'es' | 'en' | 'fr'>(() => (typeof window !== 'undefined'
-      ? (localStorage.getItem(LS_LANG) as any) || initialShort
-      : initialShort));
-
-  useEffect(() => {
-    const next = shortFromLocale(initialLocale);
-    if (next !== lang) setLang(next);
-  }, [initialLocale]);
-
-  const activeLocale = toShortLocale(lang);
-  const [dict, setDict] = useState<Record<string, string>>({});
-  useEffect(() => {
-    let alive = true;
-    getI18nEffective(activeLocale).then(d => { if (alive) setDict(d || {}); });
-    return () => { alive = false; };
-  }, [activeLocale]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem(LS_LANG, lang); }, [lang]);
-
-  const [open, setOpen] = useState(false);
-
-  // Firestore agent + assets
-  const [cfg, setCfg] = useState<AgentCfg | null>(null);
-  const [avatar, setAvatar] = useState<string>('/Icons/ClustersIconMap.png');
-  const [fabIcon, setFabIcon] = useState<string>('/Icons/NIXINIcon.png');
-
-  // RDD
-  const [settingsFS, setSettingsFS] = useState<any | null>(null);
-  const [brandingFS, setBrandingFS] = useState<any | null>(null);
-
-  const brandingStr = useMemo(
-    () => (brandingFS ? resolveFMToStrings(brandingFS, dict) : null),
-    [brandingFS, dict]
-  );
-  const settingsStr = useMemo(
-    () => (settingsFS ? resolveFMToStrings(settingsFS, dict) : null),
-    [settingsFS, dict]
-  );
-
-  // Chat state
-  const [msgs, setMsgs] = useState<{ from: 'user' | 'bot'; text: string }[]>([]);
+  const [open, setOpen] = useState(defaultOpen);
+  const [msgs, setMsgs] = useState<ChatMessage[]>([]);
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState('');
-  const [lead, setLead] = useState({ name: '', email: '', consent: false, sent: false });
 
-  // ===== RDD: settings efectivos (caché sesión) =====
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const short = lang; // 'es' | 'en' | 'fr'
-        const SKEY = `aai:settings:${short}`;
-        const cached = ssGet(SKEY);
-        if (cached && alive) setSettingsFS(cached);
-        const eff = await getSettingsEffective(undefined, short);
-        if (!alive) return;
-        setSettingsFS(eff);
-        ssSet(SKEY, eff);
-      } catch (e) { /* opcional */ }
-    })();
-    return () => { alive = false; };
-  }, [lang]);
+  // ===== Locale base (UI) =====
+  const uiShort: ShortLang = normalizeShortLocale(localeOverride || intl.locale || 'es');
 
-  // ===== RDD: branding efectivo (caché sesión) =====
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const short = lang;
-      const BKEY = `aai:branding:${short}`;
-      try {
-        const cached = ssGet(BKEY);
-        if (cached && alive) setBrandingFS(cached);
-        let docAny: any | null = null;
-        try {
-          docAny = await getBrandingEffectivePWA(short);
-        } catch {
-          docAny = await getBrandingEffectivePWA(short);
-        }
-        if (!alive || !docAny) return;
-        setBrandingFS(docAny);
-        ssSet(BKEY, docAny);
-      } catch (e) { /* opcional */ }
-    })();
-    return () => { alive = false; };
-  }, [lang]);
+  // ===== Contexto FDV para el agente =====
+  const { data } = useFdvData();
 
-  const indiceAI = useMemo(() => settingsStr?.agentAI?.indiceAI || {}, [settingsStr]);
+  // Solo tomamos schemas marcados para uso de agentes (isAgentFDV)
+  const agentSchemas = useMemo(
+    () => Object.values(PANEL_SCHEMAS).filter((s: any) => s.isAgentFDV),
+    [],
+  );
 
-  // ===== autoscroll =====
-  const listRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const isAtBottomRef = useRef(true);
-  const [isAtBottom, setIsAtBottom] = useState(true);
+  // Si no se pasan `sources`, usamos todos los paneles marcados isAgentFDV.
+  // Si sí se pasan, filtramos contra los permitidos.
+  const panelIds = useMemo(() => {
+    const allowedIds =
+      agentSchemas.length > 0
+        ? agentSchemas.map((s: any) => s.id)
+        : Object.keys(data || {});
+    const requested = sources && sources.length ? sources : allowedIds;
+    return requested.filter((id) => allowedIds.includes(id));
+  }, [agentSchemas, data, sources]);
 
-  const computeAtBottom = useCallback(() => {
-    const el = listRef.current;
-    if (!el) return true;
-    return el.scrollTop + el.clientHeight >= el.scrollHeight - 12;
-  }, []);
-  const updateAtBottom = useCallback(() => {
-    const atBottom = computeAtBottom();
-    isAtBottomRef.current = atBottom;
-    setIsAtBottom(atBottom);
-  }, [computeAtBottom]);
-  const scrollToBottom = useCallback((smooth = true) => {
-    bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
-  }, []);
+  // armamos el contexto que se enviará al back-end
+  const context = useMemo(() => {
+    const out: Record<string, unknown> = {};
+    for (const id of panelIds) {
+      if (data[id] !== undefined) {
+        out[id] = data[id];
+      }
+    }
+    return out;
+  }, [data, panelIds]);
+
+  // ===== Autoscroll sencillo =====
+  const listRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    updateAtBottom();
-    el.addEventListener('scroll', updateAtBottom, { passive: true } as any);
-    return () => el.removeEventListener('scroll', updateAtBottom as any);
-  }, [updateAtBottom]);
-  useLayoutEffect(() => { if (isAtBottomRef.current) scrollToBottom(true); }, [msgs, typing, scrollToBottom]);
+    el.scrollTop = el.scrollHeight;
+  }, [msgs, typing]);
 
-  // Enviar telemetría al cerrar pestaña / ocultar
+  // ===== Telemetría: flush al cerrar pestaña / ocultar =====
   useEffect(() => {
-    const onHide = () => { if (document.visibilityState === 'hidden') flushTelemetry(); };
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flushTelemetry();
+    };
     const onBeforeUnload = () => flushTelemetry();
+
     window.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', onHide);
     window.addEventListener('beforeunload', onBeforeUnload);
+
     return () => {
       window.removeEventListener('visibilitychange', onHide);
       window.removeEventListener('pagehide', onHide);
@@ -282,286 +246,175 @@ export default function AiComp(props: AiCompProps) {
     };
   }, []);
 
-  useEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => { if (isAtBottomRef.current) scrollToBottom(false); });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [scrollToBottom]);
-
-  // ===== carga de agent (Firestore) + assets (Storage) =====
-  const AGENT_ID = process.env.NEXT_PUBLIC_AGENT_ID || "default";
-  useEffect(() => {
-    (async () => {
-      let merged: AgentCfg = {
-        displayName: '',
-        welcome: undefined,
-        domain: '',
-        languages: ['es', 'en', 'fr'],
-        showLeadForm: false,
-        openai: { model: 'gpt-5-nano', temperature: 0.7, max_tokens: 500 },
-        assets: {
-          avatarPath: 'Agents/default/assets/avatar_700x700.webp',
-          fabIconPath: 'Agents/default/assets/fab_700x700.webp',
-        },
-        params: {},
-      };
-
-      try {
-        const snap = await getDoc(doc(FbDB, 'ai_agents', AGENT_ID));
-        if (snap.exists()) {
-          const data = snap.data() as Partial<AgentCfg>;
-          merged = {
-            displayName: data.displayName || merged.displayName,
-            welcome: data.welcome || merged.welcome,
-            domain: data.domain || merged.domain,
-            languages: Array.isArray(data.languages) ? data.languages : merged.languages,
-            showLeadForm: !!data.showLeadForm,
-            openai: { ...merged.openai, ...(data.openai || {}) },
-            assets: {
-              avatarPath: data?.assets?.avatarPath || merged.assets.avatarPath,
-              fabIconPath: data?.assets?.fabIconPath || merged.assets.fabIconPath,
-            },
-            params: data.params || {},
-          };
-        }
-      } catch { /* keep defaults */ }
-
-      setCfg(merged);
-
-      // assets desde Storage
-      try {
-        const url = await getDownloadURL(storageRef(FbStorage, merged.assets.avatarPath));
-        setAvatar(url);
-      } catch { /* usa default */ }
-      try {
-        const url2 = await getDownloadURL(storageRef(FbStorage, merged.assets.fabIconPath));
-        setFabIcon(url2);
-      } catch { /* usa default */ }
-
-      // bienvenida (i18n si el agente no trae)
-      const welcomeText =
-        typeof merged.welcome === 'string' && merged.welcome.trim()
-          ? merged.welcome
-          : intl.formatMessage({ id: 'aai.welcome', defaultMessage: '¡Hola! ¿En qué puedo ayudarte hoy?' });
-      setMsgs(prev => prev.length ? prev : [{ from: 'bot', text: welcomeText }]);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [AGENT_ID, intl, lang]);
-
-  // ===== envío =====
+  // ===== Envío de mensaje libre (con telemetría + detección de idioma) =====
   async function send() {
     const text = input.trim();
     if (!text) return;
 
-    setMsgs(prev => [...prev, { from: 'user', text }]);
+    setMsgs((prev) => [...prev, { from: 'user', text }]);
     setInput('');
     setTyping(true);
 
-    try {
-      // NO cambiamos el idioma del UI; se usa el actual
-      const detected = detectLangClient(text);           // 'es' | 'en' | 'fr'
-      const sendLocale = fullFromShort(detected || lang); // no cambia el UI
+    // Detectamos idioma del mensaje; si no hay señal clara, usamos el de UI
+    const detected: ShortLang = detectLangClient(text);
+    const sendShort: ShortLang = detected || uiShort;
+    const sendLocale = sendShort; // 'es' | 'en' | 'fr'
 
-      const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const t0 =
+      typeof performance !== 'undefined'
+        ? performance.now()
+        : Date.now();
+
+    try {
       const res = await fetch('/api/ai-chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-locale': sendLocale },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-locale': sendLocale,
+        },
         body: JSON.stringify({
-          userMessage: text,
+          agentId,
+          role,
+          locale: sendLocale,
+          context,
           message: text,
-          locale: sendLocale,
-          indiceAI,
+          userMessage: text,
+          meta: {
+            source: 'chat',
+            panels: panelIds,
+          },
         }),
       });
 
       const json = await res.json().catch(() => ({} as any));
-      const latency = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+      const t1 =
+        typeof performance !== 'undefined'
+          ? performance.now()
+          : Date.now();
+      const latency = Math.round(t1 - t0);
 
       const botText =
         typeof json?.reply === 'string'
           ? json.reply
           : (json?.reply?.text ?? json?.message ?? '');
 
+      // Telemetría
+      const usage = json?.usage || {};
       pushTelemetry({
-        kind: 'free',
-        topic: json?.topic || null,
-        ok: !!json?.ok,
-        latency,
+        kind: 'chat',
+        agentId,
+        locale: sendLocale,
+        panels: panelIds,
+        ok: res.ok && json?.ok !== false,
         status: res.status,
-        tokensIn: json?.usage?.prompt ?? null,
-        tokensOut: json?.usage?.completion ?? null,
+        latency,
+        tokensIn: usage.prompt ?? null,
+        tokensOut: usage.completion ?? null,
+        topic: json?.topic ?? null,
       });
 
       if (!res.ok || json?.ok === false) {
-        const msg = json?.error ? String(json.error) : `HTTP ${res.status}`;
+        const msg = json?.error
+          ? String(json.error)
+          : `HTTP ${res.status}`;
         throw new Error(msg);
       }
-      setMsgs(prev => [...prev, { from: 'bot', text: String(botText) }]);
+
+      setMsgs((prev) => [
+        ...prev,
+        { from: 'bot', text: String(botText || '') },
+      ]);
     } catch (e: any) {
-      setMsgs(prev => [...prev, { from: 'bot', text: `⚠️ ${String(e?.message || e)}` }]);
+      setMsgs((prev) => [
+        ...prev,
+        { from: 'bot', text: `⚠️ ${String(e?.message || e)}` },
+      ]);
     } finally {
       setTyping(false);
     }
   }
 
-  // 1) raw desde settings *resuelto* (ya traducido si hay FMs)
-  const shortcutsRaw = useMemo(() => {
-    const sc = settingsStr?.agentAI?.shortcuts;
-    return Array.isArray(sc) ? sc : (Array.isArray(sc?.items) ? sc.items : sc) || [];
-  }, [settingsStr]);
+  // ===== Textos UI =====
+  const placeholderText = intl.formatMessage({
+    id: 'aai.ui.placeholder',
+    defaultMessage: 'Escribe tu mensaje…',
+  });
 
-  // ===== click en shortcut =====
-  const handleShortcut = async (payload: { text?: string; context?: any; meta?: any; paths?: string[] }) => {
-    const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    if (payload?.meta?.label) {
-      setMsgs(prev => [...prev, { from: 'user', text: String(payload.meta.label) }]);
-    }
-    setTyping(true);
+  const sendLabel = intl.formatMessage({
+    id: 'aai.ui.send',
+    defaultMessage: 'Enviar',
+  });
 
-    try {
-      const paths = (payload as any)?.meta?.paths || payload?.paths || [];
-      const brandDoc = brandingStr ?? brandingFS;
-      const ctx =
-        payload.context ??
-        (brandDoc && paths.length ? buildContextSlice(brandDoc, paths as string[]) : undefined);
-
-      const baseText =
-        payload.text ||
-        intl.formatMessage({ id: 'aai.query.useContext', defaultMessage: 'Responde basado SOLO en el contexto adjunto.' });
-      const detected = detectLangClient(String(baseText));
-      const sendLocale = fullFromShort(detected || lang);
-
-      const res = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-locale': sendLocale },
-        body: JSON.stringify({
-          userMessage:
-            payload.text ||
-            intl.formatMessage({ id: 'aai.query.useContext', defaultMessage: 'Responde basado SOLO en el contexto adjunto.' }),
-          message:
-            payload.text ||
-            intl.formatMessage({ id: 'aai.query.useContext', defaultMessage: 'Responde basado SOLO en el contexto adjunto.' }),
-          locale: sendLocale,
-          context: ctx || {},
-          indiceAI,
-          meta: payload.meta || { source: 'shortcut', paths },
-        }),
-      });
-
-      const json = await res.json().catch(() => ({} as any));
-      const latency = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
-
-      const botText =
-        typeof json?.reply === 'string'
-          ? json.reply
-          : (json?.reply?.text ?? json?.message ?? '');
-
-      pushTelemetry({
-        kind: 'shortcut',
-        topic: json?.topic || null,
-        ok: !!json?.ok,
-        latency,
-        status: res.status,
-        paths,
-        tokensIn: json?.usage?.prompt ?? null,
-        tokensOut: json?.usage?.completion ?? null,
-      });
-
-      if (!res.ok || json?.ok === false) {
-        const msg = json?.error ? String(json.error) : `HTTP ${res.status}`;
-        throw new Error(msg);
-      }
-      setMsgs(prev => [...prev, { from: 'bot', text: String(botText) }]);
-    } catch (e: any) {
-      setMsgs(prev => [...prev, { from: 'bot', text: `⚠️ ${String(e?.message || e)}` }]);
-    } finally {
-      setTyping(false);
-    }
-  };
-
-  // ===== Lead form =====
-  async function submitLead() {
-    if (!lead.name || !lead.email || !lead.consent) return;
-    const id = cryptoRandomId();
-    await setDoc(doc(FbDB, 'ai_contacts', id), {
-      name: lead.name, email: lead.email, consent: true, createdAt: serverTimestamp(),
-    });
-    setLead(prev => ({ ...prev, sent: true }));
-  }
-
-  // UI i18n
-  const placeholderText = intl.formatMessage({ id: 'aai.ui.placeholder', defaultMessage: 'Escribe tu mensaje…' });
-  const sendLabel = intl.formatMessage({ id: 'aai.ui.send', defaultMessage: 'Enviar' });
   const titleText =
-    cfg?.displayName?.trim()
-      ? cfg.displayName
-      : Branding.agentAI?.name;
+    title ||
+    intl.formatMessage({
+      id: 'aai.ui.title',
+      defaultMessage: 'Asistente de IA',
+    });
 
   return (
     <div className={s.container}>
       {/* FAB */}
       {!open && (
-        <BUTTON className={s.fab} onClick={() => setOpen(true)} aria-label="Open AI Agent">
-          <img src={avatar} alt="AI" className={s.fabImg} />
+        <BUTTON
+          className={s.fab}
+          onClick={() => setOpen(true)}
+          aria-label="Open AI Agent"
+        >
+          <img src={avatarUrl} alt="AI" className={s.fabImg} />
         </BUTTON>
       )}
 
+      {/* Panel */}
       {open && (
         <div className={`${s.panel} ${open ? s.panelOpen : ''}`}>
           <div className={s.header}>
-            <img className={s.brand} src={fabIcon} alt="brand" />
+            <img className={s.brand} src={fabIconUrl} alt="brand" />
             <div className={s.title}>{titleText}</div>
             <BUTTON
               className={s.close}
-              onClick={() => { flushTelemetry(); setOpen(false); }}
+              onClick={() => {
+                flushTelemetry();
+                setOpen(false);
+              }}
               aria-label="Close"
-            >✕</BUTTON>
+            >
+              ✕
+            </BUTTON>
           </div>
-
-          {/* Lead form opcional */}
-          {cfg?.showLeadForm && !lead.sent && (
-            <div className={s.lead}>
-              <INPUT
-                className={s.input}
-                placeholder={intl.formatMessage({ id: 'aai.ui.name', defaultMessage: 'Nombre' })}
-                value={lead.name}
-                onChange={e => setLead({ ...lead, name: e.target.value })}
-              />
-              <INPUT
-                className={s.input}
-                placeholder="email@example.com"
-                value={lead.email}
-                onChange={e => setLead({ ...lead, email: e.target.value })}
-              />
-              <LABEL className={s.leadConsent}>
-                <INPUT
-                  type="checkbox"
-                  checked={lead.consent}
-                  onChange={e => setLead({ ...lead, consent: e.target.checked })}
-                />
-                <SPAN><FM id="aai.ui.consent" defaultMessage="Acepto" /></SPAN>
-              </LABEL>
-              <BUTTON className={s.btnAccent} onClick={submitLead}>
-                <FM id="aai.ui.send" defaultMessage="Enviar" />
-              </BUTTON>
-            </div>
-          )}
 
           {/* Mensajes */}
           <div className={s.body} ref={listRef}>
             {msgs.map((m, i) => (
-              <div key={i} className={m.from === 'user' ? s.msgUser : s.msgBot}>
-                {m.from === 'bot' && <img className={s.msgAvatar} src={avatar} alt="" aria-hidden />}
+              <div
+                key={i}
+                className={m.from === 'user' ? s.msgUser : s.msgBot}
+              >
+                {m.from === 'bot' && (
+                  <img
+                    className={s.msgAvatar}
+                    src={avatarUrl}
+                    alt=""
+                    aria-hidden
+                  />
+                )}
                 <div className={s.msgBubble}>
-                  <SPAN className={s.messageText}>{renderWithLinks(m.text ?? '')}</SPAN>
+                  <SPAN className={s.messageText}>
+                    {renderWithLinks(m.text ?? '')}
+                  </SPAN>
                 </div>
               </div>
             ))}
+
+            {/* Indicador de typing */}
             {typing && (
               <div className={s.msgBot}>
-                <img className={s.msgAvatar} src={avatar} alt="" aria-hidden />
+                <img
+                  className={s.msgAvatar}
+                  src={avatarUrl}
+                  alt=""
+                  aria-hidden
+                />
                 <div className={`${s.msgBubble} ${s.typing}`}>
                   <SPAN className={s.dot}></SPAN>
                   <SPAN className={s.dot}></SPAN>
@@ -569,7 +422,6 @@ export default function AiComp(props: AiCompProps) {
                 </div>
               </div>
             )}
-            <div ref={bottomRef} />
           </div>
 
           {/* Input */}
@@ -577,9 +429,11 @@ export default function AiComp(props: AiCompProps) {
             <INPUT
               className={s.input}
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={(e) => setInput(e.target.value)}
               placeholder={placeholderText}
-              onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') send();
+              }}
             />
             <BUTTON className={s.btnPrimary} onClick={send}>
               {sendLabel}
@@ -589,12 +443,4 @@ export default function AiComp(props: AiCompProps) {
       )}
     </div>
   );
-}
-
-function cryptoRandomId() {
-  if (typeof window !== 'undefined' && 'crypto' in window && 'getRandomValues' in crypto) {
-    const buf = new Uint8Array(8); crypto.getRandomValues(buf);
-    return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-  return Math.random().toString(36).slice(2, 10);
 }

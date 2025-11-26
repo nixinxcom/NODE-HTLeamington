@@ -181,7 +181,10 @@ export interface PanelSchema {
   /** Si alimenta FDV (Providers) o paneles internos */
   isProvider?: boolean;
 
-  /** Roles permitidos para ver/editar este panel */
+  /** Si esta disponible para ser Fuente de Verdad de Agentes AI */
+  isAgentFDV?: boolean;
+
+  /** Si alimenta FDV (Providers) o paneles internos */
   access?: PanelAccess;
 
   /** Definición de campos */

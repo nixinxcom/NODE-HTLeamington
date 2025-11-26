@@ -7,6 +7,7 @@ export const BRANDING_PANEL_SCHEMA: PanelSchema = {
   "fsCollection": "Providers",
   "fsDocId": "Branding",
   "isProvider": true,
+  "isAgentFDV": true,
   "source": "core",
   "stage": "published",
   "access": {
@@ -23,7 +24,6 @@ export const BRANDING_PANEL_SCHEMA: PanelSchema = {
       "type": "string",
       "required": true,
       "groupKey": "company",
-      "translatable": true
     },
     {
       "name": "brandName",
@@ -547,6 +547,79 @@ export const BRANDING_PANEL_SCHEMA: PanelSchema = {
           },
           {
             "name": "url",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "events",
+      "type": "array",
+      "groupKey": "events",
+      "element": {
+        "name": "event",
+        "type": "object",
+        "collapsible": false,
+        "fields": [
+          {
+            "name": "eventName",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "description",
+            "type": "text",
+            "widget": "textarea"
+          },
+          // 🔹 Fecha principal del evento (ISO recomendado: YYYY-MM-DD)
+          {
+            "name": "date",
+            "type": "string",
+            "required": true
+          },
+          // 🔹 Horario opcional (texto libre: "22:00", "9pm–2am", etc.)
+          {
+            "name": "startTime",
+            "type": "string"
+          },
+          {
+            "name": "endTime",
+            "type": "string"
+          },
+          {
+            "name": "price",
+            "type": "number",
+            "min": 0,
+            "required": true
+          },
+          {
+            "name": "image",
+            "type": "string",
+            "widget": "image"
+          },
+          {
+            "name": "video",
+            "type": "string"
+          },
+          {
+            "name": "gallery",
+            "type": "array",
+            "element": {
+              "name": "imageUrl",
+              "type": "string",
+              "widget": "image"
+            }
+          },
+          {
+            "name": "url",
+            "type": "string"
+          },
+          {
+            "name": "category",
+            "type": "string"
+          },
+          {
+            "name": "subcategory",
             "type": "string"
           }
         ]

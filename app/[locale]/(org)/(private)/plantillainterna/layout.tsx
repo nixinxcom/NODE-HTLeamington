@@ -37,7 +37,14 @@ export default function PlantillaLayout({ children }: { children: React.ReactNod
       {children}
       {Settings?.faculties?.agentAI && (
         <div className={styles.aiBlock}>
-          <AiComp locale={initialLocale as any} />
+          <AiComp
+            agentId="elpatron-branding"           // para logs y backend
+            title="El Patrón AI"                  // título en el header del panel
+            avatarUrl="/Agents/elpatron/avatar.webp"   // opcional, tu imagen de bot
+            fabIconUrl="/Agents/elpatron/fab.webp"     // opcional, icono de la burbuja
+            sources={["branding"]}                // 👈 usa SOLO Providers/Branding de la FDV
+            role="Eres el asistente de IA de El Patrón; ayudas a resolver dudas sobre el lugar, eventos y ambiente."
+          />
         </div>
       )}
     </main>

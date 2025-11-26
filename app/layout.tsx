@@ -17,7 +17,7 @@ import { getBssEffectiveCached } from '@/app/lib/bss/server';
 import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 import { NotificationsProvider } from "@/app/lib/notifications/provider";
 import './globals.css';
-import FdvProvider from "./providers/FdvProvider";
+import FdvProvider from "@/app/providers/FdvProvider";
 
 // 1) Metadata global para toda la app (usa tus defaults y, si tienes, FS/meta_*).
 export const generateMetadata = withSitesLayoutMetadata();
@@ -184,7 +184,7 @@ export default async function RootLayout({children}: Readonly<{ children: React.
             >
               <FdvProvider>
                 <ThemeProviders>
-                  <BrandingCacheHydrator/> 
+                  {/* <BrandingCacheHydrator/> */}
                   <AuthProvider>
                     <NotificationsProvider>
                       <InterComp
@@ -211,17 +211,17 @@ export default async function RootLayout({children}: Readonly<{ children: React.
                             height: 35,
                             fill: false,
                           },
-                          // {
-                          //   language: "French",
-                          //   locale: "fr",
-                          //   icon: "/Icons/fr.png",
-                          //   country: "FR",
-                          //   alt: "French",
-                          //   prioritario: true,
-                          //   width: 40,
-                          //   height: 40,
-                          //   fill: false,
-                          // },
+                          {
+                            language: "French",
+                            locale: "fr",
+                            icon: "/Icons/fr.png",
+                            country: "FR",
+                            alt: "French",
+                            prioritario: true,
+                            width: 40,
+                            height: 40,
+                            fill: false,
+                          },
                         ]}
                         Position="fixed"
                         BackgroundColor="black"

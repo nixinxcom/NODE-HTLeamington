@@ -37,7 +37,13 @@ export default function PlantillaLayout({ children }: { children: React.ReactNod
       {children}
       {Settings?.faculties?.agentAI && (
         <div className={styles.aiBlock}>
-          <AiComp locale={initialLocale as any} />
+          <AiComp
+            agentId="elpatron-branding"
+            title="El Patrón AI"
+            avatarUrl="/Agents/elpatron/avatar.webp"
+            fabIconUrl="/Agents/elpatron/fab.webp"
+            sources={["branding"]}   // FDV: solo Providers/Branding con isAgentFDV:true
+          />
         </div>
       )}
     </main>
