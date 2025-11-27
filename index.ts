@@ -16,16 +16,13 @@ export { default as EnvWizard } from "./complements/admin/EnvWizard";
 // ────────────────────
 export { default as MetaTab } from "./complements/admin/MetaTab";
 export { default as FMsTab } from "./complements/admin/FMsTab";
-export { default as BrandingTab } from "./complements/admin/BrandingTab";
-export { default as RDDInspectorTab } from "./complements/admin/RDDInspectorTab";
-export { default as AgentCatalogTab } from "./complements/admin/AgentCatalogTab";
 
 // ────────────────────
 // Seeds TS
 // ────────────────────
 export { default as SeedStyles } from "./seeds/styles";
-export { default as SeedBranding } from "./seeds/branding";
-export { default as SeedSettings } from "./seeds/settings";
+// export { default as SeedBranding } from "./seeds/branding";
+// export { default as SeedSettings } from "./seeds/settings";
 
 // ────────────────────
 // Seeds JSON

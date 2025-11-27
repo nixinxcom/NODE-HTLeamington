@@ -1,53 +1,55 @@
-// Resolución del settings seed por id/host (sin Firestore).
-// SSOT ahora: seeds/settings (TSX). Si es single-tenant, se envuelve como { default: ... }.
+// app/lib/settings/settings.ts
+import "server-only";
 
-import * as settingsSeedTsx from '@/seeds/settings';
-
-/** Config de settings (separada para no colisionar con AgentConfig de branding) */
+/** Config de settings (no FS, solo TS/env) */
 export type SettingsConfig = {
   displayName?: string;
   domain?: string | string[];
   languages?: string[] | string;
   openai?: { model?: string; temperature?: number; max_tokens?: number };
   params?: Record<string, any>;
-  // agrega aquí campos propios de settings si los tienes
 };
 
 export type SettingsMap = Record<string, SettingsConfig>;
 
-/** Util: tomar default | baseSettings | módulo crudo */
-const pickSeed = (m: any) => (m?.default ?? m?.baseSettings ?? m ?? {}) as unknown as SettingsConfig | SettingsMap;
-
-/** Extrae un MAP desde el módulo TSX:
- *  - Si el módulo exporta SETTINGS_MAP / MAP / map → lo usamos tal cual.
- *  - Si exporta un objeto simple (single-tenant) → lo envolvemos como { default: obj }.
+/**
+ * Config default para single-tenant.
+ * Si mañana quieres multi-tenant, extiendes MAP con más claves.
  */
-function extractMapFromTsxModule(m: any): SettingsMap {
-  const candidates = [m?.SETTINGS_MAP, m?.MAP, m?.map, m?.settingsMap];
-  for (const c of candidates) {
-    if (c && typeof c === 'object' && !Array.isArray(c)) return c as SettingsMap;
-  }
-  const single = pickSeed(m);
-  if (single && typeof single === 'object' && !Array.isArray(single)) {
-    // single-tenant → lo envolvemos
-    return { default: single as SettingsConfig };
-  }
-  return {};
-}
+const DEFAULT_CONFIG: SettingsConfig = {
+  displayName:
+    process.env.NEXT_PUBLIC_APP_DISPLAY_NAME ??
+    process.env.NEXT_PUBLIC_SITE_NAME ??
+    "NIXINX",
+  domain: process.env.NEXT_PUBLIC_SITE_DOMAIN, // opcional
+  languages:
+    process.env.NEXT_PUBLIC_SUPPORTED_LOCALES
+      ?.split(",")
+      .map((v) => v.trim())
+      .filter(Boolean) || ["es", "en", "fr"],
+  openai: {
+    model: process.env.NEXT_PUBLIC_OPENAI_MODEL ?? "gpt-4.1-mini",
+    temperature: 0.5,
+    max_tokens: 1024,
+  },
+  params: {},
+};
 
-/** Mapa directo del seed (ahora desde TSX) */
-export const MAP: SettingsMap = extractMapFromTsxModule(settingsSeedTsx);
+/** Mapa directo de settings (ya sin seeds). Extiéndelo si necesitas más IDs. */
+export const MAP: SettingsMap = {
+  default: DEFAULT_CONFIG,
+};
 
 /* ---------------- utils ---------------- */
 function normHost(input?: string | null): string | undefined {
   if (!input) return undefined;
-  let h = input.split(',')[0].trim().toLowerCase();
+  let h = input.split(",")[0].trim().toLowerCase();
   h = h
-    .replace(/^https?:\/\//, '')
-    .split('/')[0]
-    .split(':')[0]
-    .replace(/^www\./, '');
-  return h.replace(/\/$/, '');
+    .replace(/^https?:\/\//, "")
+    .split("/")[0]
+    .split(":")[0]
+    .replace(/^www\./, "");
+  return h.replace(/\/$/, "");
 }
 
 function domainsOf(cfg?: SettingsConfig): string[] {
@@ -63,7 +65,9 @@ export function getSettingsById(id: string): SettingsConfig | undefined {
   return MAP[id];
 }
 
-export function getSettingsByHost(host?: string | null): SettingsConfig | undefined {
+export function getSettingsByHost(
+  host?: string | null,
+): SettingsConfig | undefined {
   const h = normHost(host);
   if (!h) return undefined;
   for (const cfg of Object.values(MAP)) {
@@ -73,14 +77,21 @@ export function getSettingsByHost(host?: string | null): SettingsConfig | undefi
 }
 
 /** Prioridad: id → host → "default" */
-export function resolveSettings(opts: { id?: string; host?: string | null }): SettingsConfig | undefined {
+export function resolveSettings(opts: {
+  id?: string;
+  host?: string | null;
+}): SettingsConfig | undefined {
   const byId = opts.id && getSettingsById(opts.id);
   if (byId) return byId;
 
   const byHost = getSettingsByHost(opts.host);
   if (byHost) return byHost;
 
-  const def = getSettingsById('default');
-  if (!def) console.warn('[settings] Falta clave "default" en seed TSX de settings');
+  const def = getSettingsById("default");
+  if (!def) {
+    console.warn(
+      '[settings] Falta clave "default" en MAP de settings (app/lib/settings/settings.ts)',
+    );
+  }
   return def;
 }

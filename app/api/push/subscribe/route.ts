@@ -2,7 +2,6 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/app/lib/firebaseAdmin";
-import baseSettings from "@/seeds/settings";
 import type iSettings from "@/app/lib/settings/interface";
 import { hasNotificationsFaculty } from "@/app/lib/notifications/config";
 import { getTenantIdFromRequest } from "@/app/lib/notifications/tenant";
@@ -11,6 +10,32 @@ type Body = {
   token?: string;
   platform?: "web" | "ios" | "android";
 };
+
+/* ─────────────────────────────────────────────────────────
+   Cache de Settings desde FDV (Providers/Settings)
+   ───────────────────────────────────────────────────────── */
+
+const SETTINGS_TTL_MS = 60_000; // 1 minuto; ajusta si quieres
+
+let cachedSettings: iSettings | undefined;
+let cachedSettingsAt = 0;
+
+async function getSettingsCached(): Promise<iSettings | undefined> {
+  const now = Date.now();
+  if (cachedSettings && now - cachedSettingsAt < SETTINGS_TTL_MS) {
+    return cachedSettings;
+  }
+
+  const db = getAdminDb();
+  const snap = await db.collection("Providers").doc("Settings").get();
+
+  cachedSettings = snap.exists ? (snap.data() as iSettings) : undefined;
+  cachedSettingsAt = now;
+
+  return cachedSettings;
+}
+
+/* ───────────────────────────────────────────────────────── */
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,12 +47,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "missing_token" }, { status: 400 });
     }
 
-    const settings = baseSettings as iSettings | undefined;
+    // Settings desde FDV + cache
+    const settings = await getSettingsCached();
 
     if (!hasNotificationsFaculty(settings)) {
       return NextResponse.json(
         { error: "notifications_disabled" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -48,17 +74,15 @@ export async function POST(req: NextRequest) {
           updatedAt: now,
           createdAt: now,
         },
-        { merge: true }
+        { merge: true },
       );
-
-    console.log("[nixinx:push] token suscrito", { tenantId, token, platform });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[push/subscribe] error", err);
     return NextResponse.json(
       { error: "internal_error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

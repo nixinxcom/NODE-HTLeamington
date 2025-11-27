@@ -18,8 +18,6 @@ import {
   isSupported,
   onMessage,
 } from "firebase/messaging";
-import baseSettings from "@/seeds/settings";
-import type iSettings from "@/app/lib/settings/interface";
 
 type NotificationItem = {
   title: string;
@@ -55,36 +53,19 @@ export function useNotifications() {
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { Settings } = useAppContext();
 
-  // Merge settings del contexto con los seeds para no perder faculties
-  const mergedSettings = useMemo<iSettings>(() => {
-    const merged: iSettings = {
-      ...(baseSettings as iSettings),
-      ...(Settings as iSettings | undefined),
-      faculties: {
-        ...(baseSettings.faculties || {}),
-        ...(Settings?.faculties || {}),
-      },
-    } as iSettings;
-
-    if (typeof window !== "undefined") {
-      console.log(
-        "[NIXINX][Notifications] faculties efectivas:",
-        merged.faculties
-      );
-    }
-
-    return merged;
-  }, [Settings]);
-
-  const enabled = hasNotificationsFaculty(mergedSettings);
+  // Faculties solo desde FDV (Providers/Settings vía ContextProvider)
+  const enabled = useMemo(
+    () => hasNotificationsFaculty(Settings),
+    [Settings],
+  );
 
   if (typeof window !== "undefined") {
+    console.log("[NIXINX][Notifications] faculties (FDV):", Settings?.faculties);
     console.log("[NIXINX][Notifications] enabled =", enabled);
   }
 
-  // 🔴 Antes: dependía de window en el estado inicial -> mismatch SSR/CSR
-  // 🟢 Ahora: mismo valor inicial en server y client; se sincroniza en useEffect.
-  const [permission, setPermission] = useState<NotificationPermission>("default");
+  const [permission, setPermission] =
+    useState<NotificationPermission>("default");
   const [token, setToken] = useState<string>();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
@@ -110,7 +91,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
         const swReg = await navigator.serviceWorker.register(
           "/firebase-messaging-sw.js",
-          { scope: "/fcm/" }
+          { scope: "/fcm/" },
         );
 
         if (Notification.permission === "granted") {
@@ -130,7 +111,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           setUnread((prev) => prev + 1);
         });
       } catch (err) {
-        console.warn("[nixinx:push] error inicializando notificaciones", err);
+        console.warn(
+          "[nixinx:push] error inicializando notificaciones",
+          err,
+        );
       }
     })();
 
@@ -138,7 +122,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       try {
         const vapidKey = process.env.NEXT_PUBLIC_FBCLOUD_MESSAGES_VAPID_KEY;
         if (!vapidKey) {
-          console.warn("[nixinx:push] Falta NEXT_PUBLIC_FBCLOUD_MESSAGES_VAPID_KEY");
+          console.warn(
+            "[nixinx:push] Falta NEXT_PUBLIC_FBCLOUD_MESSAGES_VAPID_KEY",
+          );
           return;
         }
         const messaging = getMessaging(Firebase);

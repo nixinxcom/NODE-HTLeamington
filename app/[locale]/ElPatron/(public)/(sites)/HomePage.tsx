@@ -41,12 +41,12 @@ export default function HomePage() {
   // ───────────────────── BRANDING DESDE CONTEXT ─────────────────────
   const maps: boolean = Settings?.faculties?.maps ?? false;
 
-  const phone: string | undefined = Branding.company.phone;
+  const phone: string | undefined = Branding.phone;
   const telHref = phone ? `tel:${String(phone).replace(/\s+/g, "")}` : undefined;
 
-  const placeQ: string | undefined = Settings?.company?.legals?.placeQuery;
-  const lat: number | undefined = Settings?.company?.legals?.mapLat ? Settings.company.legals.mapLat : undefined;
-  const lng: number | undefined = Settings?.company?.legals?.mapLng ? Settings.company.legals.mapLng : undefined;
+  const placeQ: string | undefined = Settings?.placeQuery;
+  const lat: number | undefined = Settings?.mapLat ? Settings.mapLat : undefined;
+  const lng: number | undefined = Settings?.mapLng ? Settings.mapLng : undefined;
   // ──────────────────────────────────────────────────────────────────
 
   const onOpenVideo = (url: string) => {
@@ -260,28 +260,24 @@ export default function HomePage() {
 
         {/* Mapas: SOLO si hay lat/lng en Branding */}
         <div className={`${styles.padXSm} ${styles.gapRow} mx-auto max-w-xl md:max-w-5xl flex flex-col md:flex-row`}>
-          {(lat && lng) && (
-            <MapEmbed
-              mode="streetview"
-              lat={Settings?.company.legals.mapLat}
-              lng={Settings?.company.legals.mapLng}
-              language="es"
-              region="CA"
-              heading={-2}
-              pitch={6}
-              fov={28}
-              height={360}
-              blockInteraction
-            />
-          )}
-          {placeQ && (
-            <MapEmbed
-              mode="place"
-              q={placeQ}
-              height={360}
-              blockInteraction
-            />
-          )}
+          <MapEmbed
+            mode="streetview"
+            lat={Settings?.mapLat}
+            lng={Settings?.mapLng}
+            language="es"
+            region="CA"
+            heading={-2}
+            pitch={6}
+            fov={28}
+            height={360}
+            blockInteraction
+          />
+          <MapEmbed
+            mode="place"
+            q={placeQ}
+            height={360}
+            blockInteraction
+          />
         </div>
 
         {placeQ && (

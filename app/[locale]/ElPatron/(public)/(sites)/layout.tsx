@@ -43,7 +43,7 @@ export default function SitesLayout({ children }: { children: React.ReactNode })
       <header id="site-navbar" className={`${styles.header} ${navHidden ? styles.hidden : ''}`}>
         <NavBar
           onMenuToggle={(open: boolean) => setMobileMenuOpen(open)}
-          Logo={Branding.company.logo}
+          Logo={Branding.logo}
           Botons={[
             { FormattedMessage: "nav.home", linkURL: "/", defaultMessage: "Inicio", openTarget: "local" },
             { FormattedMessage: "nav.reservacion", linkURL: "/reservas", defaultMessage: "Reservacion", openTarget: "local" },
@@ -62,15 +62,13 @@ export default function SitesLayout({ children }: { children: React.ReactNode })
           {`try{localStorage.setItem('locale','${initialLocale}')}catch(e){}`}
         </Script>
         {children}
-        {Settings?.faculties?.agentAI && 
-          <AiComp
-            agentId="elpatron-branding"
-            title="El Patrón AI"
-            avatarUrl="https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/manifest%2Ficons%2FLogo%20El%20Patron_48x48.webp?alt=media&token=f4922b4e-4aba-4f71-a51c-bc474db15d82"
-            fabIconUrl="https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/manifest%2Ficons%2FLogo%20El%20Patron_48x48.webp?alt=media&token=f4922b4e-4aba-4f71-a51c-bc474db15d82"
-            sources={["branding"]}   // FDV: solo Providers/Branding con isAgentFDV:true
-          />
-        }
+        <AiComp
+          agentId="elpatron-branding"
+          title="El Patrón AI"
+          avatarUrl="https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/manifest%2Ficons%2FLogo%20El%20Patron_48x48.webp?alt=media&token=f4922b4e-4aba-4f71-a51c-bc474db15d82"
+          fabIconUrl="https://firebasestorage.googleapis.com/v0/b/patronbarandgrill-pwa.appspot.com/o/manifest%2Ficons%2FLogo%20El%20Patron_48x48.webp?alt=media&token=f4922b4e-4aba-4f71-a51c-bc474db15d82"
+          sources={["branding"]}   // FDV: solo Providers/Branding con isAgentFDV:true
+        />
       </main>
     </>
   );

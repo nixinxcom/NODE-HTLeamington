@@ -18,7 +18,7 @@ export type BuildOptions = {
 };
 
 // Branding efectivo (SSR-safe)
-import { getBrandingEffectivePWA } from '@/complements/data/brandingFS';
+// import { getBrandingEffectivePWA } from '@/complements/data/brandingFS';
 
 // -----------------------------------------------------------------------------
 // Utils básicos
@@ -297,13 +297,28 @@ const normalizeBrand = (raw: any, opts?: BuildOptions): any => {
 // -----------------------------------------------------------------------------
 // Carga de branding efectivo (FS > TSX(FM) > TSX) y builders
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Carga de branding efectivo (FS > FDV) – STUB sin dependencia a brandingFS
+// -----------------------------------------------------------------------------
+// OJO: por ahora devolvemos un objeto vacío para que los builders no rompan.
+// Cuando quieras, aquí implementamos un fetch SSR directo a Firestore
+// (Providers/Branding) alineado al FDV.
 export const getEffectiveBrandingServer = async (locale?: string): Promise<any> => {
-  const loc = resolveLocale(locale);
-  return getBrandingEffectivePWA(loc);
+  const _loc = resolveLocale(locale);
+  return {
+    // estructura mínima para que los accesos opcionales no revienten
+    company: {},
+    contact: {},
+    website: {},
+    socials: [],
+    platforms: [],
+    schedule: [],
+  };
 };
 
 // Compat SSR
 export const loadBrandingSSR = getEffectiveBrandingServer;
+
 
 // Builders (sync) a partir de un branding YA efectivo
 export function buildVenueSchemaFrom(branding: Dict, options?: BuildOptions): Dict {

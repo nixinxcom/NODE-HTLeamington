@@ -1,171 +1,193 @@
-export type DisplayMode = 'fullscreen' | 'standalone' | 'minimal-ui' | 'browser';
-export type DisplayOverride =
-  | 'fullscreen' | 'standalone' | 'minimal-ui' | 'browser' | 'window-controls-overlay';
-export type Orientation =
-  | 'any' | 'natural' | 'landscape' | 'portrait' | 'portrait-primary' | 'portrait-secondary'
-  | 'landscape-primary' | 'landscape-secondary';
+// app/lib/settings/interface.ts
+import type { ReactNode } from "react";
 
-/** ===== AAI (OpenAI + Gemini) tipos unificados ===== */
-export type AAIProvider = 'openai' | 'gemini';
-export type OpenAIEndpointMode = 'auto' | 'chat' | 'responses';
+/** Texto genérico (para descriptions, Address, etc.) */
+export type SettingsText = string | ReactNode;
 
-export type OpenAIChatModel =
-  | 'gpt-4o'
-  | 'gpt-4o-mini'
-  | (string & { __openaiChat?: true });
+/* ─────────────────────────────────────────────────────────
+   Subtipos de apoyo
+   ───────────────────────────────────────────────────────── */
 
-export type OpenAIResponsesModel =
-  | 'gpt-4.1'
-  | 'gpt-4.1-mini'
-  | 'o4'
-  | 'o4-mini'
-  | (string & { __openaiResponses?: true });
+export interface FacultiesSettings {
+  adminPanel: boolean;
+  website: boolean;
+  agentAI: boolean;
+  ecommerce?: boolean;
+  booking?: boolean;
+  socialmedia?: boolean;
+  sellsplatforms?: boolean;
+  products?: boolean;
+  services?: boolean;
+  contact?: boolean;
+  settings?: boolean;
+  branding?: boolean;
+  styles?: boolean;
+  maps?: boolean;
+  notifications?: boolean;
+  paypal?: boolean;
+  stripe?: boolean;
+  adsense?: boolean;
+}
 
-export type OpenAIModel = OpenAIChatModel | OpenAIResponsesModel;
+export interface CompanyLegals<TText = SettingsText> {
+  Name: TText;
+  TaxId?: string;
+  BusinessNumber?: string;
+  Email?: string;
+  Phone?: string;
+  Address?: TText;
+  mapLat?: number;
+  mapLng?: number;
+  placeQuery?: string;
+}
 
-export type GeminiModel =
-  | 'gemini-1.5-flash'
-  | 'gemini-1.5-pro'
-  | 'gemini-1.0-pro'
-  | (string & { __gemini?: true });
+export interface CompanyController<TText = SettingsText> {
+  Name: TText;
+  Email: string;
+  Phone: string;
+  Address: TText;
+}
 
+export interface CompanySettings<TText = SettingsText> {
+  legals?: CompanyLegals<TText>;
+  controller?: CompanyController<TText>;
+}
 
-export interface AgentAIIndice { [key: string]: string[]; }
+export interface DomainSettings {
+  enabled: boolean;
+  url: string;
+}
 
-export interface AgentAICommon {
-  provider: AAIProvider;
-  model: string;              // permite cualquier string; arriba hay unions guía
-  avatar?: string;
+export type AgentAIProvider = "openai" | "gemini" | string;
+
+export interface AgentAISettings {
+  provider: AgentAIProvider;
+  model: string;
   temperature?: number;
-  languages?: string[];
-  persona?: string;
-  /** <-- Ajuste: admite arreglo o { items: [...] } */
-  indiceAI?: AgentAIIndice;
-  profileMaxChars?: number;
-  cacheTtlSec?: number;
+  languages?: string[]; // langCode[]
+  rawConfig?: any;
 }
 
-/** OpenAI params */
-export interface OpenAIChatParams {
-  maxTokens?: number;         // -> max_tokens
-  top_p?: number;
-  frequency_penalty?: number;
-  presence_penalty?: number;
-  stop?: string[];
-}
-export interface OpenAIResponsesParams {
-  maxOutputTokens?: number;   // -> max_output_tokens
-  top_p?: number;
-  stop?: string[];
-}
-export interface OpenAISettings extends AgentAICommon {
-  provider: 'openai';
-  model: OpenAIModel | string;
-  apiMode?: OpenAIEndpointMode;   // "auto" resuelve chat vs responses
-  chat?: OpenAIChatParams;        // overrides para Chat Completions
-  responses?: OpenAIResponsesParams; // overrides para Responses
-  /** Compatibilidad con campos planos existentes (no obligatorios) */
-  top_p?: number;
-  frequency_penalty?: number;
-  presence_penalty?: number;
-  max_tokens?: number;
-  max_tokens_cap?: number;
-  maxTokens?: number;
+export interface WebsiteFonts {
+  headings?: string;
+  body?: string;
 }
 
-/** Gemini params */
-export interface GeminiGenerationConfig {
-  maxOutputTokens?: number;
-  temperature?: number;       // Gemini usa camelCase
-  topP?: number;
-  topK?: number;
-  stopSequences?: string[];
-}
-export interface GeminiSettings extends AgentAICommon {
-  provider: 'gemini';
-  model: GeminiModel | string;
-  generationConfig?: GeminiGenerationConfig;
-}
+export type ThemeSlot = "light" | "dark" | string;
 
-export type AgentAISettings = OpenAISettings | GeminiSettings;
-
-/** ===== iSettings ===== */
-export default interface iSettings {
-  faculties?: {
-    adminPanel: boolean;
-    website: boolean;
-    agentAI: boolean;
-    ecommerce: boolean;
-    booking: boolean;
-    socialmedia: boolean;
-    sellsplatforms: boolean;
-    products: boolean;
-    services: boolean;
-    contact: boolean;
-    settings: boolean;
-    branding: boolean;
-    styles: boolean;
-    maps: boolean;
-    notifications: boolean;
-    paypal?: boolean;
-    stripe?: boolean;
-    adsense?: boolean;
+export interface WebsiteTheme {
+  aliases?: {
+    light?: string;
+    dark?: string;
   };
-  company: {
-    legals: {
-      Name: string;
-      TaxId?: string;
-      BusinessNumber?: string;
-      Email?: string;
-      Phone?: string;
-      Address?: string;
-      mapLat?: number;
-      mapLng?: number;
-      placeQuery?: string;
-    };
-    controller: {
-      Name: string;
-      Email: string;
-      Phone: string;
-      Address: string;
+  initialSlot: ThemeSlot;
+  meta?: {
+    themeColor?: {
+      light?: string;
+      dark?: string;
     };
   };
-  domain: {
-    enabled: boolean;
-    url: string;
+}
+
+export interface WebsiteI18N {
+  defaultLocale: string;
+  supported?: string[]; // locales[]
+}
+
+export interface WebsiteSettings {
+  url: string;
+  favicon?: string;
+  ogDefault?: {
+    image?: string;
   };
-  /** <-- Reemplazo: ahora admite OpenAI y Gemini con parámetros correctos */
-  agentAI: AgentAISettings;
-  website: {
-    url: string;
-    favicon: string;
-    ogDefault: { image: string };
-    fonts: { headings: string; body: string };
-    theme: {
-      aliases?: {
-        light: 'light' | string; /** nombre del tema físico que actuará como slot "light" */
-        dark:  'dark'  | string; /** nombre del tema físico que actuará como slot "dark" */
-      };
-      initialSlot: 'dark' | 'light'; // tema por defecto (debe estar en aliases)
-      meta?: { themeColor?: { light?: string; dark?: string } }; // para <meta name="theme-color"/>
-    };
-    i18n: { defaultLocale: string; supported: string[] };
-  };
-  directUrls: Record<string, string>;
-  pwa: {
-    name: string;
-    shortName: string;
-    description: string;
-    startUrl: string;
-    scope: string;
-    id: string;
-    display: DisplayMode;
-    displayOverride?: DisplayOverride[];
-    orientation?: Orientation;
-    icons: Array<{ src: string; sizes: string; type: string; purpose?: string }>;
-    screenshots?: Array<{ src: string; sizes: string; type: string; label?: string; form_factor?: 'wide' | 'narrow' }>;
-  };
-  more?: {
-    [k: string]: any;  // espacio para futuras expansiones
-  };
+  fonts?: WebsiteFonts;
+  theme?: WebsiteTheme;
+  i18n?: WebsiteI18N;
+}
+
+export interface DirectUrlRoute {
+  key: string;
+  path: string;
+}
+
+export type PwaDisplayMode =
+  | "fullscreen"
+  | "standalone"
+  | "minimal-ui"
+  | "browser"
+  | string;
+
+export type PwaOrientation =
+  | "any"
+  | "natural"
+  | "landscape"
+  | "portrait"
+  | "portrait-primary"
+  | "portrait-secondary"
+  | "landscape-primary"
+  | "landscape-secondary"
+  | string;
+
+export interface PwaIcon {
+  src: string;
+  sizes: string;
+  type: string;
+  purpose?: string;
+}
+
+export type PwaScreenshotFormFactor = "wide" | "narrow" | string;
+
+export interface PwaScreenshot {
+  src: string;
+  sizes: string;
+  type: string;
+  label?: string;
+  form_factor?: PwaScreenshotFormFactor;
+}
+
+export interface PwaSettings<TText = SettingsText> {
+  name: TText;
+  shortName: TText;
+  description: TText;
+  startUrl: string;
+  scope: string;
+  id: string;
+  display: PwaDisplayMode;
+  displayOverride?: string[];
+  orientation?: PwaOrientation;
+  icons?: PwaIcon[];
+  screenshots?: PwaScreenshot[];
+}
+
+/* ─────────────────────────────────────────────────────────
+   Interface principal – alineada a SETTINGS_PANEL_SCHEMA
+   ───────────────────────────────────────────────────────── */
+
+export default interface iSettings<TText = SettingsText> {
+  /** Grupo: faculties */
+  faculties?: FacultiesSettings;
+
+  /** Grupo: company.legals / company.controller */
+  company?: CompanySettings<TText>;
+
+  /** Grupo: domain */
+  domain?: DomainSettings;
+
+  /** Grupo: agentAI */
+  agentAI?: AgentAISettings;
+
+  /** Grupo: website (+ website.theme + website.i18n) */
+  website?: WebsiteSettings;
+
+  /** Grupo: directUrls */
+  directUrls?: DirectUrlRoute[];
+
+  /** Grupo: pwa (+ pwa.icons + pwa.screenshots) */
+  pwa?: PwaSettings<TText>;
+
+  /** Grupo: more (JSON libre) */
+  more?: any;
+
+  /** Extensión dinámica para campos futuros del FUI */
+  [key: string]: any;
 }

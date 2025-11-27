@@ -3,7 +3,6 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/app/lib/firebaseAdmin";
 import { getMessaging } from "firebase-admin/messaging";
-import baseSettings from "@/seeds/settings";
 import type iSettings from "@/app/lib/settings/interface";
 import { ensureFaculty } from "@/app/lib/faculties";
 import { getTenantIdFromRequest } from "@/app/lib/notifications/tenant";
@@ -14,16 +13,42 @@ import type {
   NotificationTarget,
 } from "@/app/lib/notifications/types";
 
+/* ─────────────────────────────────────────────────────────
+   Cache de Settings desde FDV (Providers/Settings)
+   ───────────────────────────────────────────────────────── */
+
+const SETTINGS_TTL_MS = 60_000; // 1 minuto; ajusta si quieres
+
+let cachedSettings: iSettings | undefined;
+let cachedSettingsAt = 0;
+
+async function getSettingsCached(): Promise<iSettings | undefined> {
+  const now = Date.now();
+  if (cachedSettings && now - cachedSettingsAt < SETTINGS_TTL_MS) {
+    return cachedSettings;
+  }
+
+  const db = getAdminDb();
+  const snap = await db.collection("Providers").doc("Settings").get();
+
+  cachedSettings = snap.exists ? (snap.data() as iSettings) : undefined;
+  cachedSettingsAt = now;
+
+  return cachedSettings;
+}
+
+/* ───────────────────────────────────────────────────────── */
+
 export async function POST(req: NextRequest) {
   try {
-    // 1) Verificar que el feature esté habilitado para este tenant
-    const settings = baseSettings as iSettings | undefined;
+    // 1) Verificar que el feature esté habilitado para este tenant (FDV + cache)
+    const settings = await getSettingsCached();
     try {
       ensureFaculty(settings, "notifications");
     } catch {
       return NextResponse.json(
         { error: "notifications_disabled" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -54,7 +79,11 @@ export async function POST(req: NextRequest) {
     const tokens = await resolveTokens(db, tenantId, target);
 
     if (!tokens.length) {
-      return NextResponse.json({ ok: true, successCount: 0, failureCount: 0 });
+      return NextResponse.json({
+        ok: true,
+        successCount: 0,
+        failureCount: 0,
+      });
     }
 
     // 5) Armar mensaje FCM
@@ -100,7 +129,7 @@ export async function POST(req: NextRequest) {
 async function resolveTokens(
   db: FirebaseFirestore.Firestore,
   tenantId: string,
-  target: NotificationTarget
+  target: NotificationTarget,
 ): Promise<string[]> {
   if (target.type === "token") {
     return target.token ? [target.token] : [];

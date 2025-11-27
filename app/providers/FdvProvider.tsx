@@ -1,15 +1,7 @@
 //app\providers\FdvProvider.tsx
 "use client";
-
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
-
 import { FbDB } from "@/app/lib/services/firebase";
 import { PANEL_SCHEMAS } from "@/complements/factory/panelSchemas";
 import type { PanelSchema } from "@/complements/factory/panelSchema.types";
@@ -29,9 +21,7 @@ const FdvContext = createContext<FdvContextValue>({
   error: undefined,
 });
 
-type Props = {
-  children: React.ReactNode;
-};
+type Props = { children: React.ReactNode };
 
 /**
  * Provider maestro de Fuente De Verdad (FDV).
@@ -46,9 +36,9 @@ type Props = {
  * Ej: data["branding"] ← doc Providers/Branding
  */
 export default function FdvProvider({ children }: Props) {
-  const [data, setData] = useState<FdvRecord>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | undefined>();
+  const [data, setData] = useState<FdvRecord>({});
 
   useEffect(() => {
     let cancelled = false;

@@ -9,7 +9,6 @@ import type {
 } from "./types";
 import { UI_COMPONENTS, STATES, BASE_THEMES } from "./types";
 
-/** Permite strings o JSX en campos descriptivos de UI (como iBranding<TText>) */
 export type UIString = string | JSX.Element;
 
 /**

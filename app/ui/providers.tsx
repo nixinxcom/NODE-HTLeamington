@@ -1,3 +1,4 @@
+// app\ui\providers.tsx
 'use client';
 
 import type { ReactNode } from 'react';
@@ -5,9 +6,9 @@ import type { ReactNode } from 'react';
 import GTMProvider from '@/app/providers/GTMProvider';
 import { ContextProvider } from '@/context/AppContext';
 import ThemeProviders from '@/app/providers/ThemeProviders';
-import BrandingCacheHydrator from '@/app/providers/BrandingCacheHydrator';
 import { AuthProvider } from '@/complements/components/AuthenticationComp/AuthContext';
 import { NotificationsProvider } from '@/app/lib/notifications/provider';
+import FdvProvider from "@/app/providers/FdvProvider";
 
 // Tipamos por inferencia desde tu propio ContextProvider
 type AppProviderProps = React.ComponentProps<typeof ContextProvider>;
@@ -29,12 +30,13 @@ export function CoreProviders({
         initialSettings={initialSettings}
       >
         <ThemeProviders>
-          <BrandingCacheHydrator />
+          <FdvProvider>
             <AuthProvider>
               <NotificationsProvider>
                 {children}
               </NotificationsProvider>
             </AuthProvider>
+          </FdvProvider>
         </ThemeProviders>
       </ContextProvider>
     </GTMProvider>

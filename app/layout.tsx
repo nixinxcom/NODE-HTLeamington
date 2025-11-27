@@ -1,31 +1,73 @@
 // app/layout.tsx  ← SERVER COMPONENT (no "use client")
+import "./globals.css";
+
 import GTMProvider from "@/app/providers/GTMProvider";
 import type { Viewport } from "next";
 import Script from "next/script";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
+
 import { AuthProvider } from "@/complements/components/AuthenticationComp/AuthContext";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+
 import { ContextProvider } from "@/context/AppContext";
 import InterComp from "@/complements/components/InterComp/InterComp";
 import AppHydrators from "@/app/providers/AppHydrators";
 import { withSitesLayoutMetadata } from "@/app/lib/seo/withPageMetadata";
 import ThemeProviders from "./providers/ThemeProviders";
-import BrandingCacheHydrator from "@/app/providers/BrandingCacheHydrator";
-import { getBssEffectiveCached } from '@/app/lib/bss/server';
-import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
-import { NotificationsProvider } from "@/app/lib/notifications/provider";
-import './globals.css';
-import FdvProvider from "@/app/providers/FdvProvider";
 
-// 1) Metadata global para toda la app (usa tus defaults y, si tienes, FS/meta_*).
+import {
+  BUTTON,
+  LINK,
+  BUTTON2,
+  LINK2,
+  NEXTIMAGE,
+  IMAGE,
+  DIV,
+  DIV2,
+  DIV3,
+  INPUT,
+  SELECT,
+  LABEL,
+  INPUT2,
+  SELECT2,
+  LABEL2,
+  SPAN,
+  SPAN1,
+  SPAN2,
+  A,
+  B,
+  P,
+  H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+} from "@/complements/components/ui/wrappers";
+
+import { NotificationsProvider } from "@/app/lib/notifications/provider";
+import FdvProvider from "./providers/FdvProvider";
+
+/* ─────────────────────────────────────────────────────────
+   Metadata global
+   ───────────────────────────────────────────────────────── */
 export const generateMetadata = withSitesLayoutMetadata();
 
-// 2) Fuente
-const inter = Inter({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-inter", display: "swap" });
+/* ─────────────────────────────────────────────────────────
+   Fuente
+   ───────────────────────────────────────────────────────── */
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
-// 3) Viewport (fallback estático; la regla de datos se inyecta dinámicamente en <head>)
+/* ─────────────────────────────────────────────────────────
+   Viewport (fallback estático)
+   ───────────────────────────────────────────────────────── */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -44,7 +86,14 @@ function overlay(a: any, b: any): any {
   if (b === undefined) return a;
   if (a === undefined) return b;
   if (Array.isArray(a) && Array.isArray(b)) return b.slice();
-  if (a && typeof a === "object" && !Array.isArray(a) && b && typeof b === "object" && !Array.isArray(b)) {
+  if (
+    a &&
+    typeof a === "object" &&
+    !Array.isArray(a) &&
+    b &&
+    typeof b === "object" &&
+    !Array.isArray(b)
+  ) {
     const out: any = { ...a };
     for (const k of Object.keys(b)) out[k] = overlay(a[k], b[k]);
     return out;
@@ -52,15 +101,24 @@ function overlay(a: any, b: any): any {
   return b;
 }
 
-function cssVarsFromBranding(branding: any, settings?: any): React.CSSProperties {
+// La dejamos por compatibilidad; ahora las vars reales se hidratan vía providers/FDV
+function cssVarsFromBranding(
+  branding: any,
+  settings?: any,
+): React.CSSProperties {
   const mergedBranding =
-  branding?.fonts || settings?.website?.fonts
-    ? { ...branding, fonts: overlay(settings?.website?.fonts, branding?.fonts) }
-    : branding;
+    branding?.fonts || settings?.website?.fonts
+      ? { ...branding, fonts: overlay(settings?.website?.fonts, branding?.fonts) }
+      : branding;
+
   const out: Record<string, string> = {};
   const toKebab = (s: string) =>
-    s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/[_\s]+/g, "-").toLowerCase();
+    s
+      .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+      .replace(/[_\s]+/g, "-")
+      .toLowerCase();
   const asCss = (v: any) => (typeof v === "number" ? `${v}px` : String(v));
+
   const walk = (obj: any, path: string[] = []) => {
     if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
     for (const [k, v] of Object.entries(obj)) {
@@ -72,32 +130,40 @@ function cssVarsFromBranding(branding: any, settings?: any): React.CSSProperties
       }
     }
   };
+
   if (mergedBranding?.theme) walk(mergedBranding.theme);
-  if (mergedBranding?.colors) walk(mergedBranding.colors, ["colors"]); // compat (no defaults)
-  if (mergedBranding?.fonts)  walk(mergedBranding.fonts,  ["fonts"]);  // compat (no defaults)
+  if (mergedBranding?.colors) walk(mergedBranding.colors, ["colors"]); // compat
+  if (mergedBranding?.fonts) walk(mergedBranding.fonts, ["fonts"]); // compat
+
   return out as React.CSSProperties;
 }
 
 function toShort(v?: string) {
-  const s = String(v || '').toLowerCase();
-  if (s.startsWith('es')) return 'es';
-  if (s.startsWith('fr')) return 'fr';
-  return 'en';
+  const s = String(v || "").toLowerCase();
+  if (s.startsWith("es")) return "es";
+  if (s.startsWith("fr")) return "fr";
+  return "en";
 }
 
-export default async function RootLayout({children}: Readonly<{ children: React.ReactNode }>) {
+/* ─────────────────────────────────────────────────────────
+   RootLayout: ahora la FDV viene de FdvProvider
+   ───────────────────────────────────────────────────────── */
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  // Locale base desde env; el refinamiento vendrá de Settings en FDV
   const DefaultLocale = toShort(process.env.NEXT_PUBLIC_DEFAULT_LOCALE);
-  const { branding, settings } = await getBssEffectiveCached(DefaultLocale);
-  const initialSlot = settings!.website!.theme!.initialSlot as "light"|"dark";
-  const cssVars = cssVarsFromBranding(branding, settings);
-  // Idioma del documento
-  const locale = String(settings?.website?.i18n?.defaultLocale);
+  const locale = DefaultLocale;
   const htmlLang = locale;
 
-  // Theme color dinámico (desde settings) — integra regla de datos
-  const themeColorLight = settings?.website?.theme?.meta?.themeColor?.light;
-  const themeColorDark  = settings?.website?.theme?.meta?.themeColor?.dark;
-  const suportedLanguages = settings?.agentAI?.languages;
+  // Fallbacks estáticos; los reales se ajustan luego vía providers (Settings, theme, etc.)
+  const initialSlot: "light" | "dark" = "light";
+  const themeColorLight = "#ffffff";
+  const themeColorDark = "#0b0b0b";
+
+  // De momento sin branding SSR; las vars se hidratan en cliente desde FDV
+  const cssVars = {} as React.CSSProperties;
+  // const cssVars = cssVarsFromBranding(undefined, undefined);
 
   return (
     <html
@@ -110,12 +176,20 @@ export default async function RootLayout({children}: Readonly<{ children: React.
         {/* Manifest dinámico (app/manifest.ts → /manifest.webmanifest) */}
         <link rel="manifest" href="/manifest.webmanifest" />
 
-        {/* Theme color dinámico (única fuente: settings) */}
+        {/* Theme color dinámico (fallback); versión fina sale de Settings vía cliente si quieres luego */}
         {themeColorLight && (
-          <meta name="theme-color" media="(prefers-color-scheme: light)" content={themeColorLight} />
+          <meta
+            name="theme-color"
+            media="(prefers-color-scheme: light)"
+            content={themeColorLight}
+          />
         )}
         {themeColorDark && (
-          <meta name="theme-color" media="(prefers-color-scheme: dark)" content={themeColorDark} />
+          <meta
+            name="theme-color"
+            media="(prefers-color-scheme: dark)"
+            content={themeColorDark}
+          />
         )}
 
         {/* Google Tag Manager conteniendo a Google Analytics, Brevo Analytics, Facebook, X y TikTok Pixels */}
@@ -139,7 +213,8 @@ export default async function RootLayout({children}: Readonly<{ children: React.
         </Script>
       </head>
 
-      {/* Aplicamos las variables del branding a TODO el sitio */}
+      {/* Aplicamos (por ahora vacías) las variables del branding a TODO el sitio.
+          Las reales se hidratan desde FDV + BrandingCacheHydrator. */}
       <body className={inter.className} style={cssVars}>
         {/* GTM – noscript iframe (correcto en <body>) */}
         {GTM_ID ? (
@@ -153,7 +228,7 @@ export default async function RootLayout({children}: Readonly<{ children: React.
           </noscript>
         ) : null}
 
-        {/* Pequeño script opcional para respetar preferencia previa del usuario */}
+        {/* Script para respetar preferencia previa del usuario (theme slot) */}
         <Script id="theme-slot" strategy="beforeInteractive">
           {`
             (function(){
@@ -176,15 +251,12 @@ export default async function RootLayout({children}: Readonly<{ children: React.
         <Suspense fallback={null}>
           {/* Disparo de page_view SPA y Providers (se mantienen tal cual) */}
           <GTMProvider>
-            <SpeedInsights/>
-            <ContextProvider
-              initialLocale={locale}
-              initialBranding={branding}
-              initialSettings={settings}
-            >
-              <FdvProvider>
+            <SpeedInsights />
+
+            {/* 🔴 Ahora FDV envuelve a ContextProvider: useFdvData() vive dentro del contexto */}
+            <FdvProvider>
+              <ContextProvider initialLocale={locale}>
                 <ThemeProviders>
-                  {/* <BrandingCacheHydrator/> */}
                   <AuthProvider>
                     <NotificationsProvider>
                       <InterComp
@@ -235,8 +307,8 @@ export default async function RootLayout({children}: Readonly<{ children: React.
                     </NotificationsProvider>
                   </AuthProvider>
                 </ThemeProviders>
-              </FdvProvider>
-            </ContextProvider>
+              </ContextProvider>
+            </FdvProvider>
           </GTMProvider>
         </Suspense>
       </body>
@@ -246,8 +318,10 @@ export default async function RootLayout({children}: Readonly<{ children: React.
 
 /* ─────────────────────────────────────────────────────────
 DOC: Root Layout global — app/layout.tsx
-- Regla de datos aplicada: settings (alias/slot/locale/themeColor) + branding efectivo por locale.
-- cssVarsFromBranding usa branding y, si falta, fonts desde settings.website.fonts (overlay).
-- InterComp respetado tal cual.
-- Viewport export es fallback; la versión dinámica viene de settings vía <meta name="theme-color">.
+
+- Mantiene wrappers, íconos, BrandingCacheHydrator, InterComp, etc.
+- Elimina getBssEffectiveCached: ya no hay RDD/BSS en el layout.
+- FdvProvider es la fuente (FDV) y envuelve a ContextProvider.
+- ContextProvider solo recibe initialLocale; Branding/Settings/Styles
+  efectivos vienen de Firestore vía FdvProvider.
 ────────────────────────────────────────────────────────── */

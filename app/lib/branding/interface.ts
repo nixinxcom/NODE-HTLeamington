@@ -1,116 +1,206 @@
-//app\lib\branding\interface.ts
-// Acepta <FM /> o string por defecto; para datos serializables usa iBranding<UIString>
-  export type UIString = string | JSX.Element; // acepta <FM /> o string por defecto
-  interface Branch { name: string; url: string; icon?: string }
-  type SocialMediaName = "facebook" | "instagram" | "tiktok" | "youtube" | "linkedin" | "twitter" | "twitch" | "discord" | "snapchat" | "telegram" | "pinterest" | string;
-  type sellsplatforms = "onlineorder" | "uber" | "doordash" | "skipthedishes" | "amazon" | "tripadvisor" | "airbnb" | "booking" | "etsy" | "shopify" | "wix" | "squarespace" | "magento" | "bigcommerce" | string;
-  // Tipos “marcados”
-  export type Latitude  = number & { __brand: "Latitude" };
-  export type Longitude = number & { __brand: "Longitude" };
-  export type Zoom      = number & { __brand: "Zoom" };
-  export type MapAngle  = number & { __brand: "MapAngle" };
-  // Clampers
-  export const lat = (value: number): Latitude => Math.max(-90, Math.min(90, value)) as Latitude;
-  export const lng = (value: number): Longitude => Math.max(-180, Math.min(180, value)) as Longitude;
-  export const zoom = (value: number): Zoom => Math.max(1, Math.min(22, value)) as Zoom;
-  // 0–360 normalizado
-  export const angle = (value: number): MapAngle => (((value % 360) + 360) % 360) as MapAngle;
-  export default interface iBranding<TText = UIString> {
-    company: {
-      legalName: TText;
-      brandName: TText;
-      logo: string;
-      tagline?: TText;
-      contact?: {
-        website?: string;
-        phone?: string;
-        email?: string;
-        googleProfileURL?:string;
-        address?: {
-          street?: string,
-          number?: string,
-          interior?: string,
-          city?: string,
-          state?: string,
-          zip?: string,
-          country?: string,
-          latitud?: Latitude;
-          longitude?: Longitude;
-        }
-      },
-      terms?: string;
-      privacy?: string;
-      mission?: TText;
-      vision?: TText;
-      values?: TText[];
-      branches?: Branch[];
-      [k: string]: any; // ← extensible para cada cliente 
-    };
-    agentAI?: {
-      name: string;
-      displayName: TText;
-      role: TText;
-      description: TText;
-      tone: TText;
-      greeting: TText;
-      farewell: TText;
-      unknown_response: TText;
-      fallback_when_unsure: TText;
-    };
-    socials?: Array<{name: SocialMediaName; url: string; username?: string; icon?: string;}>;
-    platforms?: Array<{name: sellsplatforms; url: string; icon?: string;}>;
-    contact?: {
-      address?: {
-        intNumber?: string;
-        extNumber?: string;
-        street?: string;
-        city?: string;
-        state?: string;
-        zip?: string;
-        country?: string;
-        lat?: Latitude;
-        lng?: Longitude;
-        zoom?: number;
-      };
-      phone?: string;
-      email?: string;
-      whatsapp?: string;
-      map?: string;
-      directions?: string;
-      google?: string;
-      googleMaps?: string;
-    };
-    schedule: Array<{
-      day: TText;
-      open: string | null;
-      close: string | null;
-      closed?: boolean;
-    }>;
-    holidays?: Array<{
-      name: TText;
-      date: string;
-    }>;
-    products?: Array<{
-      prodName: TText;
-      description: TText;
-      price: string;
-      image?: string;
-      video?: string;
-      gallery?: string[];
-      url?: string;
-      category?: string;
-      subcategory?: string;
-    }>;
-    services?: Array<{
-      servName: TText;
-      description: TText;
-      price: string;
-      image?: string;
-      video?: string;
-      gallery?: string[];
-      url?: string;
-    }>;
-    more?: {
-      [k: string]: any;  // espacio para futuras expansiones
-    };
-  }
+// app/lib/branding/interface.ts
+
+/** Texto genérico: string, JSX.Element, etc. */
+export type BrandingText = string; // o tu UIString si quieres: string | JSX.Element
+
+/* ─────────────────────────────────────────────────────────
+   Subtipos de apoyo
+   ───────────────────────────────────────────────────────── */
+
+export interface BrandingValueItem<TText = BrandingText> {
+  value: TText;
+}
+
+export interface BrandingBranch<TText = BrandingText> {
+  name: TText;
+  url: string;
+  icon?: string;
+}
+
+export interface BrandingContactAddress {
+  street?: string;
+  number?: string;
+  interior?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  /** latitud/longitude del schema "company.contact.address" */
+  latitud?: number;
+  longitude?: number;
+  /** lat/lng/zoom del schema "contact.address" */
+  lat?: number;
+  lng?: number;
+  zoom?: number;
+}
+
+export interface BrandingContact<TText = BrandingText> {
+  website?: string;
+  phone?: string;
+  email?: string;
+  googleProfileURL?: string;
+  address?: BrandingContactAddress;
+  whatsapp?: string;
+  map?: string;
+  directions?: TText;
+  google?: string;
+  googleMaps?: string;
+}
+
+export interface BrandingSocial<TText = BrandingText> {
+  name: TText;
+  url: string;
+  username?: string;
+  icon?: string;
+}
+
+export interface BrandingPlatform<TText = BrandingText> {
+  name: TText;
+  url: string;
+  icon?: string;
+}
+
+export interface BrandingScheduleSlot {
+  day: string;
+  open?: string;
+  close?: string;
+  closed?: boolean;
+}
+
+export interface BrandingHoliday<TText = BrandingText> {
+  name: TText;
+  date: string; // ISO recomendado (YYYY-MM-DD)
+}
+
+export interface BrandingGalleryItem {
+  imageUrl: string;
+}
+
+export interface BrandingProduct<TText = BrandingText> {
+  prodName: TText;
+  description?: TText;
+  price: number;
+  image?: string;
+  video?: string;
+  gallery?: BrandingGalleryItem[];
+  url?: string;
+  category?: string;
+  subcategory?: string;
+}
+
+export interface BrandingService<TText = BrandingText> {
+  servName: TText;
+  description?: TText;
+  price: number;
+  image?: string;
+  video?: string;
+  gallery?: BrandingGalleryItem[];
+  url?: string;
+}
+
+export interface BrandingEvent<TText = BrandingText> {
+  eventName: TText;
+  description?: TText;
+  /** Fecha principal del evento (string, idealmente ISO) */
+  date: string;
+  startTime?: string;
+  endTime?: string;
+  price: number;
+  image?: string;
+  video?: string;
+  gallery?: BrandingGalleryItem[];
+  url?: string;
+  category?: string;
+  subcategory?: string;
+}
+
+export interface BrandingAgentAI<TText = BrandingText> {
+  name?: TText;
+  displayName?: TText;
+  role?: TText;
+  description?: TText;
+  tone?: TText;
+  greeting?: TText;
+  farewell?: TText;
+  unknown_response?: TText;
+  fallback_when_unsure?: TText;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Interface principal: alineada al BRANDING_PANEL_SCHEMA
+   ───────────────────────────────────────────────────────── */
+
+export default interface iBranding<TText = BrandingText> {
+  /* Grupo: company (schema) */
+  legalName?: TText;
+  brandName?: TText;
+  logo?: string;
+  tagline?: TText;
+  contact?: BrandingContact<TText>;
+  terms?: TText;
+  privacy?: TText;
+  mission?: TText;
+  vision?: TText;
+  values?: BrandingValueItem<TText>[];
+  branches?: BrandingBranch<TText>[];
+
+  // Opcional: espejo estructurado de company para código viejo que use Branding.company.*
+  company?: {
+    legalName?: TText;
+    brandName?: TText;
+    logo?: string;
+    tagline?: TText;
+    contact?: BrandingContact<TText>;
+    terms?: TText;
+    privacy?: TText;
+    mission?: TText;
+    vision?: TText;
+    values?: BrandingValueItem<TText>[];
+    branches?: BrandingBranch<TText>[];
+  };
+
+  /* Grupo: agentAI */
+  agentAI?: BrandingAgentAI<TText>;
+
+  // Alias planos para el schema actual (groupKey agentAI, name sin prefijo)
+  name?: TText;
+  displayName?: TText;
+  role?: TText;
+  description?: TText;
+  tone?: TText;
+  greeting?: TText;
+  farewell?: TText;
+  unknown_response?: TText;
+  fallback_when_unsure?: TText;
+
+  /* Grupo: socials */
+  socials?: BrandingSocial<TText>[];
+
+  /* Grupo: platforms */
+  platforms?: BrandingPlatform<TText>[];
+
+  /* Grupo: contact (ya consolidado arriba en contact/address/etc.) */
+  // Los campos address.*, phone, email, whatsapp, map, directions, google, googleMaps
+  // están modelados dentro de BrandingContact.
+
+  /* Grupo: schedule */
+  schedule?: BrandingScheduleSlot[];
+
+  /* Grupo: holidays */
+  holidays?: BrandingHoliday<TText>[];
+
+  /* Grupo: products */
+  products?: BrandingProduct<TText>[];
+
+  /* Grupo: services */
+  services?: BrandingService<TText>[];
+
+  /* Grupo: events */
+  events?: BrandingEvent<TText>[];
+
+  /* Grupo: more (JSON libre) */
+  more?: any;
+
+  /** Extensión dinámica para cualquier campo nuevo que agregue FUI. */
+  [key: string]: any;
+}
