@@ -1,0 +1,88 @@
+/* ──────────────────────────────────────────────────────────────
+   ADITIVO — Variables de tema para landing (no cambia el look)
+   Quita este bloque para volver al estado actual.
+   ────────────────────────────────────────────────────────────── */
+
+.pageMain{
+  min-height: var(--land-main-minh, 70vh);
+  display: grid;
+  place-items: center;
+  padding: var(--land-main-pady, 4rem) var(--land-main-padx, 1rem);
+}
+
+.mainGrid{
+  max-width: var(--land-grid-maxw, 64rem); /* ≈ max-w-4xl */
+  width: 100%;
+  display: grid;
+  gap: var(--land-grid-gap, 1.5rem);       /* gap-6 */
+}
+
+.head{
+  text-align: center;
+}
+.head > * + *{ margin-top: var(--land-head-gap, .5rem); } /* space-y-2 */
+
+.h1{
+  font-size: var(--land-h1-size, 1.875rem); /* text-3xl */
+  line-height: 2.25rem;
+  font-weight: var(--land-h1-weight, 700);  /* font-bold */
+}
+
+.subtle{ opacity: var(--land-subtle, .8); }
+
+.twoColGrid{
+  display: grid;
+  gap: var(--land-cols-gap, 1.5rem); /* gap-6 */
+}
+@media (min-width: 768px){
+  .twoColGrid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+.card{
+  border-radius: var(--radius-2xl, 1rem);  /* rounded-2xl */
+  border: 1px solid var(--border-weak, rgba(255,255,255,.12));
+  padding: var(--land-card-pad, 1.5rem);    /* p-6 */
+  background: var(--surface-card-bg, rgba(255,255,255,.05));
+  box-shadow: var(--land-card-shadow, 0 1px 2px rgba(0,0,0,.09)); /* shadow-sm */
+}
+
+.cardGrid{ display: grid; gap: var(--land-card-gap, 1rem); } /* gap-4 */
+
+.fieldStack{ display: grid; gap: var(--land-field-gap, .25rem); } /* gap-1 */
+
+.label{
+  font-size: var(--land-label-size, .875rem);  /* text-sm */
+  line-height: 1.25rem;
+  font-weight: var(--land-label-weight, 500);  /* font-medium */
+}
+
+.input{
+  border-radius: var(--land-input-radius, .75rem);            /* rounded-xl */
+  border: 1px solid var(--form-field-border, rgba(255,255,255,.18));
+  background: var(--form-field-bg, transparent);              /* bg-transparent */
+  padding: var(--land-input-py, .5rem) var(--land-input-px, .75rem); /* py-2 px-3 */
+  color: inherit;
+}
+
+.hint{
+  font-size: var(--land-hint-size, .75rem);   /* text-xs */
+  line-height: 1rem;
+  opacity: var(--land-hint-opacity, .7);      /* opacity-70 */
+  margin-top: var(--land-hint-mt, .25rem);    /* mt-1 */
+}
+
+.btnPrimary{
+  border-radius: var(--land-btn-radius, .75rem);                 /* rounded-xl */
+  padding: var(--land-btn-py, .5rem) var(--land-btn-px, 1rem);   /* py-2 px-4 */
+  background: var(--pwa-btn-bg, #ffffff);                        /* bg-white */
+  color: var(--pwa-btn-fg, #000000);                             /* text-black */
+  transition: all var(--trans-fast, 180ms ease-out);
+}
+.btnPrimary:hover{ opacity: var(--land-btn-hover-opacity, .90); }
+.btnPrimary[disabled]{ opacity: .5; cursor: not-allowed; }
+
+.note{
+  font-size: var(--land-note-size, .75rem);  /* text-xs */
+  line-height: 1rem;
+  opacity: var(--land-note-opacity, .7);     /* opacity-70 */
+}

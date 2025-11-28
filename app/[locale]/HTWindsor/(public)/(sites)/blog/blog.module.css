@@ -1,0 +1,53 @@
+/* ADITIVO — Parametrización por variables (quita este bloque para volver al estado actual) */
+
+.wrap{
+  width: min(var(--blog-wrap-maxw, 1200px), var(--blog-wrap-vw, 96vw));
+  margin: 0 auto;
+  padding: var(--blog-wrap-pad, 16px);
+}
+
+.header{ margin-bottom: var(--blog-head-mb, 12px); }
+
+.title{
+  font-size: var(--blog-title-size, clamp(1.35rem, 3.2vw, 1.9rem));
+  font-weight: var(--blog-title-weight, 800);
+  letter-spacing: var(--blog-title-track, -.01em);
+  color: var(--blog-title-fg, inherit);
+}
+
+.subtitle{
+  margin-top: var(--blog-subtitle-mt, 4px);
+  opacity: var(--blog-subtitle-opacity, .85);
+  font-size: var(--blog-subtitle-size, .95rem);
+  color: var(--blog-subtitle-fg, inherit);
+}
+
+.section{ margin-top: var(--blog-section-mt, 22px); }
+
+.sectionTitle{
+  font-size: var(--blog-sectionTitle-size, clamp(1.05rem, 2vw, 1.3rem));
+  font-weight: var(--blog-sectionTitle-weight, 750);
+  margin-bottom: var(--blog-sectionTitle-mb, 12px);
+  color: var(--blog-sectionTitle-fg, inherit);
+}
+
+.empty{ opacity: var(--blog-empty-opacity, .85); }
+.loading{
+  display: grid;
+  place-items: center;
+  height: var(--blog-loading-h, 30vh);
+  opacity: var(--blog-loading-opacity, .85);
+}
+
+/* ===== Masonry verdadero con columns ===== */
+.masonry{
+  column-count: var(--blog-cols-mobile, 1);       /* mobile */
+  column-gap: var(--blog-col-gap, 16px);
+}
+
+/* Breakpoints (mantienen el comportamiento actual) */
+@media (min-width: 520px){  .masonry{ column-count: var(--blog-cols-sm, 2); } }
+@media (min-width: 900px){  .masonry{ column-count: var(--blog-cols-md, 3); } }
+@media (min-width: 1280px){ .masonry{ column-count: var(--blog-cols-lg, 4); } }
+
+/* Los items (cards) ya llevan break-inside: avoid y margin-bottom:16px */

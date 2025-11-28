@@ -1,0 +1,235 @@
+.landingOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  background: #1e1e1e;
+  color: #fff;
+  padding: 2rem;
+  border-radius: 20px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.5s ease-in;
+}
+
+.logoContainer {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.joke {
+  font-style: italic;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+  color: #bbb;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  font-size: 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s ease-in-out;
+  font-weight: 600;
+}
+
+.yes {
+  background-color: #4caf50;
+  color: white;
+}
+.yes:hover {
+  background-color: #43a047;
+}
+
+.no {
+  background-color: #f44336;
+  color: white;
+}
+.no:hover {
+  background-color: #e53935;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 📱 Responsive */
+@media (max-width: 480px) {
+  .modal {
+    padding: 1.5rem 1rem;
+    border-radius: 16px;
+  }
+
+  .btn {
+    font-size: 0.95rem;
+    padding: 0.65rem 1rem;
+    flex: 1;
+  }
+
+  .joke {
+    font-size: 0.85rem;
+  }
+}
+
+/* ── Parametrización (aditiva; no elimina reglas previas) ───────────── */
+
+.landingOverlay{
+  /* fondo del overlay */
+  background-color: var(--landing-overlay-bg, rgba(0,0,0,0.85));
+}
+
+.modal{
+  /* superficie del modal */
+  background: var(--landing-modal-bg, #1e1e1e);
+  color: var(--landing-modal-fg, #eaeaea);
+  border-radius: var(--radius-2xl, 24px);
+  transition: background-color var(--trans-fast, 180ms ease-out),
+              color var(--trans-fast, 180ms ease-out);
+}
+
+.logoContainer{
+  /* por si necesitas tintes/fondo del area del logo */
+  background: var(--landing-logo-bg, transparent);
+}
+
+.welcome{
+  /* texto de bienvenida */
+  color: var(--landing-welcome-fg, #eaeaea);
+}
+
+.buttons{
+  /* separación entre botones */
+  gap: var(--landing-buttons-gap, 0.75rem);
+}
+
+.btn{
+  /* base de botones (redondeo y transiciones) */
+  border-radius: var(--radius-xl, 12px);
+  border-color: var(--btn-border, rgba(255,255,255,0.15));
+  background: var(--btn-bg, #2a2a2a);
+  color: var(--btn-fg, #eaeaea);
+  transition: background-color var(--trans-fast, 180ms ease-out),
+              color var(--trans-fast, 180ms ease-out),
+              opacity var(--trans-fast, 180ms ease-out);
+}
+.btn:hover{
+  background: var(--btn-hover-bg, rgba(255,255,255,0.10));
+}
+
+.yes{
+  /* CTA afirmativo */
+  background: var(--btn-yes-bg, #059669);
+  color: var(--btn-yes-fg, #ffffff);
+}
+.yes:hover{
+  opacity: var(--btn-yes-hover-opacity, .90);
+}
+
+.no{
+  /* CTA secundario/ghost */
+  background: var(--btn-no-bg, transparent);
+  color: var(--btn-no-fg, #eaeaea);
+  border-color: var(--btn-no-border, rgba(255,255,255,0.15));
+}
+.no:hover{
+  background: var(--btn-no-hover-bg, rgba(255,255,255,0.10));
+}
+
+.joke{
+  /* texto pequeño al pie */
+  color: var(--landing-joke-fg, #b3b3b3);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   ADITIVO — Variables de tema para Google Ads Landing
+   (no cambia el look; usa fallbacks iguales a los actuales)
+   ────────────────────────────────────────────────────────────── */
+
+/* Overlay del modal (fondo) */
+.landingOverlay{
+  background-color: var(--overlay-dim, rgba(0,0,0,.85));
+  padding: var(--ads-pad, 1rem);
+}
+
+/* Caja del modal */
+.modal{
+  background: var(--popup-bg, #1e1e1e);
+  color: var(--popup-fg, #ffffff);
+  border: 1px solid var(--popup-border, rgba(255,255,255,.18));
+  border-radius: var(--popup-radius, 16px);
+  padding: var(--popup-pad, 1rem);
+  width: 100%;
+  max-width: var(--popup-maxw, 28rem);
+  box-shadow: var(--popup-shadow, 0 8px 24px rgba(0,0,0,.35));
+  text-align: center;
+}
+
+/* Logo y texto pequeño */
+.logoContainer{ margin-bottom: var(--logo-mb, 1rem); }
+.joke{
+  color: var(--muted, rgba(255,255,255,.8));
+  font-size: var(--joke-size, .875rem);
+}
+
+/* Botonera */
+.buttons{
+  display: flex;
+  gap: var(--ads-btn-gap, .75rem);
+  margin-top: var(--ads-btn-mt, 1rem);
+}
+
+/* Botón base */
+.btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ads-btn-radius, .75rem);
+  padding: var(--ads-btn-py, .65rem) var(--ads-btn-px, 1rem);
+  font-weight: var(--ads-btn-weight, 600);
+  border: 1px solid var(--border-weak, rgba(255,255,255,.18));
+  transition: all var(--trans-fast, 180ms ease-out);
+}
+
+/* Sí (primario) — mantiene tu verde actual como fallback */
+.yes{
+  background: var(--brand-cta-bg, #059669);
+  color: var(--brand-cta-fg, #ffffff);
+}
+.yes:hover{ opacity: var(--brand-cta-hover-opacity, .90); }
+
+/* No (ghost) */
+.no{
+  background: transparent;
+  color: inherit;
+}
+.no:hover{ background: var(--cta-ghost-hover-bg, rgba(255,255,255,.10)); }

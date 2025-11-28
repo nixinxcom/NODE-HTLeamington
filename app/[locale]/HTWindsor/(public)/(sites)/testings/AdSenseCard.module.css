@@ -1,0 +1,24 @@
+.block { 
+  display: var(--ads-block-display, block); 
+}
+
+/* Banner estándar 728x90 (parametrizable) */
+.inlineBanner728x90 { 
+  display: inline-block; 
+  width: var(--ads-banner-w, 728px); 
+  height: var(--ads-banner-h, 90px); 
+}
+
+/* Caja lateral 360x800 (parametrizable, p.ej. multiplex/vertical) */
+.inlineBox360x800 { 
+  display: inline-block; 
+  width: var(--ads-box-w, 360px); 
+  height: var(--ads-box-h, 800px); 
+}
+
+/* Texto auxiliar (parametrizable) */
+.meta { 
+  opacity: var(--ads-meta-opacity, 0.6); 
+  font-size: var(--ads-meta-size, 12px); 
+  color: var(--ads-meta-fg, inherit);
+}

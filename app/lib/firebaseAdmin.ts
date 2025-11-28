@@ -10,7 +10,7 @@ if (getApps().length) {
 } else {
   // Si hay credenciales explícitas en env -> cert(); si no -> ADC (applicationDefault)
   const hasExplicitCreds =
-    Boolean(process.env.FIREBASE_ADMIN_PRIVATE_KEY) ||
+    Boolean(process.env.FIREBASE_PRIVATE_KEY) ||
     Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS) ||
     Boolean(process.env.FIREBASE_CLIENT_EMAIL);
 
@@ -19,7 +19,7 @@ if (getApps().length) {
       ? cert({
           projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: (process.env.FIREBASE_ADMIN_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+          privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
         })
       : applicationDefault(),
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,

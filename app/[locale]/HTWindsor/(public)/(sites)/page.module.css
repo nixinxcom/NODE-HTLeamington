@@ -1,0 +1,333 @@
+/* ADITIVO: asegura que cualquier borde del header cuente en el alto */
+.header{ box-sizing: border-box; }
+
+/* ADITIVO: forzamos el padding-top correcto del main sin tocar reglas previas */
+:where(.main){
+  padding-top: calc(var(--nav-h) + var(--safe-top)) !important;
+}
+/* MOBILE FIRST */
+
+/* ====== HEADER (fixed + slide suave) ====== */
+.header{
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  box-sizing: border-box;               /* incluye borde en el alto */
+  transition:
+    transform 280ms cubic-bezier(.33,1,.68,1),
+    opacity 180ms ease-out;
+  will-change: transform, opacity;
+  background: var(--body-bg);
+  transform: translateY(0);
+  opacity: 1;
+  /* si usas borde inferior, contará en offsetHeight gracias a box-sizing */
+  /* border-bottom: 1px solid rgba(255,255,255,.5); */
+}
+
+.hidden{
+  transform: translateY(calc(-100% - var(--safe-top)));
+  opacity: .98;
+}
+
+/* ====== MAIN: evita solaparse con el header ====== */
+/* IMPORTANTE: deja una sola definición de .main */
+.main{
+  padding-top: calc(var(--nav-h) + var(--safe-top)); /* respeta altura real + notch */
+}
+
+/* ====== WRAPPERS (opcional) ====== */
+.pageWrapper{
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-color: var(--page-bg, var(--body-bg));
+  color: var(--body-fg);
+  font: var(--body-font);
+}
+
+.content{
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.linksRow{
+  display: flex;
+  flex-wrap: wrap;            /* mobile first: permite salto */
+  justify-content: center;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 0.25rem;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Botones base */
+.linkItem{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+  text-decoration: none;
+  font-size: 0.9375rem;
+  line-height: 1;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  flex: 0 1 auto;           /* mobile first: que puedan ajustarse */
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-color: rgba(var(--basecolor), 1);
+  color: rgba(var(--fontcolor), 1);
+  border: 1px solid transparent;
+  transition: background-color .3s ease, color .3s ease;
+  border: 10px solid red;
+}
+.linkItem:hover{
+  background-color: rgba(var(--fontcolor), 1);
+  color: rgba(var(--basecolor), 1);
+  border-color: rgba(var(--basecolor), 1);
+}
+
+/* CTA */
+.primaryCta{
+  background-color: rgba(var(--basecolor), 1);
+  color: rgba(var(--fontcolor), 1);
+}
+
+/* ====== EVENTOS (mobile-first carrusel horizontal) ====== */
+.eventSection{ padding: 2rem 1rem; background: var(--surface-2, #0f1216); }
+
+.eventTitle{ margin-bottom: 1rem; text-align: center; }
+
+.eventGrid{
+  --ec-card-w: clamp(220px, 78vw, 340px);
+  --ec-card-h: 220px;           /* altura contenida para mobile */
+  --ec-gap: 12px;
+  --ec-crop-pos: 50% 30%;
+
+  display: grid;
+  grid-template-columns: unset !important;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--ec-card-w);
+  gap: var(--ec-gap);
+  padding: 8px 8px 12px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.eventGrid > *{
+  display: grid;
+  grid-template-rows: var(--ec-card-h) auto;
+  row-gap: 6px;
+  width: var(--ec-card-w);
+  scroll-snap-align: start;
+}
+.eventGrid > * > :first-child{
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #0b0b0b;
+}
+.eventGrid > * > :first-child :global(img){
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: var(--ec-crop-pos);
+  transform: scale(1.02);
+  z-index: 0;
+}
+.eventGrid > * > :first-child::before{
+  content: "";
+  position: absolute; inset: 0; z-index: 1;
+  background:
+    radial-gradient(120% 70% at 30% 20%, rgba(0,0,0,.10), rgba(0,0,0,.45) 60%),
+    linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.15) 45%, rgba(0,0,0,0) 75%);
+}
+.eventGrid > * > :first-child > *{
+  position: relative; z-index: 2; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.45);
+}
+.eventName{ margin: .4rem 0 .2rem; text-align: center; }
+.eventSubtitle, .eventDescription, .eventMeta{ margin: 0; text-align: center; white-space: nowrap; opacity: .85; }
+
+.eventGrid::-webkit-scrollbar{ height: 8px; }
+.eventGrid::-webkit-scrollbar-track{ background: transparent; }
+.eventGrid::-webkit-scrollbar-thumb{ background: rgba(0,0,0,.25); border-radius: 4px; }
+
+.eventCard{ background: var(--surface-card-bg, rgba(255,255,255,.06)); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.1); text-align: center; padding-bottom: 1rem; color:rgba(var(--basecolor), 1) }
+.eventImage{ z-index: 1; }
+.eventDetails{ display: flex; flex-direction: row; flex-wrap: wrap; gap: 1rem; }
+.GridCont8{ margin-top: 2rem; }
+.eventInfo{ background: var(--surface-card-bg, rgba(255,255,255,.06)); width: 100%; font-size: 1.25rem; padding: 1rem; text-align: center; z-index: 2; margin-bottom: -1.5rem; }
+
+/* ====== BREAKPOINTS (mobile → up) ====== */
+@media (min-width: 640px){
+  .eventGrid{
+    --ec-card-w: clamp(240px, 60vw, 320px);
+    --ec-card-h: 240px;
+    --ec-gap: 14px;
+  }
+}
+@media (min-width: 768px){
+  .linksRow{ flex-wrap: nowrap; gap: 1rem; }
+  .linkItem{ flex: 0 0 auto; }
+
+  .eventGrid{
+    --ec-card-w: clamp(260px, 44vw, 340px);
+    --ec-card-h: 260px;
+    --ec-gap: 16px;
+  }
+}
+@media (min-width: 1024px){
+  .eventGrid{
+    --ec-card-w: clamp(280px, 36vw, 360px);
+    --ec-card-h: 280px;
+    --ec-gap: 18px;
+  }
+}
+@media (min-width: 1280px){
+  .eventGrid{
+    --ec-card-w: clamp(300px, 30vw, 380px);
+    --ec-card-h: 300px;
+    --ec-gap: 20px;
+  }
+}
+
+/* Accesibilidad: sin animaciones si el usuario lo pide */
+@media (prefers-reduced-motion: reduce){
+  .header{ transition: none; }
+}
+
+/* === NAVBAR FIX (ADITIVO) ========================================== */
+/* Asegura que el contenido nunca quede debajo del header fijo */
+:where(.main){
+  padding-top: calc(var(--nav-h, 56px) + var(--safe-top, 0px)) !important;
+}
+
+/* Header fijo + slide suave (sin tocar tu HTML/JSX) */
+.header{
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  background: var(--nav-bg, #000);
+  transform: translateY(0);
+  opacity: 1;
+  transition: transform 280ms cubic-bezier(.33,1,.68,1), opacity 180ms ease-out;
+  will-change: transform, opacity;
+  box-sizing: border-box; /* ADITIVO: bordes cuentan en el alto */
+}
+.hidden{
+  transform: translateY(calc(-100% - var(--safe-top, 0px)));
+  opacity: .98;
+}
+
+/* Accesibilidad: sin animaciones si el usuario lo pide */
+@media (prefers-reduced-motion: reduce){
+  .header{ transition: none; }
+}
+
+/* Opcional (si no lo tienes ya): variables de tarjetas en grilla de eventos */
+@media (min-width: 1280px){
+  .eventGrid{
+    --ec-card-w: clamp(300px, 30vw, 380px);
+    --ec-card-h: 300px;
+    --ec-gap: 20px;
+  }
+}
+
+
+
+/* ===== ADITIVO — HomePage: variables consumibles por CSS vars ===== */
+
+/* Colores de fondo “app” (sólo reemplaza bg-*) */
+.bgApp{ background: var(--body-bg); }
+
+/* Padding horizontal pequeño (px-4) */
+.padXSm{
+  padding-left:  var(--pad-x-sm, 1rem);
+  padding-right: var(--pad-x-sm, 1rem);
+}
+
+/* Padding secciones grandes (py-16 px-6) */
+.sectionPad{
+  padding: var(--section-pad-y, 4rem) var(--section-pad-x, 1.5rem);
+}
+
+/* Superficies de sección */
+.sectionSurfaceSoft{
+  background: var(--home-section-soft-bg, #f3f4f6);
+  color: var(--home-section-soft-fg, #000);
+}
+.sectionSurfaceLight{  /* blanco con texto negro + padding */
+  background: #ffffff;
+  color: #000000;
+  padding: var(--section-pad-y, 4rem) var(--section-pad-x, 1.5rem);
+}
+.sectionSurfaceDark{   /* bg-black text-white + padding (py-20 px-6) */
+  background: #000;
+  color: #fff;
+  padding: var(--section-dark-pad-y, 5rem) var(--section-pad-x, 1.5rem);
+}
+
+/* Título/subtítulo del hero */
+.heroTitle{
+  color: var(--body-fg);
+  font-weight: var(--hero-title-weight, 700);      /* font-bold */
+  font-size: var(--hero-title-size, 2.25rem);      /* text-4xl */
+  line-height: var(--hero-title-lh, 1.1);
+}
+@media (min-width: 768px){
+  .heroTitle{ font-size: var(--hero-title-size-md, 3.75rem); } /* md:text-6xl */
+}
+.heroSubtitle{
+  color: var(--hero-subtitle-fg, rgba(255,255,255,.85)); /* text-gray fallback */
+  margin-top: var(--hero-subtitle-mt, 1rem);             /* mt-4 */
+  font-size: var(--hero-subtitle-size, 1.125rem);        /* text-lg */
+  line-height: var(--hero-subtitle-lh, 1.5);
+}
+@media (min-width: 768px){
+  .heroSubtitle{ font-size: var(--hero-subtitle-size-md, 1.25rem); } /* md:text-xl */
+}
+
+/* Suavizado de transiciones (transition) */
+.smoothTrans{ transition: all var(--trans-fast, 180ms ease-out); }
+
+/* Radios (rounded-2xl) */
+.radius2xl{ border-radius: var(--radius-2xl, 1rem); }
+
+/* Gaps de filas (gap-4 md:gap-6) */
+.gapRow{ gap: var(--row-gap, 1rem); }
+@media (min-width: 768px){ .gapRow{ gap: var(--row-gap-md, 1.5rem); } }
+
+/* Botón “blanco” (bg-white text-black hover:bg-gray-200) */
+.ctaWhite{
+  background: var(--cta-light-bg, #fff);
+  color: var(--cta-light-fg, #000);
+  border-radius: var(--pwa-btn-radius, 14px);
+}
+.ctaWhite:hover{ background: var(--cta-light-hover-bg, #e5e7eb); }
+
+/* Tamaño de botón (px-6 py-3) */
+.btnMd{
+  padding: var(--btn-pad-y, .75rem) var(--btn-pad-x, 1.5rem);
+}
+
+/* Borde sutil (border border-gray-300) */
+.borderSubtle{ border: 1px solid var(--border-weak, rgba(0,0,0,.12)); }
+
+/* Hover de acento (hover:text-blue-500 + opacidad) */
+.hoverAccent:hover{
+  color: var(--brand-colors-accent, #3b82f6);
+  opacity: var(--hover-accent-opacity, .9);
+}

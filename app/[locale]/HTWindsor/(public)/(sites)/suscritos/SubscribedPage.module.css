@@ -1,0 +1,80 @@
+/* ADITIVO — parametrización por variables (elimina este archivo para volver al look actual) */
+
+/* Main: "min-h-[70vh] grid place-items-center px-4 py-16" */
+.pageMain{
+  min-height: var(--subs-main-minh, 70vh);
+  display: grid;
+  place-items: center;
+  padding: var(--subs-main-pady, 4rem) var(--subs-main-padx, 1rem);
+}
+
+/* Card: "max-w-xl w-full rounded-2xl border p-8 shadow-md bg-white/5" */
+.card{
+  max-width: var(--subs-card-maxw, 36rem); /* ≈ max-w-xl */
+  width: 100%;
+  border-radius: var(--radius-2xl, 1rem);
+  border: 1px solid var(--border-weak, rgba(255,255,255,.12));
+  padding: var(--subs-card-pad, 2rem);
+  box-shadow: var(--subs-card-shadow, 0 4px 6px rgba(0,0,0,.1));
+  background: var(--surface-card-bg, rgba(255,255,255,.05));
+}
+
+/* Icono verde: "mx-auto mb-6 grid h-14 w-14 place-items-center rounded-full bg-emerald-600/15" */
+.iconOk{
+  margin: 0 auto var(--subs-icon-mb, 1.5rem);
+  display: grid;
+  place-items: center;
+  height: var(--subs-icon-size, 3.5rem);  /* h-14 */
+  width:  var(--subs-icon-size, 3.5rem);  /* w-14 */
+  border-radius: 9999px;
+  background: var(--surface-accent-tint, rgba(5,150,105,.15));
+}
+
+/* Título: "text-2xl font-semibold text-center" */
+.title{
+  font-size: var(--subs-title-size, 1.5rem);
+  line-height: var(--subs-title-lh, 2rem);
+  font-weight: var(--subs-title-weight, 600);
+  text-align: center;
+}
+
+/* Párrafo: "mt-3 text-center text-sm opacity-80" */
+.subtitle{
+  margin-top: var(--subs-sub-mt, .75rem);
+  text-align: center;
+  font-size: var(--subs-sub-size, .875rem);
+  line-height: 1.25rem;
+  opacity: var(--subs-sub-opacity, .8);
+}
+
+/* Acciones: "mt-8 flex items-center justify-center gap-3" */
+.actions{
+  margin-top: var(--subs-actions-mt, 2rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--subs-actions-gap, .75rem);
+}
+
+/* Ghost: "rounded-xl px-4 py-2 border hover:bg-white/10 transition" */
+.btnGhost{
+  border-radius: var(--subs-btn-radius, .75rem);
+  padding: var(--subs-btn-py, .5rem) var(--subs-btn-px, 1rem);
+  border: 1px solid var(--border-weak, rgba(255,255,255,.18));
+  background: transparent;
+  color: inherit;
+  transition: all var(--trans-fast, 180ms ease-out);
+}
+.btnGhost:hover{ background: var(--cta-ghost-hover-bg, rgba(255,255,255,.10)); }
+
+.ctaPrimary{
+  /* rounded-xl + bg-emerald-600 + text-white + transition + hover:opacity-90 */
+  padding: var(--subs-btn-py, .5rem) var(--subs-btn-px, 1rem);
+  border-radius: var(--radius-xl, 0.75rem);
+  background: var(--brand-cta-bg, #059669);
+  color: var(--brand-cta-fg, #ffffff);
+  transition: opacity var(--trans-fast, 180ms ease-out);
+}
+.ctaPrimary:hover{
+  opacity: var(--brand-cta-hover-opacity, .90);
+}

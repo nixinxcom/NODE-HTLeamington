@@ -1,0 +1,65 @@
+/* ADITIVO — parametrización por variables (elimínalo para volver al estado actual) */
+
+/* Padding general de página: "px-4 py-10" */
+.pagePadLg{
+  padding-left:  var(--menu-pad-x, 1rem);     /* px-4  */
+  padding-right: var(--menu-pad-x, 1rem);
+  padding-top:   var(--menu-pad-top, 2.5rem); /* py-10 */
+  padding-bottom:var(--menu-pad-bottom, 2.5rem);
+}
+
+/* Stack del encabezado: "text-center mb-6 space-y-2" */
+.headStack{
+  text-align: center;
+  margin-bottom: var(--menu-head-mb, 1.5rem);  /* mb-6   */
+}
+.headStack > * + *{
+  margin-top: var(--menu-head-gap, .5rem);     /* space-y-2 */
+}
+
+/* Título: "text-3xl font-bold" */
+.title{
+  font-size: var(--menu-title-size, 1.875rem); /* text-3xl */
+  line-height: var(--menu-title-lh, 2.25rem);
+  font-weight: var(--menu-title-weight, 700);  /* font-bold */
+}
+
+/* Opacidad suave: "opacity-80" */
+.muted80{ opacity: var(--menu-muted, .8); }
+
+/* Hilera de chips: "flex flex-wrap items-center justify-center gap-2 mb-6" */
+.chipsRow{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--menu-chip-gap, .5rem);            /* gap-2 */
+  margin-bottom: var(--menu-chip-mb, 1.5rem);  /* mb-6  */
+}
+
+/* Botón chip (solo tokens: padding/radio/borde/transition) */
+.chipBtn{
+  padding: var(--menu-chip-py, .5rem) var(--menu-chip-px, 1rem); /* py-2 px-4 */
+  border-radius: var(--menu-chip-radius, .75rem);                /* rounded-xl */
+  border: 1px solid var(--menu-chip-border, rgba(255,255,255,.15));
+  transition: all var(--trans-fast, 180ms ease-out);
+}
+
+/* Marco del visor: "border" (mantén w/max-w/h en JSX) */
+.frameBorder{
+  border: 1px solid var(--border-weak, rgba(255,255,255,.12));
+  border-radius: var(--menu-frame-radius, 12px);
+  background: var(--menu-frame-bg, transparent);
+}
+
+/* Pie de figura: "mt-3 text-center text-sm opacity-70" */
+.caption{
+  margin-top: var(--menu-cap-mt, .75rem);      /* mt-3 */
+  text-align: center;
+  font-size: var(--menu-cap-size, .875rem);    /* text-sm */
+  line-height: var(--menu-cap-lh, 1.25rem);
+  opacity: var(--menu-cap-opacity, .7);        /* opacity-70 */
+}
+
+/* Contenedor con padding medio: "container mx-auto p-6" (solo el padding) */
+.padMd{ padding: var(--menu-pad-md, 1.5rem); } /* p-6 */

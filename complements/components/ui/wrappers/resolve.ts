@@ -12,7 +12,7 @@ const BUILTIN_ALIASES: Record<string, string> = {
 };
 
 /** Normaliza strings/arrays a una sola clase con dedupe. */
-function toClass(x?: string | string[]): string {
+function toClass(x?: string | string[]) : string {
   if (!x) return '';
   const parts = (Array.isArray(x) ? x : String(x).trim().split(/\s+/)).filter(Boolean);
   return Array.from(new Set(parts)).join(' ');

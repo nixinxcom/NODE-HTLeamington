@@ -1,0 +1,73 @@
+/* ADITIVO — parametrización por variables (idéntico a suscritos, con icono rojo y botón primario) */
+
+.pageMain{
+  min-height: var(--subs-main-minh, 70vh);
+  display: grid;
+  place-items: center;
+  padding: var(--subs-main-pady, 4rem) var(--subs-main-padx, 1rem);
+}
+
+.card{
+  max-width: var(--subs-card-maxw, 36rem);
+  width: 100%;
+  border-radius: var(--radius-2xl, 1rem);
+  border: 1px solid var(--border-weak, rgba(255,255,255,.12));
+  padding: var(--subs-card-pad, 2rem);
+  box-shadow: var(--subs-card-shadow, 0 4px 6px rgba(0,0,0,.1));
+  background: var(--surface-card-bg, rgba(255,255,255,.05));
+}
+
+/* Icono rojo: "bg-red-600/15" */
+.iconDanger{
+  margin: 0 auto var(--subs-icon-mb, 1.5rem);
+  display: grid;
+  place-items: center;
+  height: var(--subs-icon-size, 3.5rem);
+  width:  var(--subs-icon-size, 3.5rem);
+  border-radius: 9999px;
+  background: var(--surface-accent-danger, rgba(220,38,38,.15));
+}
+
+.title{
+  font-size: var(--subs-title-size, 1.5rem);
+  line-height: var(--subs-title-lh, 2rem);
+  font-weight: var(--subs-title-weight, 600);
+  text-align: center;
+}
+
+.subtitle{
+  margin-top: var(--subs-sub-mt, .75rem);
+  text-align: center;
+  font-size: var(--subs-sub-size, .875rem);
+  line-height: 1.25rem;
+  opacity: var(--subs-sub-opacity, .8);
+}
+
+.actions{
+  margin-top: var(--subs-actions-mt, 2rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--subs-actions-gap, .75rem);
+}
+
+/* Ghost secundario */
+.btnGhost{
+  border-radius: var(--subs-btn-radius, .75rem);
+  padding: var(--subs-btn-py, .5rem) var(--subs-btn-px, 1rem);
+  border: 1px solid var(--border-weak, rgba(255,255,255,.18));
+  background: transparent;
+  color: inherit;
+  transition: all var(--trans-fast, 180ms ease-out);
+}
+.btnGhost:hover{ background: var(--cta-ghost-hover-bg, rgba(255,255,255,.10)); }
+
+/* Primario sólido: "bg-black text-white hover:opacity-90 transition" */
+.btnPrimary{
+  border-radius: var(--subs-btn-radius, .75rem);
+  padding: var(--subs-btn-py, .5rem) var(--subs-btn-px, 1rem);
+  background: var(--brand-cta-bg, #000);
+  color: var(--brand-cta-fg, #fff);
+  transition: all var(--trans-fast, 180ms ease-out);
+}
+.btnPrimary:hover{ opacity: var(--brand-cta-hover-opacity, .90); }

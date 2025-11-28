@@ -1,0 +1,269 @@
+/* ==============================
+   NavBar.module.css
+   Mobile-first
+   ============================== */
+.LogoContainer {
+  position: absolute;
+  display: flex;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.Logo{
+  width: 40px;
+  height: var(--nav-h);
+  background-color: black;
+}
+.LogoHiden{
+  display: none;
+}
+.NavBarContainer {
+  position: relative;
+  top: 0px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: stretch;
+  background-color: rgba(var(--basecolor), 1); /* Fondo sólido en mobile*/
+  box-sizing: border-box;
+  width: 100%;
+  overflow-x: hidden;
+  gap: 0.5rem;
+  max-height: var(--nav-h);  /* asegura el alto mínimo */
+}
+
+.HamburgerMenu {
+  display: inline-flex;
+  align-items: start;
+  transition: 300ms;
+  /* justify-content: flex-start; */
+  /* background: transparent; */
+  /* border: none; */
+  cursor: pointer;
+  /* z-index: 1001; */
+}
+
+.NavIconContMiddle {
+  display: none;
+  flex-direction: column;
+  align-items: end;
+  border-bottom: 1px solid white;
+  flex: 1 1 auto;
+  min-width: 0;       /* importante para evitar que "empuje" todo */
+  overflow-x: auto;   /* si el contenido se pasa, scrollea solo este bloque */
+  white-space: nowrap; /* opcional: para mantener elementos en una sola línea */
+}
+
+.NavIconContMiddle:hover{
+  border-bottom: 1px solid white;
+}
+
+.NavIconContMiddleVisible {
+  display: flex;
+}
+
+.NavIcon {
+  padding: 0.75rem 1rem;
+  /* text-align: center; */
+  color: var(--nav-text-color, #fff);
+}
+.NavIcon:hover {
+  color: var(--nav-text-color, #bebc49);
+}
+
+.NavIconContStart,
+.NavIconContEnd {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: start;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.NavIconContStart{
+  flex: 1 1 auto;
+}
+.NavIconContEnd {
+  width: max-content;
+  margin-left: auto; /* redes a la derecha */
+}
+
+
+/* ==== Auth controls (mobile-first) ==== */
+.AuthControls {
+  position: absolute;
+  right: 0.75rem;   /* 12px */
+  top: 0.5rem;      /* 8px */
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  z-index: 20;
+}
+
+.AuthLink,
+.AuthBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;              /* 32px */
+  padding: 0 0.625rem;       /* 10px */
+  font-size: 0.85rem;
+  line-height: 1;
+  border: 1px solid rgba(0,0,0,.15);
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.AuthLink:hover,
+.AuthBtn:hover {
+  transform: translateY(-1px);
+  background: #000;
+  color: #fff;
+}
+
+.AuthBtn:active {
+  transform: translateY(0);
+}
+
+.AuthName {
+  font-size: 0.8rem;
+  color: #222;
+  white-space: nowrap;
+  max-width: 9rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* En pantallas medianas, ajusta un poco */
+@media (min-width: 768px) {
+  .AuthControls {
+    right: 1rem;
+    top: 0.75rem;
+    gap: 0.6rem;
+  }
+  .AuthLink, .AuthBtn {
+    height: 2.1rem;
+    padding: 0 0.7rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* ==============================
+   Tablet & Laptop
+   ============================== */
+@media (min-width: 768px) {
+  .LogoContainer {
+    position: relative;
+    display: block;
+    left: 0%;
+    transform: translateX(0%);
+  }
+  .Logo{
+    width: auto;
+  }
+  .NavBarContainer {
+    background-color: rgba(var(--basecolor), 1);
+    flex-direction: row;
+    justify-content: space-between;
+    /* padding: 0.75rem 1.5rem; */
+  }
+
+  .HamburgerMenu {
+    display: none;
+  }
+
+  .NavIconContMiddle {
+    display: flex !important;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .NavIconContStart,
+  .NavIconContEnd {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+
+
+
+/* ==============================
+   Desktop
+   ============================== */
+
+   /* Mobile-first: navbar pegajoso, blur y fondo tenue */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transform: translateY(0);
+  transition:
+    transform .28s cubic-bezier(.22,.61,.36,1),
+    background-color .25s ease,
+    box-shadow .25s ease;
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  /* safe area + altura táctil en mobile */
+  padding-top: calc(env(safe-area-inset-top, 0px));
+  min-height: 56px; /* mobile touch target */
+}
+
+/* Oculto cuando el usuario hace scroll hacia abajo */
+.navHidden {
+  transform: translateY(-100%);
+}
+
+/* Al estar scrolleado, fondo más sólido y sombra */
+.navSolid {
+  background: rgba(0,0,0,.65);
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+
+/* Contenedor interno (no cambia tu markup) */
+.inner {
+  width: min(96vw, 1280px);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem 0; /* conserva hit-area en mobile */
+}
+
+/* Links/botones con área táctil (por si quieres aplicar) */
+.touch {
+  padding: .5rem .75rem;
+  border-radius: .75rem;
+}
+.touch:focus-visible {
+  outline: 2px solid rgba(255,255,255,.85);
+  outline-offset: 2px;
+}
+
+
+
+
+/* ADITIVO: parametrización por variables (elimina este bloque para volver) */
+.nav{
+  background: var(--nav-bg-blur, rgba(0,0,0,.35)) !important;
+  color: var(--nav-fg, #fff) !important;
+}
+.navSolid{
+  background: var(--nav-bg, rgba(var(--basecolor), 1)) !important;
+  color: var(--nav-fg, rgba(var(--fontcolor), 1)) !important;
+}
+.NavBarContainer{
+  background-color: var(--nav-solid-bg, rgba(var(--basecolor), 1)) !important;
+  color: var(--nav-solid-fg, rgba(var(--fontcolor), 1)) !important;
+}
+.Logo{ background-color: var(--nav-logo-bg, #000) !important; }
+.NavIcon{ color: var(--nav-link-fg, #fff) !important; }
+.HamburgerMenu{
+  background: var(--nav-menu-bg, transparent) !important;
+  border-color: var(--nav-menu-border, transparent) !important;
+}

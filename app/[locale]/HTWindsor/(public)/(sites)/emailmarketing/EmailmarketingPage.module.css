@@ -1,0 +1,91 @@
+/* ADITIVO — parametrización por variables (elimina este archivo para volver al look actual) */
+
+/* Main: "min-h-[70vh] grid place-items-center px-4 py-16" */
+.pageMain{
+  min-height: var(--mm-main-minh, 70vh);
+  display: grid;
+  place-items: center;
+  padding: var(--mm-main-pady, 4rem) var(--mm-main-padx, 1rem);
+}
+
+/* Card: "max-w-2xl w-full rounded-2xl border p-8 shadow-md bg-white/5" */
+.card{
+  max-width: var(--mm-card-maxw, 42rem); /* ≈ max-w-2xl */
+  width: 100%;
+  border-radius: var(--radius-2xl, 1rem);
+  border: 1px solid var(--border-weak, rgba(255,255,255,.12));
+  padding: var(--mm-card-pad, 2rem);
+  box-shadow: var(--mm-card-shadow, 0 4px 6px rgba(0,0,0,.1));
+  background: var(--surface-card-bg, rgba(255,255,255,.05));
+}
+
+/* Icono verde: "mx-auto mb-6 grid h-14 w-14 place-items-center rounded-full bg-emerald-600/15" */
+.iconOk{
+  margin: 0 auto var(--mm-icon-mb, 1.5rem);
+  display: grid;
+  place-items: center;
+  height: var(--mm-icon-size, 3.5rem);  /* h-14 */
+  width:  var(--mm-icon-size, 3.5rem);  /* w-14 */
+  border-radius: 9999px;
+  background: var(--surface-accent-tint, rgba(5,150,105,.15));
+}
+
+/* Título: "text-2xl font-semibold text-center" */
+.title{
+  font-size: var(--mm-title-size, 1.5rem);
+  line-height: var(--mm-title-lh, 2rem);
+  font-weight: var(--mm-title-weight, 600);
+  text-align: center;
+}
+
+/* Subtítulo: "mt-3 text-center text-sm opacity-80" */
+.subtitle{
+  margin-top: var(--mm-sub-mt, .75rem);
+  text-align: center;
+  font-size: var(--mm-sub-size, .875rem);
+  line-height: 1.25rem;
+  opacity: var(--mm-sub-opacity, .8);
+}
+
+/* Grid de acciones: "mt-8 grid gap-3 sm:grid-cols-2" */
+.actionsGrid{
+  margin-top: var(--mm-actions-mt, 2rem);
+  display: grid;
+  gap: var(--mm-actions-gap, .75rem);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px){ /* sm */
+  .actionsGrid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+/* Botón primario grande: "rounded-xl px-4 py-3 text-center bg-emerald-600 text-white hover:opacity-90 transition" */
+.btnPrimary{
+  border-radius: var(--mm-btn-radius, .75rem);
+  padding: var(--mm-btn-py, .75rem) var(--mm-btn-px, 1rem);
+  text-align: center;
+  background: var(--brand-cta-bg, #059669);
+  color: var(--brand-cta-fg, #fff);
+  transition: all var(--trans-fast, 180ms ease-out);
+}
+.btnPrimary:hover{ opacity: var(--brand-cta-hover-opacity, .90); }
+
+/* Botón ghost grande: "rounded-xl px-4 py-3 text-center border hover:bg-white/10 transition" */
+.btnGhost{
+  border-radius: var(--mm-btn-radius, .75rem);
+  padding: var(--mm-btn-py, .75rem) var(--mm-btn-px, 1rem);
+  text-align: center;
+  border: 1px solid var(--border-weak, rgba(255,255,255,.18));
+  background: transparent;
+  color: inherit;
+  transition: all var(--trans-fast, 180ms ease-out);
+}
+.btnGhost:hover{ background: var(--cta-ghost-hover-bg, rgba(255,255,255,.10)); }
+
+/* Nota pequeña: "mt-6 text-center text-xs opacity-70" */
+.note{
+  margin-top: var(--mm-note-mt, 1.5rem);
+  text-align: center;
+  font-size: var(--mm-note-size, .75rem);
+  line-height: 1rem;
+  opacity: var(--mm-note-opacity, .7);
+}
