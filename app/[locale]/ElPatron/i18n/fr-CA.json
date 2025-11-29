@@ -329,8 +329,6 @@
 
 "settings.title":"Paramètres",
 "settings.description":"Gérez les paramètres, les métadonnées et l’i18n (FMs) du site.",
-"branding.title":"Marque",
-"branding.description":"Gérez l’identité visuelle, les polices et la colorimétrie du site.",
 "agent.title":"Agent IA",
 "agent.description":"Configurez l’agent IA qui interagit avec les visiteurs.",
 "cloud.title":"Cloud",

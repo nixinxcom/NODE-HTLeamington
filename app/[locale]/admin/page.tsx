@@ -21,12 +21,6 @@ export default function AdminHome() {
       href: L('/admin/settings'),
     },
     {
-      key: 'branding',
-      title: <FM id="branding.title" defaultMessage="Branding" />,
-      desc: <FM id="branding.description" defaultMessage="Configuración de la Marca" />,
-      href: L('/admin/branding'),
-    },
-    {
       key: 'styling',
       title: <FM id="styling.title" defaultMessage="Estilo" />,
       desc: <FM id="styling.description" defaultMessage="Configuración de Estilos" />,

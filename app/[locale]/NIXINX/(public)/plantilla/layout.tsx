@@ -39,8 +39,8 @@ export default function PlantillaLayout({ children }: { children: React.ReactNod
         <AiComp
           agentId="elpatron-branding"
           title="El Patrón AI"
-          avatarUrl="/Agents/elpatron/avatar.webp"
-          fabIconUrl="/Agents/elpatron/fab.webp"
+          avatarUrl={Branding.logo}
+          fabIconUrl={Branding.logo}
           sources={["branding"]}   // FDV: solo Providers/Branding con isAgentFDV:true
         />
       </div>

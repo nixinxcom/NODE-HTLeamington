@@ -173,8 +173,8 @@ export default function AiComp({
   sources,
   role,
   title,
-  avatarUrl = '/Icons/ClustersIconMap.png',
-  fabIconUrl = '/Icons/NIXINIcon.png',
+  avatarUrl,
+  fabIconUrl,
   localeOverride,
   defaultOpen = false,
 }: AiCompProps) {

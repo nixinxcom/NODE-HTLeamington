@@ -1,4 +1,4 @@
-//app\providers\FdvProvider.tsx
+// app/providers/FdvProvider.tsx
 "use client";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
@@ -8,17 +8,21 @@ import type { PanelSchema } from "@/complements/factory/panelSchema.types";
 
 type FdvRecord = Record<string, unknown>;
 
+type FdvStatus = "loading" | "ready" | "error";
+
 type FdvContextValue = {
   /** Datos cargados desde Firestore, indexados por schema.id (branding, settings, etc.) */
   data: FdvRecord;
   loading: boolean;
   error?: string;
+  status: FdvStatus;
 };
 
 const FdvContext = createContext<FdvContextValue>({
   data: {},
   loading: true,
   error: undefined,
+  status: "loading",
 });
 
 type Props = { children: React.ReactNode };
@@ -39,6 +43,7 @@ export default function FdvProvider({ children }: Props) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | undefined>();
   const [data, setData] = useState<FdvRecord>({});
+  const [status, setStatus] = useState<FdvStatus>("loading");
 
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +51,7 @@ export default function FdvProvider({ children }: Props) {
     const load = async () => {
       setLoading(true);
       setError(undefined);
+      setStatus("loading");
 
       try {
         const providerSchemas: PanelSchema[] = Object.values(PANEL_SCHEMAS).filter(
@@ -76,11 +82,13 @@ export default function FdvProvider({ children }: Props) {
 
         if (!cancelled) {
           setData(results);
+          setStatus("ready");
         }
       } catch (e) {
         console.error("[FdvProvider] error general cargando FDV:", e);
         if (!cancelled) {
           setError("load");
+          setStatus("error");
         }
       } finally {
         if (!cancelled) {
@@ -100,8 +108,9 @@ export default function FdvProvider({ children }: Props) {
       data,
       loading,
       error,
+      status,
     }),
-    [data, loading, error],
+    [data, loading, error, status],
   );
 
   return (

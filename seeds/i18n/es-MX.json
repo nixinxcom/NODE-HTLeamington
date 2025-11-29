@@ -329,8 +329,6 @@
 
 "settings.title":"Configuración",
 "settings.description":"Administra configuración, metadatos e i18n (FMs) para el sitio.",
-"branding.title":"Marca",
-"branding.description":"Administra branding, fuentes y colorimetria para el sitio.",
 "agent.title":"Agente IA",
 "agent.description":"Configura el agente de IA que interactúa con los visitantes.",
 "cloud.title":"Nube",
