@@ -11,7 +11,7 @@ export const envMeta: Partial<Record<keyof iEnvVars, Meta>> = {
     NEXT_PUBLIC_FIREBASE_APP_ID: { label: 'App ID', placeholder: '1:123...:web:abc' },
     NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: { label: 'Measurement ID', placeholder: 'G-XXXXXXX' },
     NEXT_PUBLIC_PROD_SITE_URL: { label: 'Site URL', placeholder: 'https://cliente.com' },
-    NEXT_PUBLIC_I18N_COLL: { label: 'I18N collection', placeholder: 'i18n_global', readOnly: true },
+    NEXT_PUBLIC_I18N_COLL: { label: 'I18N collection', placeholder: 'Providers/[locale]', readOnly: true },
     NEXT_PUBLIC_BRANDING_DOC_PATH: { label: 'Branding doc path', placeholder: 'branding/default', readOnly: true },
     NEXT_PUBLIC_SETTINGS_DOC_PATH: { label: 'Settings doc path', placeholder: 'settings/default', readOnly: true },
     NEXT_PUBLIC_STYLES_DOC_PATH: { label: 'Styles doc path', placeholder: 'styles/default', readOnly: true },

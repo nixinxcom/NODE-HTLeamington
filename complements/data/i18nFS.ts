@@ -4,7 +4,7 @@ import { FbDB } from "@/app/lib/services/firebase";
 
 export type I18nDict = Record<string, string>;
 
-const I18N_COLL = process.env.NEXT_PUBLIC_I18N_COLL || "i18n_global";
+const I18N_COLL = process.env.NEXT_PUBLIC_I18N_COLL || "Providers";
 
 function baseLang(locale: string) {
   const i = locale.indexOf("-");

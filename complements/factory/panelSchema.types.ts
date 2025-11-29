@@ -44,6 +44,7 @@ export type PanelFieldWidget =
   | 'json'
   | 'image'
   | 'file'
+  | 'upload'   // ⬅️ NUEVO
   | 'hidden'
   | (string & {});
 
@@ -52,6 +53,25 @@ export type PanelFieldOption = {
   value: string;
   labelKey?: string;
 };
+
+/** Config específica para widget="upload" */
+export interface PanelUploadConfig {
+  /** Carpeta dentro del bucket, ej: "manifest/icons" */
+  storageFolder?: string;
+
+  /** Nombre final del archivo, ej: "Logo.webp" */
+  targetFileName?: string;
+
+  /** Nombre base obligatorio, ej: "Logo" → archivo debe ser Logo.* */
+  validateBaseName?: string;
+
+  /** Para casos de múltiples archivos (screenshots, etc.) */
+  multiple?: boolean;
+
+  /** Prefijo para generar nombres, ej: "screenshot_" */
+  fileNamePrefix?: string;
+}
+
 
 // ============================================================================
 //  BASE FIELD
@@ -98,6 +118,13 @@ export interface PanelBaseField {
   /* regex para string/text */
   step?: number;
   pattern?: string;
+
+    /** Accept para widget="upload"/"file" (ej: "image/*") */
+  accept?: string | string[];
+
+  /** Config para widget="upload" */
+  uploadConfig?: PanelUploadConfig;
+
 }
 
 // ============================================================================

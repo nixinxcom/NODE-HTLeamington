@@ -380,6 +380,28 @@ function FieldEditor({
     patchField({ element: undefined } as any);
   };
 
+  const options: PanelFieldOption[] = Array.isArray((field as any).options)
+    ? ((field as any).options as PanelFieldOption[])
+    : [];
+
+  const handleOptionChange = (idx: number, patch: Partial<PanelFieldOption>) => {
+    const next = [...options];
+    const current = next[idx] ?? { value: '', labelKey: '' };
+    next[idx] = { ...current, ...patch };
+    patchField({ options: next as any } as any);
+  };
+
+  const handleAddOption = () => {
+    const next = [...options, { value: '', labelKey: '' }];
+    patchField({ options: next as any } as any);
+  };
+
+  const handleDeleteOption = (idx: number) => {
+    const next = [...options];
+    next.splice(idx, 1);
+    patchField({ options: next as any } as any);
+  };
+
   return (
     <DIV
       className={`relative flex flex-col gap-2 border border-white/10 rounded-md p-3 bg-black/30 ${indentClass}`}
@@ -668,42 +690,64 @@ function FieldEditor({
         field.widget === 'select' ||
         field.widget === 'multiselect' ||
         field.widget === 'radio') && (
-        <DIV className="flex flex-col gap-1">
+        <DIV className="flex flex-col gap-2">
           <LABEL className="text-xs font-semibold">
             <FM
               id="admin.FuiPanel.field.options"
-              defaultMessage="Opciones (value:labelKey, una por línea)"
+              defaultMessage="Opciones"
             />
           </LABEL>
-          <textarea
-            className="w-full min-h-[80px] text-xs font-mono bg-black/60 text-white px-2 py-1 rounded"
-            value={Array.isArray((field as any).options)
-              ? ((field as any).options as PanelFieldOption[])
-                  .map(
-                    (opt) =>
-                      `${opt.value}:${opt.labelKey || ''}`,
-                  )
-                  .join('\n')
-              : ''}
-            onChange={(e) => {
-              const lines = e.target.value
-                .split('\n')
-                .map((l) => l.trim())
-                .filter(Boolean);
 
-              const opts: PanelFieldOption[] = lines.map(
-                (line) => {
-                  const [v, label] = line.split(':');
-                  return {
-                    value: v.trim(),
-                    labelKey: label?.trim() || undefined,
-                  };
-                },
-              );
+          <DIV className="flex flex-col gap-2">
+            {options.map((opt, idx) => (
+              <DIV key={idx} className="flex gap-2 items-center">
+                <INPUT
+                  type="text"
+                  className="flex-1 text-xs"
+                  placeholder="value"
+                  value={opt.value}
+                  onChange={(e) =>
+                    handleOptionChange(idx, { value: e.target.value })
+                  }
+                />
+                <INPUT
+                  type="text"
+                  className="flex-1 text-xs"
+                  placeholder="labelKey (opcional)"
+                  value={opt.labelKey ?? ''}
+                  onChange={(e) =>
+                    handleOptionChange(idx, {
+                      labelKey: e.target.value || undefined,
+                    })
+                  }
+                />
+                <BUTTON
+                  type="button"
+                  kind="button"
+                  onClick={() => handleDeleteOption(idx)}
+                >
+                  🗑
+                </BUTTON>
+              </DIV>
+            ))}
+          </DIV>
 
-              patchField({ options: opts as any } as any);
-            }}
-          />
+          <DIV>
+            <BUTTON
+              type="button"
+              kind="button"
+              onClick={handleAddOption}
+            >
+              + Opción
+            </BUTTON>
+          </DIV>
+
+          <P className="text-[10px] opacity-60">
+            <FM
+              id="admin.FuiPanel.field.options.hint"
+              defaultMessage="Cada opción define un value almacenado en Firestore y un labelKey para i18n."
+            />
+          </P>
         </DIV>
       )}
 

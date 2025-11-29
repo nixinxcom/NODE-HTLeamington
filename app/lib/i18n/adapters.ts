@@ -2,8 +2,8 @@
 import type { Locale } from "./locale";
 import { toShort } from "./locale";
 
-export type PayPalRestLocale = "es-ES" | "es-419" | "en-CA" | "fr-CA";
-export type PayPalSdkLocale  = "es_ES" | "es_419" | "en_CA" | "fr_CA";
+export type PayPalRestLocale = "es-MX" | "en-CA" | "fr-CA";
+export type PayPalSdkLocale  = "es_MX" | "en_CA" | "fr_CA";
 
 /** Short por defecto desde env (NEXT_PUBLIC_DEFAULT_LOCALE), normalizado a 'es'|'en'|'fr' */
 export function defaultShort(): Locale {
@@ -22,7 +22,7 @@ export function toLongForIntl(input?: string | null): "es-MX" | "en-US" | "fr-CA
 /** PayPal REST (application_context.locale) */
 export function toPayPalLocale(input?: string | null): PayPalRestLocale {
   const s = toShort(input || defaultShort());
-  if (s === "es") return "es-419"; // usa 'es-ES' si tu principal es España
+  if (s === "es") return "es-MX"; // usa 'es-ES' si tu principal es España
   if (s === "fr") return "fr-CA";
   return "en-CA";
 }

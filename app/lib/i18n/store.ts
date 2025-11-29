@@ -20,8 +20,8 @@ export async function loadSupportedLocales(): Promise<string[]> {
   }
 }
 
-/* ───────────────────────── GLOBAL ───────────────────────── */
-const I18N_COLL = process.env.NEXT_PUBLIC_I18N_COLL || "i18n_global";
+/* ───────────────────────── GLOBAL (FMs) ───────────────────────── */
+const I18N_COLL = process.env.NEXT_PUBLIC_I18N_COLL || "Providers";
 
 export async function loadFMsGlobal(locale: string): Promise<Record<string, string>> {
   const ref = doc(FbDB, I18N_COLL, locale);
@@ -131,33 +131,6 @@ export async function deleteFMsSiteFields(locale: string, fields: string[]) {
     for (const k of group) payload[k] = deleteField();
     await updateDoc(ref, payload);
   }
-}
-
-/* ───────────────────────── ORDEN (aditivo) ─────────────────────────
- * Guardamos un arreglo de IDs por ámbito para ordenar filas en UI.
- * Colección: i18n_orders
- *   - global  -> docId "global"
- *   - site    -> docId "site"
- *   - page    -> docId `page:{routeKey}`
- */
-function orderDocId(scope: "global" | "site" | "page", routeKey?: string) {
-  return scope === "page" ? `page:${routeKey || "home"}` : scope;
-}
-
-export async function loadFMsOrder(scope: "global" | "site" | "page", routeKey?: string): Promise<string[]> {
-  try {
-    const ref = doc(FbDB, "i18n_orders", orderDocId(scope, routeKey));
-    const snap = await getDoc(ref);
-    const data = snap.exists() ? (snap.data() as any) : null;
-    return Array.isArray(data?.order) ? data.order : [];
-  } catch {
-    return [];
-  }
-}
-
-export async function saveFMsOrder(scope: "global" | "site" | "page", routeKey: string | undefined, order: string[]) {
-  const ref = doc(FbDB, "i18n_orders", orderDocId(scope, routeKey));
-  await setDoc(ref, { order }, { merge: true });
 }
 
 export type MetaRecord = Record<string, string | null>;

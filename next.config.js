@@ -28,7 +28,6 @@ const CSP_DEV = "default-src 'self' data: blob: https: ws: wss: 'unsafe-inline' 
 /* ── PWA / Workbox ─────────────────────────────────────────────── */
 const withPWAConfig = withPWA({
   dest: 'public',
-  disable: !isProd,          // SW solo en prod
   register: true,
   skipWaiting: true,
   fallbacks: { document: '/offline' },

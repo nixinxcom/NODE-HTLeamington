@@ -11,7 +11,7 @@ export interface iEnVars{
     FIREBASE_CLIENT_EMAIL?: string;
     FIREBASE_PRIVATE_KEY: string;
     NEXT_PUBLIC_PROD_SITE_URL: string;
-    NEXT_PUBLIC_I18N_COLL: "i18n_global";
+    NEXT_PUBLIC_I18N_COLL: "Providers";
     NEXT_PUBLIC_BRANDING_DOC_PATH: "branding/default";
     NEXT_PUBLIC_SETTINGS_DOC_PATH: "settings/default";
     NEXT_PUBLIC_STYLES_DOC_PATH: "styles/default";

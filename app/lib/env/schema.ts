@@ -13,7 +13,7 @@ export const envSchema = z.object({
 
     // ===== Preferencias/i18n en público =====
     NEXT_PUBLIC_PROD_SITE_URL: z.string().url(),
-    NEXT_PUBLIC_I18N_COLL: z.literal('i18n_global'),
+    NEXT_PUBLIC_I18N_COLL: z.literal('Providers'),
     NEXT_PUBLIC_BRANDING_DOC_PATH: z.literal('branding/default'),
     NEXT_PUBLIC_SETTINGS_DOC_PATH: z.literal('settings/default'),
     NEXT_PUBLIC_STYLES_DOC_PATH: z.literal('styles/default'),

@@ -88,7 +88,7 @@ export async function getI18nEffectiveServer(locale: string, tenant?: string) {
   // 2) Firestore pisa seeds (RDD: FS > seeds)
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const apiKey    = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const I18N_COLL = process.env.NEXT_PUBLIC_I18N_COLL || "i18n_global";
+  const I18N_COLL = process.env.NEXT_PUBLIC_I18N_COLL || "Providers";
 
   if (projectId && apiKey) {
     let fsDoc: Record<string,string> = (await fetchDocREST(projectId, apiKey, I18N_COLL, short)) || {};

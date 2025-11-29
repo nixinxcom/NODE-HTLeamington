@@ -3,8 +3,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-
-import { FbDB } from '@/app/lib/services/firebase';
+import { ref, uploadBytes } from 'firebase/storage';
+import { FbDB, FbStorage } from '@/app/lib/services/firebase';
 
 import {
   DIV,
@@ -25,7 +25,14 @@ import type {
   PanelFieldWidget,
   PanelFieldOption,
   PanelScalarField,
+  PanelUploadConfig,
 } from './panelSchema.types';
+
+import {
+  syncPwaAssetsIntoDoc,
+  purgePwaIcons,
+  purgePwaScreenshots,
+} from './pwa.sync';
 
 import { PANEL_SCHEMAS } from './panelSchemas';
 
@@ -334,7 +341,6 @@ function validateFieldValue(
 }
 
 // -------------------- FieldControl (fuera de AdminPanel) --------------------
-
 type FieldControlProps = {
   field: PanelField;
   value: any;
@@ -364,6 +370,9 @@ function FieldControl({
   const [activeLocale, setActiveLocale] = useState<string>(baseLocale);
   const [showJson, setShowJson] = useState<boolean>(false);
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const err = fieldErrors[path];
   const hasErr = !!err;
 
@@ -376,16 +385,22 @@ function FieldControl({
   // STRING / TEXT (incluye translatable)
   const renderStringOrText = () => {
     const isTrans = (field as any).translatable === true;
+    const pattern = (field as any).pattern as string | undefined;
+
+    const normalize = (val: any): string => {
+      if (typeof val === 'string') return val;
+      if (val == null) return '';
+      return String(val);
+    };
 
     if (isTrans) {
-      // Ahora tratamos el campo como un string del locale actual.
-      // Si llegara un objeto { en, es, fr }, tomamos baseLocale o el primero.
       const isTextarea =
         widget === 'textarea' ||
         widget === 'markdown' ||
         widget === 'code' ||
         widget === 'json';
 
+      // Si llega como objeto { en, es, fr }, tomamos baseLocale o el primero
       const strVal =
         typeof value === 'string'
           ? value
@@ -394,8 +409,7 @@ function FieldControl({
           : typeof value === 'object' && !Array.isArray(value)
           ? (() => {
               const map = value as Record<string, any>;
-              const maybe =
-                map[baseLocale] ?? Object.values(map)[0];
+              const maybe = map[baseLocale] ?? Object.values(map)[0];
               return typeof maybe === 'string' ? maybe : '';
             })()
           : String(value);
@@ -420,7 +434,6 @@ function FieldControl({
     }
 
     // No translatable
-    const pattern = (field as any).pattern as string | undefined;
     const isTextarea =
       widget === 'textarea' ||
       widget === 'markdown' ||
@@ -428,12 +441,7 @@ function FieldControl({
       widget === 'json';
 
     if (isTextarea) {
-      const strVal =
-        typeof value === 'string'
-          ? value
-          : value == null
-          ? ''
-          : String(value);
+      const strVal = normalize(value);
       return (
         <textarea
           className="w-full min-h-[80px] text-sm bg-black/60 text-white px-2 py-1 rounded resize-y"
@@ -460,12 +468,7 @@ function FieldControl({
     }
 
     if (widget === 'image' || widget === 'file') {
-      const strVal =
-        typeof value === 'string'
-          ? value
-          : value == null
-          ? ''
-          : String(value);
+      const strVal = normalize(value);
       return (
         <INPUT
           type="text"
@@ -476,12 +479,7 @@ function FieldControl({
       );
     }
 
-    const strVal =
-      typeof value === 'string'
-        ? value
-        : value == null
-        ? ''
-        : String(value);
+    const strVal = normalize(value);
     return (
       <INPUT
         type="text"
@@ -492,7 +490,107 @@ function FieldControl({
     );
   };
 
+  // Subida a Storage para widget === "upload"
+  const renderUpload = () => {
+    const uploadCfg = (field as any).uploadConfig as
+      | PanelUploadConfig
+      | undefined;
+    const acceptProp = (field as any).accept as
+      | string
+      | string[]
+      | undefined;
+
+    // Por defecto, cualquier imagen
+    const acceptAttr =
+      (Array.isArray(acceptProp)
+        ? acceptProp.join(',')
+        : acceptProp) || 'image/*';
+
+    const handleFileChange = async (
+      e: React.ChangeEvent<HTMLInputElement>,
+    ) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setUploadError(null);
+
+      // 0) Asegurarnos que es imagen
+      if (!file.type.startsWith('image/')) {
+        setUploadError('Solo se permiten archivos de imagen.');
+        return;
+      }
+
+      // 1) Validar nombre base (opcional, según schema)
+      if (uploadCfg?.validateBaseName) {
+        const expected = uploadCfg.validateBaseName;
+        const nameWithoutExt = file.name.replace(/\.[^.]+$/, ''); // sin extensión
+
+        if (nameWithoutExt !== expected) {
+          setUploadError(
+            `El archivo debe llamarse "${expected}" (ej. ${expected}.png, ${expected}.jpg, ${expected}.webp).`,
+          );
+          return;
+        }
+      }
+
+      setUploading(true);
+      try {
+        // 2) Construir ruta en Storage
+        const folder = (uploadCfg?.storageFolder || '').replace(/\/+$/, '');
+        const targetFileName = uploadCfg?.targetFileName || file.name;
+        const path = folder ? `${folder}/${targetFileName}` : targetFileName;
+
+        // 3) Purgar SOLO la carpeta correcta antes de subir
+        if (folder === 'manifest/icons') {
+          await purgePwaIcons();
+        } else if (folder === 'manifest/screenshots') {
+          await purgePwaScreenshots();
+        }
+
+        // 4) Subir el archivo
+        const storageRef = ref(FbStorage, path);
+        await uploadBytes(storageRef, file);
+
+        // 5) Guardamos la ruta lógica en FS (el manifest ya sabe el bucket)
+        onChange(path);
+      } catch (err) {
+        console.error('[AdminPanel] Error subiendo archivo', err);
+        setUploadError('Error al subir el archivo a Storage.');
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    return (
+      <div className="flex flex-col gap-2">
+        <input
+          type="file"
+          accept={acceptAttr}
+          onChange={handleFileChange}
+        />
+        {uploading && (
+          <SPAN className="text-[11px] opacity-70">
+            Subiendo archivo…
+          </SPAN>
+        )}
+        {typeof value === 'string' && value && (
+          <SPAN className="text-[10px] opacity-70 break-all">
+            Ruta actual: {value}
+          </SPAN>
+        )}
+        {uploadError && (
+          <P className="text-[11px] text-red-400">{uploadError}</P>
+        )}
+      </div>
+    );
+  };
+
   const renderScalarInput = () => {
+    // Caso especial: widget "upload"
+    if (type === 'string' && widget === 'upload') {
+      return renderUpload();
+    }
+
     if (type === 'string' || type === 'text') {
       return renderStringOrText();
     }
@@ -1070,6 +1168,7 @@ export function AdminPanel({ locale }: AdminPanelProps) {
 
     const newErrors: FieldErrors = {};
 
+    // 1) Validación de campos del panel
     for (const field of currentSchema.fields) {
       const v = data[field.name];
       validateFieldValue(field, v, field.name, newErrors, {
@@ -1084,14 +1183,20 @@ export function AdminPanel({ locale }: AdminPanelProps) {
       return;
     }
 
-        // Si el panel tiene textos traducibles, forzamos que los 3 JSON se llenen bien
-    if (baseI18nKeys.length > 0) {
+    // 2) Validación y parseo de JSON ES/EN/FR (solo si hay textos traducibles
+    //    y el panel es provider, es decir, alimenta FDV)
+    let esDoc: Record<string, string> | null = null;
+    let enDoc: Record<string, string> | null = null;
+    let frDoc: Record<string, string> | null = null;
+
+    if (baseI18nKeys.length > 0 && currentSchema.isProvider) {
       const locales = [
         { label: 'ES', raw: esJsonRaw, info: esInfo },
         { label: 'EN', raw: enJsonRaw, info: enInfo },
         { label: 'FR', raw: frJsonRaw, info: frInfo },
       ];
 
+      // Validar que los tres JSON existen, son válidos y tienen todas las keys
       for (const loc of locales) {
         if (!loc.raw.trim()) {
           setI18nJsonGlobalError(
@@ -1118,9 +1223,26 @@ export function AdminPanel({ locale }: AdminPanelProps) {
           return;
         }
       }
+
+      // Si todo está bien, parseamos los tres JSON a objetos plano { id: texto }
+      try {
+        esDoc = JSON.parse(esJsonRaw) as Record<string, string>;
+        enDoc = JSON.parse(enJsonRaw) as Record<string, string>;
+        frDoc = JSON.parse(frJsonRaw) as Record<string, string>;
+      } catch (e) {
+        console.error('[AdminPanel] JSON i18n no parseable:', e);
+        setI18nJsonGlobalError(
+          'No se pudieron parsear los JSON de traducciones. Revisa el formato.',
+        );
+        setError('validation');
+        setSaving(false);
+        return;
+      }
     }
 
+    // 3) Escritura en Firestore
     try {
+      // Doc principal del panel, p.ej. Providers/pwa
       const ref = doc(
         FbDB,
         currentSchema.fsCollection,
@@ -1132,7 +1254,58 @@ export function AdminPanel({ locale }: AdminPanelProps) {
         _updatedAt: Date.now(),
       };
 
-      await setDoc(ref, out, { merge: true });
+      const writes: Promise<any>[] = [
+        setDoc(ref, out, { merge: true }),
+      ];
+
+      // Si este esquema es provider y tenemos JSON válidos,
+      // guardamos también Providers/es, Providers/en, Providers/fr
+      if (currentSchema.isProvider && baseI18nKeys.length > 0) {
+        if (esDoc) {
+          writes.push(
+            setDoc(
+              doc(FbDB, 'Providers', 'es'),
+              esDoc,
+              { merge: true },
+            ),
+          );
+        }
+        if (enDoc) {
+          writes.push(
+            setDoc(
+              doc(FbDB, 'Providers', 'en'),
+              enDoc,
+              { merge: true },
+            ),
+          );
+        }
+        if (frDoc) {
+          writes.push(
+            setDoc(
+              doc(FbDB, 'Providers', 'fr'),
+              frDoc,
+              { merge: true },
+            ),
+          );
+        }
+      }
+
+      await Promise.all(writes);
+
+      // Si este schema es el PWA (Providers/pwa),
+      // sincronizamos los assets desde Storage a Providers/pwa
+      if (
+        currentSchema.fsCollection === 'Providers' &&
+        currentSchema.fsDocId === 'pwa'
+      ) {
+        try {
+          await syncPwaAssetsIntoDoc();
+        } catch (e) {
+          console.error('[AdminPanel] Error en syncPwaAssetsIntoDoc:', e);
+          // No frenamos el guardado si falla la sync; solo lo anotamos en consola
+        }
+      }
+
       setSaved(true);
       setError(null);
     } catch (e) {
@@ -1279,7 +1452,7 @@ export function AdminPanel({ locale }: AdminPanelProps) {
         missingKeys: [],
       };
     }
-  }, [enJsonRaw, baseI18nKeys]);
+  }, [esJsonRaw, baseI18nKeys]);
 
   const enInfo = useMemo<LocaleJsonInfo>(() => {
     if (!enJsonRaw.trim()) {
