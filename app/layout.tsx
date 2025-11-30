@@ -48,8 +48,10 @@ import {
 } from "@/complements/components/ui/wrappers";
 
 import { NotificationsProvider } from "@/app/lib/notifications/provider";
+import NotificationPopupHost from "@/complements/components/Notifications/NotificationPopupHost";
 import FdvProvider from "./providers/FdvProvider";
 import BootGate from "./providers/BootGate"; // 👈 NUEVO IMPORT
+import GlobalPromoHost from "@/complements/components/Notifications/GlobalPromoHost";
 
 /* ─────────────────────────────────────────────────────────
    Metadata global
@@ -304,8 +306,10 @@ export default function RootLayout({
                           ShowLangs="oneBYone"
                         />
                         <AppHydrators />
+                        <GlobalPromoHost />
                         {children}
                         <Analytics />
+                        <NotificationPopupHost />
                       </NotificationsProvider>
                     </AuthProvider>
                   </ThemeProviders>

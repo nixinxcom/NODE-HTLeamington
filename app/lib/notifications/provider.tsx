@@ -1,180 +1,194 @@
 // app/lib/notifications/provider.tsx
 "use client";
 
-import {
+import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
-import { useAppContext } from "@/context/AppContext";
-import { hasNotificationsFaculty } from "./config";
-import { Firebase } from "@/app/lib/services/firebase";
-import {
-  getMessaging,
-  getToken,
-  isSupported,
-  onMessage,
-} from "firebase/messaging";
+import { FbAuth } from "@/app/lib/services/firebase";
+import { useProvider } from "@/app/providers/FdvProvider";
+import type iSettings from "@/app/lib/settings/interface";
 
-type NotificationItem = {
-  title: string;
-  body: string;
-  icon?: string;
-  data?: Record<string, string>;
-};
+type PermissionState = NotificationPermission | "unsupported" | "error";
 
-type NotificationsContextValue = {
-  enabled: boolean;
-  permission: NotificationPermission;
-  token?: string;
-  unread: number;
-  notifications: NotificationItem[];
-  requestPermission: () => Promise<void>;
-  markAllRead: () => void;
+export type NotificationsContextValue = {
+  supported: boolean;
+  permission: PermissionState;
+  loading: boolean;
+  token: string | null;
+  error?: string;
+  /** Forzar el flujo de pedir permiso + obtener token */
+  requestPermissionAndToken: () => Promise<void>;
 };
 
 const NotificationsContext = createContext<NotificationsContextValue>({
-  enabled: false,
+  supported: false,
   permission: "default",
-  token: undefined,
-  unread: 0,
-  notifications: [],
-  requestPermission: async () => {},
-  markAllRead: () => {},
+  loading: false,
+  token: null,
+  error: undefined,
+  requestPermissionAndToken: async () => {},
 });
 
-export function useNotifications() {
+/** Hook público */
+export function useNotifications(): NotificationsContextValue {
   return useContext(NotificationsContext);
 }
 
-export function NotificationsProvider({ children }: { children: ReactNode }) {
-  const { Settings } = useAppContext();
+/* ─────────────────────────────────────────────────────────
+   Provider
+   ───────────────────────────────────────────────────────── */
 
-  // Faculties solo desde FDV (Providers/Settings vía ContextProvider)
-  const enabled = useMemo(
-    () => hasNotificationsFaculty(Settings),
-    [Settings],
-  );
+type Props = { children: React.ReactNode };
 
-  if (typeof window !== "undefined") {
-    console.log("[NIXINX][Notifications] faculties (FDV):", Settings?.faculties);
-    console.log("[NIXINX][Notifications] enabled =", enabled);
-  }
+export const NotificationsProvider: React.FC<Props> = ({ children }) => {
+  const { value: settings } = useProvider<iSettings>("settings");
 
+  const [supported, setSupported] = useState(false);
   const [permission, setPermission] =
-    useState<NotificationPermission>("default");
-  const [token, setToken] = useState<string>();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unread, setUnread] = useState(0);
+    useState<PermissionState>(
+      typeof Notification !== "undefined" ? Notification.permission : "default",
+    );
+  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>();
 
-  useEffect(() => {
-    if (!enabled) return;
+  // Habilitado desde Settings (faculties / flag específica) → FDV
+  const notificationsEnabled = useMemo(() => {
+    if (!settings) return false;
+    const anySettings: any = settings;
+    if (anySettings?.faculties?.notifications === true) return true;
+    if (anySettings?.notifications?.enabled === true) return true;
+    return false;
+  }, [settings]);
+
+  const requestPermissionAndToken = useCallback(async () => {
     if (typeof window === "undefined") return;
+    setError(undefined);
 
-    let cancelled = false;
+    try {
+      setLoading(true);
 
-    // Sincronizar permiso real del navegador al montar
-    if ("Notification" in window) {
-      setPermission(Notification.permission);
-    }
+      // Cargamos firebase/messaging SOLO en cliente para evitar problemas en SSR
+      const { getMessaging, getToken, isSupported, onMessage } =
+        await import("firebase/messaging");
 
-    (async () => {
-      try {
-        const supported = await isSupported().catch(() => false);
-        if (!supported) {
-          console.warn("[nixinx:push] FCM no soportado en este navegador");
-          return;
-        }
-
-        const swReg = await navigator.serviceWorker.register(
-          "/firebase-messaging-sw.js",
-          { scope: "/fcm/" },
-        );
-
-        if (Notification.permission === "granted") {
-          await obtainAndSendToken(swReg);
-        }
-
-        const messaging = getMessaging(Firebase);
-        onMessage(messaging, (payload) => {
-          if (cancelled) return;
-          const n: NotificationItem = {
-            title: payload.notification?.title || "",
-            body: payload.notification?.body || "",
-            icon: payload.notification?.icon,
-            data: (payload.data as any) || undefined,
-          };
-          setNotifications((prev) => [n, ...prev]);
-          setUnread((prev) => prev + 1);
-        });
-      } catch (err) {
-        console.warn(
-          "[nixinx:push] error inicializando notificaciones",
-          err,
-        );
+      const isSup = await isSupported().catch(() => false);
+      setSupported(isSup);
+      if (!isSup) {
+        setPermission("unsupported");
+        setLoading(false);
+        return;
       }
-    })();
 
-    async function obtainAndSendToken(swReg: ServiceWorkerRegistration) {
+      // Permisos del navegador
+      let perm: NotificationPermission;
+      if (Notification.permission === "default") {
+        perm = await Notification.requestPermission();
+      } else {
+        perm = Notification.permission;
+      }
+      setPermission(perm);
+
+      if (perm !== "granted") {
+        setLoading(false);
+        return;
+      }
+
+      // Obtener token de FCM
+      const messaging = getMessaging();
+      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+      if (!vapidKey) {
+        console.error("[Notifications] Falta NEXT_PUBLIC_FIREBASE_VAPID_KEY");
+        setError("missing-vapid");
+        setLoading(false);
+        return;
+      }
+
+      const t = await getToken(messaging, { vapidKey });
+      if (!t) {
+        setError("no-token");
+        setLoading(false);
+        return;
+      }
+
+      setToken(t);
+
+      // Listener opcional para mensajes en foreground
+      onMessage(messaging, (payload) => {
+        console.log("[Notifications] mensaje en foreground", payload);
+      });
+
+      // Registrar token en el backend (un solo modelo: /api/push/subscribe)
       try {
-        const vapidKey = process.env.NEXT_PUBLIC_FBCLOUD_MESSAGES_VAPID_KEY;
-        if (!vapidKey) {
-          console.warn(
-            "[nixinx:push] Falta NEXT_PUBLIC_FBCLOUD_MESSAGES_VAPID_KEY",
-          );
-          return;
-        }
-        const messaging = getMessaging(Firebase);
-        const t = await getToken(messaging, {
-          vapidKey,
-          serviceWorkerRegistration: swReg,
-        });
-        if (!t || cancelled) return;
-        setToken(t);
-        console.log("[nixinx:push] token FCM obtenido", t);
+        const user = FbAuth?.currentUser ?? null;
+        const idToken = user ? await user.getIdToken().catch(() => null) : null;
 
-        await fetch("/api/push/subscribe", {
+        const res = await fetch("/api/push/subscribe", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: t, platform: "web" }),
+          headers: {
+            "Content-Type": "application/json",
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+          },
+          body: JSON.stringify({
+            token: t,
+            platform: "web",
+          }),
         });
+
+        if (!res.ok) {
+          console.warn(
+            "[Notifications] Error en /api/push/subscribe",
+            await res.text(),
+          );
+        } else {
+          console.log(
+            "[Notifications] Token registrado vía /api/push/subscribe",
+          );
+        }
       } catch (err) {
-        console.warn("[nixinx:push] getToken/subscribe error", err);
+        console.warn("[Notifications] Error registrando token", err);
       }
+
+      setLoading(false);
+    } catch (e: any) {
+      console.error("[Notifications] error general", e);
+      setError(String(e?.message || e));
+      setLoading(false);
     }
+  }, []);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled]);
+  // Auto-registro cuando:
+  //  - hay Settings (FDV)
+  //  - notificationsEnabled = true
+  //  - todavía no tenemos token
+  useEffect(() => {
+    if (!notificationsEnabled) return;
+    if (token) return;
+    if (permission === "denied" || permission === "unsupported") return;
+    // no bloqueamos el render, solo disparamos en background
+    void requestPermissionAndToken();
+  }, [notificationsEnabled, token, permission, requestPermissionAndToken]);
 
-  const requestPermission = async () => {
-    if (!enabled) return;
-    if (typeof window === "undefined") return;
-    if (!("Notification" in window)) return;
-
-    const res = await Notification.requestPermission();
-    setPermission(res);
-  };
-
-  const markAllRead = () => setUnread(0);
-
-  const value: NotificationsContextValue = {
-    enabled,
-    permission,
-    token,
-    unread,
-    notifications,
-    requestPermission,
-    markAllRead,
-  };
+  const value = useMemo<NotificationsContextValue>(
+    () => ({
+      supported,
+      permission,
+      loading,
+      token,
+      error,
+      requestPermissionAndToken,
+    }),
+    [supported, permission, loading, token, error, requestPermissionAndToken],
+  );
 
   return (
     <NotificationsContext.Provider value={value}>
       {children}
     </NotificationsContext.Provider>
   );
-}
+};

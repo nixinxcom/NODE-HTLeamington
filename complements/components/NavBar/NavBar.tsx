@@ -12,6 +12,7 @@ import { FbAuth } from "@/app/lib/services/firebase";
 import { useAuth } from '@/complements/components/AuthenticationComp/AuthContext';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from "@/complements/components/ThemeToggle/ThemeToggle";
+import NotificationsBadge from "@/complements/components/Notifications/NotificationsBadge"
 
 interface INavBar{
     FormattedMessage: string,
@@ -121,6 +122,7 @@ export default function NavBar(props: iBotons){
                     })
                 }
             </div>
+            <NotificationsBadge />
             <ThemeToggle floating />
        </nav>
     );

@@ -2,6 +2,7 @@ import type { PanelSchemasRegistry } from '../panelSchema.types';
 import { BRANDING_PANEL_SCHEMA } from './branding.schema';
 import { SETTINGS_PANEL_SCHEMA } from './settings.schema';
 import { PWA_PANEL_SCHEMA } from './pwa.schema'
+import { NOTIFICATIONS_PANEL_SCHEMA } from './notifications.schema'
 
 import { I18N_FRONT_PANEL_SCHEMA } from './frontI18n.schema';
 import { TRAINING_PANEL_SCHEMA } from './training.schema';
@@ -13,6 +14,7 @@ export const PANEL_SCHEMAS: PanelSchemasRegistry = {
   branding: BRANDING_PANEL_SCHEMA,
   settings: SETTINGS_PANEL_SCHEMA,
   pwa: PWA_PANEL_SCHEMA,
+  notifications: NOTIFICATIONS_PANEL_SCHEMA,
   i18nFront: I18N_FRONT_PANEL_SCHEMA,
   training: TRAINING_PANEL_SCHEMA,
   agreements: AGREEMENTS_PANEL_SCHEMA,

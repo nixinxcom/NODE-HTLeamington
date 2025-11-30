@@ -33,3 +33,12 @@ export const SPAN2 = _make('span', 'span2');
 export const DIV   = _make('div',  'div');
 export const DIV2   = _make('div',  'div2');
 export const DIV3   = _make('div',  'div3');
+
+
+// Wrappers de tabla
+export const TABLE = _make('table', 'table');
+export const THEAD = _make('thead', 'thead');
+export const TBODY = _make('tbody', 'tbody');
+export const TR = _make('tr', 'tr');
+export const TH = _make('th', 'th');
+export const TD = _make('td', 'td');

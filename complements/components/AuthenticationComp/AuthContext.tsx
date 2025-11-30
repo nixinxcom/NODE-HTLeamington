@@ -1,3 +1,4 @@
+// complements\components\AuthenticationComp\AuthContext.tsx
 'use client';
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
@@ -17,6 +18,7 @@ import {
   User,
 } from 'firebase/auth';
 import { FbAuth } from '@/app/lib/services/firebase';
+import { ensureUserIndexed } from '@/app/lib/users';
 import { useAppContext } from '@/context/AppContext';
 
 type Role = 'anon' | 'user' | 'admin' | 'superadmin';
@@ -59,9 +61,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthenticated(Boolean(u));
       setLoading(false);
 
+      // Sin usuario → rol anon y hasta ahí
       if (!u) {
         setUserRole('anon');
         return;
+      }
+
+      // Indexar/actualizar Users/<uid> para notificaciones (allUsers), etc.
+      try {
+        await ensureUserIndexed(u);
+      } catch (err) {
+        console.error('[AuthContext] ensureUserIndexed error', err);
       }
 
       // Rol por defecto para autenticado hasta que server responda
@@ -75,7 +85,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         if (resp.ok) {
           const data = (await resp.json()) as { role?: Role };
-          if (data?.role === 'superadmin' || data?.role === 'admin' || data?.role === 'user') {
+          if (
+            data?.role === 'superadmin' ||
+            data?.role === 'admin' ||
+            data?.role === 'user'
+          ) {
             role = data.role;
           }
         }

@@ -21,8 +21,6 @@ export { default as FMsTab } from "./complements/admin/FMsTab";
 // Seeds TS
 // ────────────────────
 export { default as SeedStyles } from "./seeds/styles";
-// export { default as SeedBranding } from "./seeds/branding";
-// export { default as SeedSettings } from "./seeds/settings";
 
 // ────────────────────
 // Seeds JSON
@@ -38,7 +36,24 @@ export const SeedMetaSite   = metaSite;
 // Providers
 // ────────────────────
 export { default as Providers } from "./app/ui/providers";
-export { NotificationsProvider, useNotifications } from "./app/lib/notifications/provider";
+export {
+  NotificationsProvider,
+  useNotifications,
+} from "./app/lib/notifications/provider";
+
+// ────────────────────
+// Functionalities
+// ────────────────────
+export { hasNotificationsFaculty } from "./app/lib/notifications/config";
+export { sendNotification } from "@/app/lib/notifications/client";
+
+// ────────────────────
+// Notifications
+// ────────────────────
+export { default as NotificationTriggerButton } from "./complements/components/Notifications/NotificationTriggerButton";
+export { default as NotificationsBadge } from "./complements/components/Notifications/NotificationsBadge";
+export { default as NotificationsInbox } from "./complements/components/Notifications/NotificationsInbox";
+export { default as NotificationPopupHost } from "./complements/components/Notifications/NotificationPopupHost";
 
 // ────────────────────
 // Interfaces
@@ -63,8 +78,6 @@ export { default as GalleryComponent } from "./complements/components/GalleryCom
 export { default as HeroEventsCarousel } from "./complements/components/HeroEventsCarousel/HeroEventsCarousel";
 export { HoldComp, Success, Failed } from "./complements/components/HoldComp/HoldComp";
 export { default as InstallPWAComp } from "./complements/components/InstallPWAComp/InstallPWAComp";
-export { NewNotification } from "@/complements/components/Notifications/NewNotification";
-
 
 // i18n switcher (alias doble para evitar rupturas)
 export { default as InterComp } from "./complements/components/InterComp/InterComp";
@@ -88,14 +101,15 @@ export { default as ThemeToggle } from "./complements/components/ThemeToggle/The
 // ────────────────────
 export { default as AdminGuard } from "./complements/admin/AdminGuard";
 export { default as SuperAdminOnly } from "./complements/admin/SuperAdminOnly";
-export { hasNotificationsFaculty } from "./app/lib/notifications/config";
-export { sendNotification } from "@/app/lib/notifications/client";
 
 // ────────────────────
 // EndPoints
 // ────────────────────
-export { fetchFaculties, canUseFaculty, type FacultyKey, } from "./lib/sdk/facultiesClient";
-
+export {
+  fetchFaculties,
+  canUseFaculty,
+  type FacultyKey,
+} from "./lib/sdk/facultiesClient";
 
 // FM (wrapper de react-intl)
 export { default as CoreShell } from "./complements/shell/CoreShell";

@@ -9,6 +9,8 @@ import ThemeProviders from '@/app/providers/ThemeProviders';
 import { AuthProvider } from '@/complements/components/AuthenticationComp/AuthContext';
 import { NotificationsProvider } from '@/app/lib/notifications/provider';
 import FdvProvider from "@/app/providers/FdvProvider";
+import NotificationPopupHost from "@/complements/components/Notifications/NotificationPopupHost";
+import GlobalPromoHost from '@/complements/components/Notifications/GlobalPromoHost';
 
 // Tipamos por inferencia desde tu propio ContextProvider
 type AppProviderProps = React.ComponentProps<typeof ContextProvider>;
@@ -33,7 +35,9 @@ export function CoreProviders({
           <FdvProvider>
             <AuthProvider>
               <NotificationsProvider>
+                <GlobalPromoHost />
                 {children}
+                <NotificationPopupHost />
               </NotificationsProvider>
             </AuthProvider>
           </FdvProvider>
