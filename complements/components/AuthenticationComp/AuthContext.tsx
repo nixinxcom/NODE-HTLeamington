@@ -20,6 +20,7 @@ import {
 import { FbAuth } from '@/app/lib/services/firebase';
 import { ensureUserIndexed } from '@/app/lib/users';
 import { useAppContext } from '@/context/AppContext';
+import { useSessionBehavior } from '@/app/lib/audiences/useSessionBehavior';
 
 type Role = 'anon' | 'user' | 'admin' | 'superadmin';
 
@@ -54,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<Role>('anon');
+
+  const { flush } = useSessionBehavior();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(FbAuth, async (u) => {
@@ -219,6 +222,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setLoading(true);
+    try {
+      await flush(); // best-effort, si falla no rompemos logout
+    } catch (e) {
+      console.warn('[SessionBehavior] flush() on logout failed', e);
+    }
     await signOut(FbAuth);
   };
 

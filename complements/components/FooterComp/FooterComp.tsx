@@ -189,11 +189,6 @@ export default function FooterComp() {
   const handleGuest = async () => {
     if (!FbAuth.currentUser) await signInAnonymously(FbAuth);
   };
-  const handleLogout = async () => {
-    try {
-      await signOut(FbAuth);
-    } catch {}
-  };
 
   type Address = {
     street?: string;

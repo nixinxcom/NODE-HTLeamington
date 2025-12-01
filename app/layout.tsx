@@ -51,6 +51,7 @@ import { NotificationsProvider } from "@/app/lib/notifications/provider";
 import NotificationPopupHost from "@/complements/components/Notifications/NotificationPopupHost";
 import FdvProvider from "./providers/FdvProvider";
 import BootGate from "./providers/BootGate"; // 👈 NUEVO IMPORT
+import { SessionBehaviorProvider } from "./providers/SessionBehaviorProvider";
 
 /* ─────────────────────────────────────────────────────────
    Metadata global
@@ -258,60 +259,62 @@ export default function RootLayout({
             {/* 🔴 FDV envuelve todo, y BootGate decide cuándo montar ContextProvider + app */}
             <FdvProvider>
               <BootGate>
-                <ContextProvider initialLocale={locale}>
-                  <ThemeProviders>
-                    <AuthProvider>
-                      <NotificationsProvider>
-                        <InterComp
-                          Langs={[
-                            {
-                              language: "Español",
-                              locale: "es",
-                              icon: "/Icons/es.png",
-                              country: "MXN",
-                              alt: "Español",
-                              prioritario: true,
-                              width: 35,
-                              height: 35,
-                              fill: false,
-                            },
-                            {
-                              language: "English",
-                              locale: "en",
-                              icon: "/Icons/en.png",
-                              country: "USA",
-                              alt: "English",
-                              prioritario: true,
-                              width: 35,
-                              height: 35,
-                              fill: false,
-                            },
-                            {
-                              language: "French",
-                              locale: "fr",
-                              icon: "/Icons/fr.png",
-                              country: "FR",
-                              alt: "French",
-                              prioritario: true,
-                              width: 40,
-                              height: 40,
-                              fill: false,
-                            },
-                          ]}
-                          Position="fixed"
-                          BackgroundColor="black"
-                          Bottom="1rem"
-                          Left="7px"
-                          ShowLangs="oneBYone"
-                        />
-                        <AppHydrators />
-                        {children}
-                        <Analytics />
-                        <NotificationPopupHost />
-                      </NotificationsProvider>
-                    </AuthProvider>
-                  </ThemeProviders>
-                </ContextProvider>
+                <SessionBehaviorProvider locale={locale}>
+                  <ContextProvider initialLocale={locale}>
+                    <ThemeProviders>
+                      <AuthProvider>
+                        <NotificationsProvider>
+                          <InterComp
+                            Langs={[
+                              {
+                                language: "Español",
+                                locale: "es",
+                                icon: "/Icons/es.png",
+                                country: "MXN",
+                                alt: "Español",
+                                prioritario: true,
+                                width: 35,
+                                height: 35,
+                                fill: false,
+                              },
+                              {
+                                language: "English",
+                                locale: "en",
+                                icon: "/Icons/en.png",
+                                country: "USA",
+                                alt: "English",
+                                prioritario: true,
+                                width: 35,
+                                height: 35,
+                                fill: false,
+                              },
+                              {
+                                language: "French",
+                                locale: "fr",
+                                icon: "/Icons/fr.png",
+                                country: "FR",
+                                alt: "French",
+                                prioritario: true,
+                                width: 40,
+                                height: 40,
+                                fill: false,
+                              },
+                            ]}
+                            Position="fixed"
+                            BackgroundColor="black"
+                            Bottom="1rem"
+                            Left="7px"
+                            ShowLangs="oneBYone"
+                          />
+                          <AppHydrators />
+                          {children}
+                          <Analytics />
+                          <NotificationPopupHost />
+                        </NotificationsProvider>
+                      </AuthProvider>
+                    </ThemeProviders>
+                  </ContextProvider>
+                </SessionBehaviorProvider>
               </BootGate>
             </FdvProvider>
           </GTMProvider>

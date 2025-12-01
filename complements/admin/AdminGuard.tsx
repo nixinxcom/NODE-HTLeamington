@@ -14,11 +14,11 @@ import {
   signInWithRedirect,
   signOut,
   User,
-} from 'firebase/auth'
-import { FbAuth, GoogleProvider } from '@/app/lib/services/firebase'
-import UserBadge from '@/complements/components/Auth/UserBadge'
-import FM from '../i18n/FM'
-import ThemeToggle from '../components/ThemeToggle/ThemeToggle'
+} from 'firebase/auth';
+import { FbAuth, GoogleProvider } from '@/app/lib/services/firebase';
+import UserBadge from '@/complements/components/Auth/UserBadge';
+import FM from '../i18n/FM';
+import ThemeToggle from '../components/ThemeToggle/ThemeToggle';
 import {
   BUTTON,
   LINK,
@@ -26,7 +26,9 @@ import {
   P,
   H1,
 } from '@/complements/components/ui/wrappers'
-import type { Role as AclRole } from '@/app/lib/authz'
+import type { Role as AclRole } from '@/app/lib/authz';
+import { useSessionBehavior } from '@/app/lib/audiences/useSessionBehavior';
+
 
 /* ------------------------- Context para exponer user+token+role ------------------------- */
 interface AuthContextType {
@@ -89,13 +91,15 @@ function AdminGate({
 }: Required<Omit<AdminGuardProps, 'children'>> & {
   children: React.ReactNode
 }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [idToken, setIdToken] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [checking, setChecking] = useState(false)
-  const [allowed, setAllowed] = useState<boolean | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [role, setRole] = useState<AclRole | null>(null)
+  const [user, setUser] = useState<User | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState<AclRole | null>(null);
+
+  const { flush } = useSessionBehavior();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(FbAuth, async (firebaseUser) => {
@@ -202,11 +206,16 @@ function AdminGate({
   }, [])
 
   async function handleLogout() {
-    await signOut(FbAuth)
-    setUser(null)
-    setIdToken(null)
-    setAllowed(null)
-    setRole(null)
+    try {
+      await flush();
+    } catch (e) {
+      console.warn('[SessionBehavior] flush() on admin logout failed', e);
+    }
+    await signOut(FbAuth);
+    setUser(null);
+    setIdToken(null);
+    setAllowed(null);
+    setRole(null);
   }
 
   const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
