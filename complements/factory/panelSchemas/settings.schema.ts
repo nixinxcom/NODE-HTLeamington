@@ -7,7 +7,7 @@ export const SETTINGS_PANEL_SCHEMA: PanelSchema = {
   "fsCollection": "Providers",
   "fsDocId": "Settings",
   "isProvider": true,
-  "isAgentFDV": false,
+  "isAgentFDV": true,
   "source": "core",
   "stage": "published",
   "access": {

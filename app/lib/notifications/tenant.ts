@@ -1,14 +1,24 @@
 // app/lib/notifications/tenant.ts
-import type { NextRequest } from 'next/server';
-import { resolveTenantFromHost, DEFAULT_TENANT } from '@/app/lib/tenant/resolve';
+import type { NextRequest } from "next/server";
 
 /**
- * Obtiene un identificador lógico de cliente según el host.
- * Hoy: monorepo multi-sitio.
- * Mañana (NX): se puede reemplazar por NIXINX_TENANT_ID fijo en env.
+ * Resuelve el tenantId a partir del request.
+ *
+ * Hoy:
+ *  - Primero intenta header "x-tenant-id".
+ *  - Si no, intenta query ?tenantId=...
+ *  - Si no, usa "__default__".
+ *
+ * Si mañana tienes multi-tenant real con subdominios,
+ * aquí es donde harás el parse del host.
  */
 export function getTenantIdFromRequest(req: NextRequest): string {
-  const host = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').toLowerCase();
-  const fromMap = resolveTenantFromHost(host);
-  return fromMap || DEFAULT_TENANT || 'default';
+  const header = req.headers.get("x-tenant-id")?.trim();
+  if (header) return header;
+
+  const url = new URL(req.url);
+  const qsTenant = url.searchParams.get("tenantId")?.trim();
+  if (qsTenant) return qsTenant;
+
+  return "__default__";
 }

@@ -369,6 +369,7 @@ function FieldControl({
   const [open, setOpen] = useState<boolean>(true);
   const [activeLocale, setActiveLocale] = useState<string>(baseLocale);
   const [showJson, setShowJson] = useState<boolean>(false);
+  const [itemsOpen, setItemsOpen] = useState<Record<number, boolean>>({});
 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -805,6 +806,14 @@ function FieldControl({
 
     if (!open) return null;
 
+    // ─────────────────────────────
+    // Distinción: array raíz vs array anidado
+    // ─────────────────────────────
+    // Ej:
+    //  - "notifications"          → raíz  (grilla 3 columnas)
+    //  - "notifications[0].media" → anidado (columna vertical)
+    const isRootArray = !path.includes('.') && !path.includes('[');
+
     const handleItemChange = (index: number, newItem: any) => {
       const next = [...items];
       next[index] = newItem;
@@ -821,10 +830,24 @@ function FieldControl({
       onChange([...items, newItem]);
     };
 
+    const containerClass = isRootArray
+      ? 'mt-1 grid gap-3 md:grid-cols-2 xl:grid-cols-3'
+      : 'mt-1 flex flex-col gap-3';
+
+    const itemCardClass = isRootArray
+      ? 'border border-white/15 rounded-md p-2 bg-black/30 h-full flex flex-col'
+      : 'border border-white/15 rounded-md p-2 bg-black/30';
+
     return (
-      <DIV className="flex flex-col gap-3 mt-1">
+      <DIV className={containerClass}>
         {items.length === 0 && (
-          <P className="text-xs opacity-60">No hay elementos.</P>
+          <P
+            className={`text-xs opacity-60 ${
+              isRootArray ? 'col-span-full' : ''
+            }`}
+          >
+            No hay elementos.
+          </P>
         )}
 
         {items.map((item, idx) => {
@@ -840,10 +863,7 @@ function FieldControl({
                 : {};
 
             return (
-              <DIV
-                key={itemPath}
-                className="border border-white/15 rounded-md p-2 bg-black/30"
-              >
+              <DIV key={itemPath} className={itemCardClass}>
                 <DIV className="flex justify-between items-center mb-1">
                   <SPAN className="text-xs opacity-70">Item #{idx + 1}</SPAN>
                   <button
@@ -854,6 +874,7 @@ function FieldControl({
                     Eliminar
                   </button>
                 </DIV>
+
                 {Array.isArray(subFields) && subFields.length > 0 ? (
                   <DIV className="flex flex-col gap-2">
                     {subFields.map((sf) => {
@@ -891,10 +912,7 @@ function FieldControl({
           }
 
           return (
-            <DIV
-              key={itemPath}
-              className="border border-white/15 rounded-md p-2 bg-black/30"
-            >
+            <DIV key={itemPath} className={itemCardClass}>
               <DIV className="flex justify-between items-center mb-1">
                 <SPAN className="text-xs opacity-70">Item #{idx + 1}</SPAN>
                 <button
@@ -919,7 +937,7 @@ function FieldControl({
           );
         })}
 
-        <DIV>
+        <DIV className={isRootArray ? 'col-span-full' : ''}>
           <BUTTON kind="button" type="button" onClick={handleAddItem}>
             + Agregar elemento
           </BUTTON>
@@ -927,7 +945,7 @@ function FieldControl({
       </DIV>
     );
   };
-
+  
   const renderControl = () => {
     if (type === 'object') return renderObjectField();
     if (type === 'array') return renderArrayField();
@@ -1634,26 +1652,36 @@ export function AdminPanel({ locale }: AdminPanelProps) {
 
                   {isOpen && (
                     <DIV className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 px-3 pb-3">
-                      {fields.map((field) => (
-                        <FieldControl
-                          key={field.name}
-                          field={field}
-                          value={data[field.name]}
-                          onChange={(newVal) =>
-                            setFieldValue(field.name, newVal)
-                          }
-                          path={field.name}
-                          baseLocale={shortLocale}
-                          supportedLocales={SUPPORTED_LOCALES}
-                          globalSubToggle={globalSubToggle}
-                          fieldErrors={fieldErrors}
-                        />
-                      ))}
+                      {fields.map((field) => {
+                        // Arrays y objects ocupan toda la fila del grid
+                        const isWide =
+                          field.type === 'array' || field.type === 'object';
+
+                        const colSpanClass = isWide ? 'md:col-span-2 lg:col-span-3' : '';
+
+                        return (
+                          <DIV key={field.name} className={colSpanClass}>
+                            <FieldControl
+                              field={field}
+                              value={data[field.name]}
+                              onChange={(newVal) =>
+                                setFieldValue(field.name, newVal)
+                              }
+                              path={field.name}
+                              baseLocale={shortLocale}
+                              supportedLocales={SUPPORTED_LOCALES}
+                              globalSubToggle={globalSubToggle}
+                              fieldErrors={fieldErrors}
+                            />
+                          </DIV>
+                        );
+                      })}
                     </DIV>
                   )}
                 </DIV>
               );
             })}
+
           </DIV>
 
           {/* Sección de export de textos traducibles */}

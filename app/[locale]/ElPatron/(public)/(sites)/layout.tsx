@@ -67,7 +67,7 @@ export default function SitesLayout({ children }: { children: React.ReactNode })
           title="El Patrón AI"
           avatarUrl={Branding.logo}
           fabIconUrl={Branding.logo}
-          sources={["branding"]}   // FDV: solo Providers/Branding con isAgentFDV:true
+          sources={["SalesCampaigns","InfoCampaigns","Branding"]}   // FDV: solo Providers/Branding con isAgentFDV:true
         />
       </main>
     </>

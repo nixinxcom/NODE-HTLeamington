@@ -1,398 +1,188 @@
 import type { PanelSchema } from '@/complements/factory/panelSchema.types';
 
 export const NOTIFICATIONS_PANEL_SCHEMA: PanelSchema = {
-  id: "notifications",
-  labelKey: "panels.notifications.title",
-  iconKey: "notifications",
-  fsCollection: "Providers",
-  fsDocId: "Notifications",
+  id: 'notifications',
+  labelKey: 'panels.notifications.title',
+  iconKey: 'notifications',
+  fsCollection: 'Providers',
+  fsDocId: 'Notifications',
   isProvider: true,
   isAgentFDV: true,
-  source: "core",
-  stage: "published",
+  source: 'core',
+  stage: 'published',
   access: {
-    allowedRoles: ["superadmin", "admin"],
+    allowedRoles: ['superadmin', 'admin'],
   },
   version: 1,
   fields: [
     {
-      name: "notifications",
-      type: "array",
-      groupKey: "notifications",
+      name: 'notifications',
+      type: 'array',
+      groupKey: 'notifications',
       element: {
-        name: "notification",
-        type: "object",
+        name: 'notification',
+        type: 'object',
         collapsible: false,
         fields: [
           // ─────────────────────────────
-          // Identificación y estado
+          // Identificación básica
           // ─────────────────────────────
           {
-            name: "notificationId",
-            type: "string",
+            name: 'notificationId',
+            type: 'string',
             required: true,
-            widget: "input",
+            widget: 'input',
             translatable: false,
-          },
-          {
-            name: "enabled",
-            type: "boolean",
-            required: true,
-          },
-          {
-            name: "category",
-            type: "select",
-            required: true,
-            widget: "select",
-            options: [
-              {
-                value: "info",
-                labelKey: "notifications.category.info",
-              },
-              {
-                value: "promo",
-                labelKey: "notifications.category.promo",
-              },
-              {
-                value: "warning",
-                labelKey: "notifications.category.warning",
-              },
-              {
-                value: "system",
-                labelKey: "notifications.category.system",
-              },
-              {
-                value: "other",
-                labelKey: "notifications.category.other",
-              },
-            ],
-          },
-          {
-            name: "priority",
-            type: "select",
-            required: false,
-            widget: "select",
-            options: [
-              {
-                value: "low",
-                labelKey: "notifications.priority.low",
-              },
-              {
-                value: "normal",
-                labelKey: "notifications.priority.normal",
-              },
-              {
-                value: "high",
-                labelKey: "notifications.priority.high",
-              },
-            ],
           },
 
           // ─────────────────────────────
           // Contenido principal
           // ─────────────────────────────
           {
-            name: "title",
-            type: "string",
+            name: 'category',
+            type: 'select',
             required: true,
-            widget: "input",
-            translatable: true,
+            widget: 'select',
+            options: [
+              {
+                value: 'info',
+                labelKey: 'notifications.category.info',
+              },
+              {
+                value: 'promo',
+                labelKey: 'notifications.category.promo',
+              },
+              {
+                value: 'warning',
+                labelKey: 'notifications.category.warning',
+              },
+              {
+                value: 'system',
+                labelKey: 'notifications.category.system',
+              },
+              {
+                value: 'other',
+                labelKey: 'notifications.category.other',
+              },
+            ],
           },
           {
-            name: "message",
-            type: "text",
+            name: 'title',
+            type: 'string',
             required: true,
-            widget: "textarea",
+            widget: 'input',
             translatable: true,
           },
           {
-            name: "description",
-            type: "text",
-            required: false,
-            widget: "textarea",
+            name: 'message',
+            type: 'text',
+            required: true,
+            widget: 'textarea',
             translatable: true,
           },
           {
-            name: "callToActionURL",
-            type: "text",
+            name: 'description',
+            type: 'text',
             required: false,
-            widget: "textarea",
+            widget: 'textarea',
+            translatable: true,
+          },
+
+          // URLs / Call to Actions
+          {
+            name: 'callToActionURL',
+            type: 'text',
+            required: false,
+            widget: 'textarea',
             translatable: false,
           },
-
-          // ─────────────────────────────
-          // UI type (popup / badge)
-          // ─────────────────────────────
           {
-            name: "userInterfaceType",
-            type: "select",
-            required: true,
-            widget: "select",
-            options: [
-              {
-                value: "popup",
-                labelKey: "notifications.uiType.popup",
-              },
-              {
-                value: "badge",
-                labelKey: "notifications.uiType.badge",
-              },
-              {
-                value: "popupAndBadge",
-                labelKey: "notifications.uiType.popupAndBadge",
-              },
-            ],
-          },
-          {
-            name: "popupVariant",
-            type: "select",
+            name: 'clickAction',
+            type: 'string',
             required: false,
-            widget: "select",
-            options: [
-              {
-                value: "toast",
-                labelKey: "notifications.popupVariant.toast",
-              },
-              {
-                value: "modal",
-                labelKey: "notifications.popupVariant.modal",
-              },
-              {
-                value: "banner",
-                labelKey: "notifications.popupVariant.banner",
-              },
-            ],
-          },
-          {
-            name: "requireReadConfirmation",
-            type: "boolean",
-            required: true,
+            widget: 'input',
           },
 
           // ─────────────────────────────
-          // Canal de entrega
+          // Iconos / imágenes
           // ─────────────────────────────
           {
-            name: "deliveryChannel",
-            type: "select",
-            required: true,
-            widget: "select",
-            options: [
-              {
-                value: "inApp",
-                labelKey: "notifications.delivery.inApp",
-              },
-              {
-                value: "push",
-                labelKey: "notifications.delivery.push",
-              },
-              {
-                value: "both",
-                labelKey: "notifications.delivery.both",
-              },
-            ],
+            name: 'iconUrl',
+            type: 'string',
+            required: false,
+            widget: 'input',
+          },
+          {
+            name: 'imageUrl',
+            type: 'string',
+            required: false,
+            widget: 'input',
           },
 
           // ─────────────────────────────
-          // Target / audiencia (config libre para backend)
+          // Sonido y vibración
           // ─────────────────────────────
           {
-            name: "targetAudienceType",
-            type: "select",
-            required: true,
-            widget: "select",
-            options: [
-              {
-                value: "allUsers",
-                labelKey: "notifications.target.allUsers",
-              },
-              {
-                value: "authenticated",
-                labelKey: "notifications.target.authenticated",
-              },
-              {
-                value: "byRole",
-                labelKey: "notifications.target.byRole",
-              },
-              {
-                value: "bySegment",
-                labelKey: "notifications.target.bySegment",
-              },
-              {
-                value: "byUserId",
-                labelKey: "notifications.target.byUserId",
-              },
-            ],
-          },
-          {
-            name: "targetRoles",
-            type: "multiselect",
-            required: false,
-            widget: "multiselect",
-            options: [
-              {
-                value: "superadmin",
-                labelKey: "notifications.target.role.superadmin",
-              },
-              {
-                value: "admin",
-                labelKey: "notifications.target.role.admin",
-              },
-              {
-                value: "client",
-                labelKey: "notifications.target.role.client",
-              },
-              {
-                value: "enduser",
-                labelKey: "notifications.target.role.enduser",
-              },
-            ],
-          },
-          {
-            name: "targetAudienceSegment",  // e.g., "subscribedToNewsletter", "premiumUsers", "New Customers", etc.
-            type: "string",
-            required: false,
-            widget: "input",
-          },
-          {
-            name: "targetUserIds",
-            type: "text",
-            required: false,
-            widget: "textarea",
-          },
-
-          // ─────────────────────────────
-          // Calendario / scheduling básico
-          // ─────────────────────────────
-          {
-            name: "sendDate",
-            type: "date",
+            name: 'soundEnabled',
+            type: 'boolean',
             required: false,
           },
           {
-            name: "sendTime",
-            type: "string",
+            name: 'soundKey',
+            type: 'string',
             required: false,
-            widget: "input",
+            widget: 'input',
           },
           {
-            name: "expireDate",
-            type: "date",
-            required: false,
-          },
-          {
-            name: "expireTime",
-            type: "string",
-            required: false,
-            widget: "input",
-          },
-          {
-            name: "repeat",
-            type: "select",
-            required: false,
-            widget: "select",
-            options: [
-              {
-                value: "none",
-                labelKey: "notifications.repeat.none",
-              },
-              {
-                value: "daily",
-                labelKey: "notifications.repeat.daily",
-              },
-              {
-                value: "weekly",
-                labelKey: "notifications.repeat.weekly",
-              },
-              {
-                value: "monthly",
-                labelKey: "notifications.repeat.monthly",
-              },
-            ],
-          },
-
-          // ─────────────────────────────
-          // Opciones de push (sonido, vibración, icono)
-          // ─────────────────────────────
-          {
-            name: "clickAction",
-            type: "string",
-            required: false,
-            widget: "input",
-          },
-          {
-            name: "iconUrl",
-            type: "string",
-            required: false,
-            widget: "input",
-          },
-          {
-            name: "imageUrl",
-            type: "string",
-            required: false,
-            widget: "input",
-          },
-          {
-            name: "soundEnabled",
-            type: "boolean",
+            name: 'vibrationEnabled',
+            type: 'boolean',
             required: false,
           },
           {
-            name: "soundKey",
-            type: "string",
+            name: 'vibrationPattern',
+            type: 'string',
             required: false,
-            widget: "input",
-          },
-          {
-            name: "vibrationEnabled",
-            type: "boolean",
-            required: false,
-          },
-          {
-            name: "vibrationPattern",
-            type: "string",
-            required: false,
-            widget: "input",
+            widget: 'input',
           },
 
           // ─────────────────────────────
           // Media adicional (imagen / video interno)
           // ─────────────────────────────
           {
-            name: "media",
-            type: "array",
+            name: 'media',
+            type: 'array',
             element: {
-              name: "mediaItem",
-              type: "object",
+              name: 'mediaItem',
+              type: 'object',
               collapsible: false,
               fields: [
                 {
-                  name: "type",
-                  type: "select",
+                  name: 'type',
+                  type: 'select',
                   required: false,
-                  widget: "select",
+                  widget: 'select',
                   options: [
                     {
-                      value: "image",
-                      labelKey: "notifications.media.type.image",
+                      value: 'image',
+                      labelKey: 'notifications.media.type.image',
                     },
                     {
-                      value: "video",
-                      labelKey: "notifications.media.type.video",
+                      value: 'video',
+                      labelKey: 'notifications.media.type.video',
                     },
                   ],
                 },
                 {
-                  name: "url",
-                  type: "string",
+                  name: 'url',
+                  type: 'string',
                   required: true,
-                  widget: "input",
+                  widget: 'input',
                 },
                 {
-                  name: "caption",
-                  type: "text",
+                  name: 'caption',
+                  type: 'text',
                   required: false,
-                  widget: "textarea",
+                  widget: 'textarea',
                   translatable: true,
                 },
               ],

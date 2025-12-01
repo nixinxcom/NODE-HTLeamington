@@ -41,7 +41,7 @@ export default function PlantillaLayout({ children }: { children: React.ReactNod
           title="El Patrón AI"
           avatarUrl={Branding.logo}
           fabIconUrl={Branding.logo}
-          sources={["branding"]}   // FDV: solo Providers/Branding con isAgentFDV:true
+          sources={["Branding"]}   // FDV: solo Providers/Branding con isAgentFDV:true
         />
       </div>
     </main>

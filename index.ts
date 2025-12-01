@@ -42,12 +42,6 @@ export {
 } from "./app/lib/notifications/provider";
 
 // ────────────────────
-// Functionalities
-// ────────────────────
-export { hasNotificationsFaculty } from "./app/lib/notifications/config";
-export { sendNotification } from "@/app/lib/notifications/client";
-
-// ────────────────────
 // Notifications
 // ────────────────────
 export { default as NotificationTriggerButton } from "./complements/components/Notifications/NotificationTriggerButton";

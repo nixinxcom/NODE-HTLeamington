@@ -1,20 +1,23 @@
-export type NotificationTarget =
-  | { type: "broadcast" }
-  | { type: "token"; token: string }
-  | { type: "user"; uid: string };
+// app/lib/notifications/types.ts
 
-export type NotificationPayload = {
+// A quién se manda
+export type NotificationTarget =
+  | { type: "token"; token: string }
+  | { type: "user"; uid: string }
+  | { type: "broadcast" }; // all tokens activos del tenant
+
+// Payload compatible con lo que arma route.ts
+export interface NotificationPayload {
   title: string;
   body: string;
-  icon?: string;
   data?: Record<string, string>;
-  clickAction?: string; // URL o ruta
-};
+  clickAction?: string; // URL para webpush.fcmOptions.link
+}
 
-export type CreateNotificationInput = {
+/**
+ * Input que espera /api/push/send
+ */
+export interface CreateNotificationInput {
   target: NotificationTarget;
   payload: NotificationPayload;
-  // Opcional: para programar/scopear
-  startAt?: string | Date;
-  endAt?: string | Date;
-};
+}

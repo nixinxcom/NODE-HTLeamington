@@ -158,8 +158,8 @@ export default function NotFound() {
           {/* Links disponibles */}
           <H2 className={styles.sectionTitle}>{t.popular}</H2>
           <nav className={styles.grid}>
-            {filtered.map((l) => (
-              <LINK key={l.href} href={l.href} className={styles.linkItem}>
+            {filtered.map((l, idx) => (
+              <LINK key={`${l.href}-${idx}`} href={l.href} className={styles.linkItem}>
                 <SPAN className={styles.linkLabel}>{l.label}</SPAN>
                 <SPAN className={styles.linkPath}>{l.href}</SPAN>
               </LINK>
