@@ -3,14 +3,16 @@
 import * as React from 'react';
 import { useStylesRDD, detectScheme } from './utils';
 import { resolveComponentClasses } from './resolve';
+import { useTracking, type TrackingProps } from './tracking';
 
-export type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
-  kind?: 'select' | 'select2' | string;  // ahora soporta select2 “oficial”
-  variant?: string;
-  size?: string;
-  state?: string;
-  scheme?: 'light' | 'dark';
-};
+export type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> &
+  TrackingProps & {
+    kind?: string; // default 'select'
+    variant?: string;
+    size?: string;
+    state?: string;
+    scheme?: 'light' | 'dark';
+  };
 
 export const SELECT = React.forwardRef<HTMLSelectElement, SelectProps>(
   function SELECT(
@@ -21,16 +23,22 @@ export const SELECT = React.forwardRef<HTMLSelectElement, SelectProps>(
       state,
       scheme,
       className,
-      children,
+      track,
+      trackCategory,
+      trackView,
+      trackMeta,
       ...rest
     },
-    ref
+    ref,
   ) {
+    const { emit } = useTracking({ track, trackCategory, trackView, trackMeta });
+    const { onClick, ...selectRest } = rest;
+
     const Styles = useStylesRDD();
     const _scheme = scheme || detectScheme();
 
     const classes = resolveComponentClasses(Styles, kind, {
-      baseFallback: 'select', // clase base .select en globals.css
+      baseFallback: 'select',
       scheme: _scheme,
       variant,
       size,
@@ -38,27 +46,20 @@ export const SELECT = React.forwardRef<HTMLSelectElement, SelectProps>(
       extra: className,
     });
 
+    const handleClick = (e: React.MouseEvent<HTMLSelectElement>) => {
+      emit('click');
+      if (onClick) onClick(e);
+    };
+
     return (
-      <select ref={ref} className={classes} {...rest}>
-        {children}
-      </select>
+      <select
+        ref={ref}
+        className={classes}
+        onClick={handleClick}
+        {...selectRest}
+      />
     );
-  }
+  },
 );
 
-// Variante fija SELECT2 → siempre usa el set de estilos "select2"
-export const SELECT2 = React.forwardRef<
-  HTMLSelectElement,
-  Omit<SelectProps, 'kind'>
->(function SELECT2(props, ref) {
-  return (
-    <SELECT
-      ref={ref}
-      {...props}
-      kind="select2"
-    />
-  );
-});
-
 SELECT.displayName = 'SELECT';
-SELECT2.displayName = 'SELECT2';

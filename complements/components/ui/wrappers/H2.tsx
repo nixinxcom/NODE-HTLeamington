@@ -3,18 +3,51 @@
 import * as React from 'react';
 import { useStylesRDD, detectScheme } from './utils';
 import { resolveComponentClasses } from './resolve';
+import { useTracking, type TrackingProps } from './tracking';
 
-export type H2Props = React.HTMLAttributes<HTMLHeadingElement> & {
-  kind?: string; variant?: string; size?: string; state?: string; scheme?: 'light'|'dark';
-};
+export type H2Props = React.HTMLAttributes<HTMLHeadingElement> &
+  TrackingProps & {
+    kind?: string;
+    variant?: string;
+    size?: string;
+    state?: string;
+    scheme?: 'light' | 'dark';
+  };
 
-export const H2 = React.forwardRef<HTMLHeadingElement, H2Props>(function H2({
-  kind = 'h2', variant, size, state, scheme, className, ...rest
-}, ref) {
+export const H2 = React.forwardRef<HTMLHeadingElement, H2Props>(function H2(
+  {
+    kind = 'h2',
+    variant,
+    size,
+    state,
+    scheme,
+    className,
+    track,
+    trackCategory,
+    trackView,
+    trackMeta,
+    ...rest
+  },
+  ref,
+) {
+  const { emit } = useTracking({ track, trackCategory, trackView, trackMeta });
+  const { onClick, ...hRest } = rest;
+
   const Styles = useStylesRDD();
   const _scheme = scheme || detectScheme();
   const classes = resolveComponentClasses(Styles, kind, {
-    baseFallback: '', scheme: _scheme, variant, size, state, extra: className,
+    baseFallback: '',
+    scheme: _scheme,
+    variant,
+    size,
+    state,
+    extra: className,
   });
-  return <h2 ref={ref} className={classes} {...rest} />;
+
+  const handleClick = (e: React.MouseEvent<HTMLHeadingElement>) => {
+    emit('click');
+    if (onClick) onClick(e);
+  };
+
+  return <h2 ref={ref} className={classes} onClick={handleClick} {...hRest} />;
 });

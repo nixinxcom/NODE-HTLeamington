@@ -9,7 +9,7 @@ import styles from "./blog.module.css";
 import { FormattedMessage } from "react-intl";
 import FM from "@/complements/i18n/FM";
 import { withPageMetadata } from "@/app/lib/seo/withPageMetadata";
-import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 
 /* Utilidades de fecha */
 function todayInTZ(tz = "America/Toronto"): string {

@@ -3,14 +3,16 @@
 import * as React from 'react';
 import { useStylesRDD, detectScheme } from './utils';
 import { resolveComponentClasses } from './resolve';
+import { useTracking, type TrackingProps } from './tracking';
 
-export type LabelProps = React.LabelHTMLAttributes<HTMLLabelElement> & {
-  kind?: 'label' | 'label2' | string;  // añadimos label2 como variante “oficial”
-  variant?: string;
-  size?: string;
-  state?: string;
-  scheme?: 'light' | 'dark';
-};
+export type LabelProps = React.LabelHTMLAttributes<HTMLLabelElement> &
+  TrackingProps & {
+    kind?: string; // default 'label'
+    variant?: string;
+    size?: string;
+    state?: string;
+    scheme?: 'light' | 'dark';
+  };
 
 export const LABEL = React.forwardRef<HTMLLabelElement, LabelProps>(
   function LABEL(
@@ -21,15 +23,22 @@ export const LABEL = React.forwardRef<HTMLLabelElement, LabelProps>(
       state,
       scheme,
       className,
+      track,
+      trackCategory,
+      trackView,
+      trackMeta,
       ...rest
     },
-    ref
+    ref,
   ) {
+    const { emit } = useTracking({ track, trackCategory, trackView, trackMeta });
+    const { onClick, ...labelRest } = rest;
+
     const Styles = useStylesRDD();
     const _scheme = scheme || detectScheme();
 
     const classes = resolveComponentClasses(Styles, kind, {
-      baseFallback: 'label', // clase base .label en globals.css
+      baseFallback: 'label',
       scheme: _scheme,
       variant,
       size,
@@ -37,17 +46,20 @@ export const LABEL = React.forwardRef<HTMLLabelElement, LabelProps>(
       extra: className,
     });
 
-    return <label ref={ref} className={classes} {...rest} />;
-  }
+    const handleClick = (e: React.MouseEvent<HTMLLabelElement>) => {
+      emit('click');
+      if (onClick) onClick(e);
+    };
+
+    return (
+      <label
+        ref={ref}
+        className={classes}
+        onClick={handleClick}
+        {...labelRest}
+      />
+    );
+  },
 );
 
-// Variante fija LABEL2 → siempre usa el set de estilos "label2"
-export const LABEL2 = React.forwardRef<
-  HTMLLabelElement,
-  Omit<LabelProps, 'kind'>
->(function LABEL2(props, ref) {
-  return <LABEL ref={ref} {...props} kind="label2" />;
-});
-
 LABEL.displayName = 'LABEL';
-LABEL2.displayName = 'LABEL2';

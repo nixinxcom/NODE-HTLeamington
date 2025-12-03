@@ -35,6 +35,11 @@ import {
 } from './pwa.sync';
 
 import { PANEL_SCHEMAS } from './panelSchemas';
+import {
+  fuiListSchemas,
+  fuiLoadSchema,
+  type FuiSchemaSummary,
+} from './fui.crud';
 
 // Locales soportados para campos translatable
 const SUPPORTED_LOCALES = ['en', 'es', 'fr'];
@@ -1005,8 +1010,36 @@ export function AdminPanel({ locale }: AdminPanelProps) {
     [],
   );
 
+    // Cargar lista de schemas guardados en FactorySchemas
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoadingSavedSchemas(true);
+      try {
+        const list = await fuiListSchemas();
+        if (!cancelled) setSavedSchemas(list);
+      } catch (err) {
+        console.error('[AdminPanel] Error listando FactorySchemas', err);
+      } finally {
+        if (!cancelled) setLoadingSavedSchemas(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [selectedId, setSelectedId] = useState<string>('');
+  const [savedSchemas, setSavedSchemas] = useState<FuiSchemaSummary[]>([]);
+  const [loadingSavedSchemas, setLoadingSavedSchemas] = useState(false);
+  const [savedSchemaId, setSavedSchemaId] = useState<string>('');
+  const [loadedSchema, setLoadedSchema] = useState<PanelSchema | null>(null);
   const [data, setData] = useState<PanelData>({});
+
+
   const [loadingDoc, setLoadingDoc] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1035,8 +1068,10 @@ export function AdminPanel({ locale }: AdminPanelProps) {
   const [i18nJsonGlobalError, setI18nJsonGlobalError] =
     useState<string | null>(null);
 
-  // Selección de schema por defecto
+  // Selección de schema por defecto (solo si NO viene de FactorySchemas)
   useEffect(() => {
+    if (loadedSchema || savedSchemaId) return;
+
     if (!selectedId && availableSchemas.length > 0) {
       setSelectedId(availableSchemas[0].id);
     } else if (
@@ -1046,12 +1081,51 @@ export function AdminPanel({ locale }: AdminPanelProps) {
       setSelectedId('');
       setData({});
     }
-  }, [availableSchemas, selectedId]);
+  }, [availableSchemas, selectedId, loadedSchema, savedSchemaId]);
+
 
   const currentSchema: PanelSchema | undefined = useMemo(
-    () => availableSchemas.find((s) => s.id === selectedId),
-    [availableSchemas, selectedId],
+    () => {
+      if (loadedSchema) return loadedSchema;
+      return availableSchemas.find((s) => s.id === selectedId);
+    },
+    [availableSchemas, selectedId, loadedSchema],
   );
+
+    const handleSelectCoreSchema = (id: string) => {
+    setSelectedId(id);
+    setSavedSchemaId('');
+    setLoadedSchema(null);
+    setData({});
+    setError(null);
+    setSaved(false);
+    setFieldErrors({});
+    setOpenGroups({});
+  };
+
+  const handleSelectFactorySchema = async (id: string) => {
+    setSavedSchemaId(id);
+    setSelectedId('');
+    setData({});
+    setError(null);
+    setSaved(false);
+    setFieldErrors({});
+    setOpenGroups({});
+    setLoadedSchema(null);
+
+    if (!id) return;
+
+    try {
+      const schemaFromFs = await fuiLoadSchema(id);
+      if (schemaFromFs) {
+        setLoadedSchema(schemaFromFs);
+      } else {
+        console.warn('[AdminPanel] Schema no encontrado en FactorySchemas:', id);
+      }
+    } catch (err) {
+      console.error('[AdminPanel] Error cargando schema de FactorySchemas', err);
+    }
+  };
 
   // Cargar Firestore
   useEffect(() => {
@@ -1541,21 +1615,39 @@ export function AdminPanel({ locale }: AdminPanelProps) {
         </P>
       </DIV>
 
-      {/* Selector de panel */}
+      {/* Selector de panel: FactorySchemas + Core */}
       <DIV className="flex flex-col md:flex-row md:items-center gap-3">
+        {/* 1) Schema guardado en FactorySchemas */}
         <DIV className="flex-1">
           <LABEL className="text-xs font-semibold">
-            Elige el esquema a alimentar
+            Esquema guardado en FactorySchemas
+          </LABEL>
+          <SELECT
+            value={savedSchemaId}
+            onChange={(e) => void handleSelectFactorySchema(e.target.value)}
+          >
+            <option value="">— Ninguno / usar schema del core —</option>
+            {savedSchemas.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.id} · {s.fsCollection}/{s.fsDocId}
+              </option>
+            ))}
+          </SELECT>
+          {loadingSavedSchemas && (
+            <P className="text-[11px] opacity-60 mt-1">
+              Cargando lista de esquemas…
+            </P>
+          )}
+        </DIV>
+
+        {/* 2) Schema del core (PANEL_SCHEMAS) */}
+        <DIV className="flex-1">
+          <LABEL className="text-xs font-semibold">
+            Esquema base del core (PANEL_SCHEMAS)
           </LABEL>
           <SELECT
             value={selectedId}
-            onChange={(e) => {
-              setSelectedId(e.target.value);
-              setData({});
-              setError(null);
-              setSaved(false);
-              setFieldErrors({});
-            }}
+            onChange={(e) => handleSelectCoreSchema(e.target.value)}
           >
             <option value="">— Selecciona un panel —</option>
             {availableSchemas.map((s) => (
@@ -1566,6 +1658,7 @@ export function AdminPanel({ locale }: AdminPanelProps) {
           </SELECT>
         </DIV>
 
+        {/* 3) Info de ruta actual en Firestore */}
         <DIV className="text-xs opacity-70">
           {currentSchema && (
             <P>

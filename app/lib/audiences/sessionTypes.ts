@@ -15,15 +15,30 @@ export interface SessionEvent {
   meta?: Record<string, unknown>;
 }
 
+export type SessionUtmInfo = {
+  id?: string;
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  term?: string;
+  content?: string;
+};
+
 export interface SessionBehavior {
-  /** identificador lógico de la sesión en NIXINX */
+  /** ID de esta sesión lógica (cambia cada flush) */
   sessionId: string;
-  /** tenant al que pertenece la sesión */
+  /** Tenant NIXINX */
   tenantId: string;
-  /** uid de Firebase si aplica (opcional) */
-  userId?: string;
-  /** locale corto (es/en/fr, etc.) */
+  /** UID de Firebase Auth (si existe) */
+  userId?: string | null;
+  /** ID persistente del dispositivo (no requiere login) */
+  deviceId?: string | null;
+  /** Clave unificada para audiencias: userId || deviceId */
+  userOrDeviceId?: string | null;
+  /** Locale con el que navegó */
   locale?: string;
-  /** lista de eventos generados en la sesión */
+  /** UTM detectada al inicio de la sesión */
+  utm?: SessionUtmInfo | null;
+  /** Eventos registrados durante la sesión */
   events: SessionEvent[];
 }

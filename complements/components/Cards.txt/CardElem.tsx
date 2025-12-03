@@ -3,7 +3,7 @@ import { useAppContext } from '@/context/AppContext';
 import {IntlProvider, FormattedMessage, FormattedNumber} from 'react-intl';
 import FM from "@/complements/i18n/FM";
 import SliderCardComp from '@/complements/components/SliderComp/SliderCardComp';
-import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 import Image from 'next/image';
 import ReactPlayer from 'react-player/lazy'
 import styles from './CardElem.module.css';

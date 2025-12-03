@@ -31,8 +31,6 @@ import {
   SELECT,
   LABEL,
   INPUT2,
-  SELECT2,
-  LABEL2,
   SPAN,
   SPAN1,
   SPAN2,

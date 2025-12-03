@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import styles from "./NavBar.module.css";
 import { FormattedMessage, FormattedNumber} from 'react-intl';
 import FM from "@/complements/i18n/FM";
-import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SELECT2, LABEL2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
 import { useI18nHref } from '@/app/lib/useI18nHref';
 import { useEffect } from "react";
 import { onAuthStateChanged, signInAnonymously, signOut } from "firebase/auth";

@@ -4,17 +4,19 @@ import * as React from 'react';
 import NextLink from 'next/link';
 import { cx, isExternalHref, useStylesRDD, detectScheme } from './utils';
 import { resolveComponentClasses } from './resolve';
+import { useTracking, type TrackingProps } from './tracking';
 
-export type BtnProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'color'> & {
-  /** Conjunto de estilos: 'button' (default), 'button2', etc. */
-  kind?: 'button' | 'button2' | string;
-  variant?: string;
-  size?: string;
-  state?: string;
-  as?: 'button' | 'link';
-  href?: string;
-  scheme?: 'light' | 'dark';
-};
+export type BtnProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'color'> &
+  TrackingProps & {
+    /** Conjunto de estilos: 'button' (default), 'button2', etc. */
+    kind?: 'button' | 'button2' | string;
+    variant?: string;
+    size?: string;
+    state?: string;
+    as?: 'button' | 'link';
+    href?: string;
+    scheme?: 'light' | 'dark';
+  };
 
 /** BUTTON base: respeta `kind` (button, button2, …) */
 export const BUTTON = React.forwardRef<
@@ -31,10 +33,26 @@ export const BUTTON = React.forwardRef<
     scheme,
     type,
     className,
+    track,
+    trackCategory,
+    trackView,
+    trackMeta,
     ...rest
   },
   ref
 ) {
+  const { emit } = useTracking({ track, trackCategory, trackView, trackMeta });
+  const { onClick, ...restProps } = rest as any;
+
+  const handleClick = (
+    e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>,
+  ) => {
+    emit('click'); // solo registra si viene `track`
+    if (onClick) {
+      onClick(e);
+    }
+  };
+
   const Styles = useStylesRDD();
   const _scheme = scheme || detectScheme();
 
@@ -58,7 +76,8 @@ export const BUTTON = React.forwardRef<
           className={classes}
           target="_blank"
           rel="noopener noreferrer"
-          {...(rest as any)}
+          onClick={handleClick}
+          {...(restProps as any)}
         />
       );
     }
@@ -67,14 +86,23 @@ export const BUTTON = React.forwardRef<
         ref={ref as any}
         href={_href}
         className={classes}
-        {...(rest as any)}
+        onClick={handleClick}
+        {...(restProps as any)}
       />
     );
   }
 
   // modo botón normal
   const _type = type ?? 'button';
-  return <button ref={ref as any} type={_type} className={classes} {...rest} />;
+  return (
+    <button
+      ref={ref as any}
+      type={_type}
+      className={classes}
+      onClick={handleClick}
+      {...restProps}
+    />
+  );
 });
 
 /** BUTTON2: alias fijo al set de estilos "button2" */

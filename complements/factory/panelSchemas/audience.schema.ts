@@ -7,7 +7,8 @@ export const AUDIENCES_PANEL_SCHEMA: PanelSchema = {
   fsCollection: 'Providers',
   fsDocId: 'Audiences',
   isProvider: true,
-  isAgentFDV: true,
+  // Estas audiencias NO deben ir directo al contexto del AAI
+  isAgentFDV: false,
   source: 'core',
   stage: 'published',
   access: {
@@ -59,6 +60,34 @@ export const AUDIENCES_PANEL_SCHEMA: PanelSchema = {
               widget: 'input',
             },
             sortable: true,
+          },
+
+          // ─────────────────────────────
+          // Metadatos para alinear con tracking (wrappers)
+          // ─────────────────────────────
+          {
+            name: 'track',
+            type: 'string',
+            required: false,
+            widget: 'input', // ej. "sales.cta.headphones"
+          },
+          {
+            name: 'trackCategory',
+            type: 'string',
+            required: false,
+            widget: 'input', // ej. "sales", "support", "nav"
+          },
+          {
+            name: 'trigger',
+            type: 'string',
+            required: false,
+            widget: 'input', // texto de la pieza que detonó la acción
+          },
+          {
+            name: 'target',
+            type: 'string',
+            required: false,
+            widget: 'input', // objetivo: "headphones", "giftcards", etc.
           },
 
           // ─────────────────────────────
