@@ -9,7 +9,7 @@ export interface iEnVars{
     NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: string;
     AGENT_ALLOW_ADMIN_FALLBACK?: boolean;
     FIREBASE_CLIENT_EMAIL?: string;
-    FIREBASE_PRIVATE_KEY: string;
+    FIREBASE_ADMIN_PRIVATE_KEY: string;
     NEXT_PUBLIC_PROD_SITE_URL: string;
     NEXT_PUBLIC_I18N_COLL: "Providers";
     NEXT_PUBLIC_BRANDING_DOC_PATH: "branding/default";

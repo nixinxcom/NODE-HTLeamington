@@ -40,7 +40,7 @@ export const envSchema = z.object({
     // ===== Server-only (no exponer en cliente) =====
     AGENT_ALLOW_ADMIN_FALLBACK: z.boolean().optional(),
     FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
-    FIREBASE_PRIVATE_KEY: z.string().min(10),
+    FIREBASE_ADMIN_PRIVATE_KEY: z.string().min(10),
     GOOGLE_BUSINESS_PROFILE_ID: z.union([z.string(), z.number()]).transform(String).optional(),
     BREVO_ID: z.string().optional(),
     BREVO_APIKEY: z.string().optional(),

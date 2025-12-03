@@ -27,7 +27,7 @@ export const envMeta: Partial<Record<keyof iEnvVars, Meta>> = {
     NEXT_PUBLIC_FBCLOUD_MESSAGES_VAPID_KEY: { label: 'FCM VAPID public key', doc: 'https://console.firebase.google.com/ → Cloud Messaging → Web Push' },
 
 
-    FIREBASE_PRIVATE_KEY: { label: 'Firebase Admin Private Key', secret: true, serverOnly: true, doc: 'https://firebase.google.com/docs/admin/setup' },
+    FIREBASE_ADMIN_PRIVATE_KEY: { label: 'Firebase Admin Private Key', secret: true, serverOnly: true, doc: 'https://firebase.google.com/docs/admin/setup' },
     FIREBASE_CLIENT_EMAIL: { label: 'Firebase Admin Client Email', serverOnly: true },
     OPENAI_API_KEY: { label: 'OpenAI API Key', secret: true, serverOnly: true, doc: 'https://platform.openai.com/api-keys' },
     STRIPE_SECRET_KEY: { label: 'Stripe secret', secret: true, serverOnly: true },
