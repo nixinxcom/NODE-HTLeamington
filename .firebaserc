@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "NIXINX":      "nixinx",
+    "ElPatron":    "patronbarandgrill-pwa",
+    "HTWindsor":   "hottacoswindsorwebapp",
+    "HTLeamington":"hot-tacos-webapp---leamington"
+  }
+}
