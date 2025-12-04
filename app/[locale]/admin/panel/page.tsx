@@ -10,8 +10,6 @@ export default async function PanelPage({ params }: PageProps) {
   const { locale } = await params;
 
   return (
-    <AdminGuard agentId="default" showUserChip>
-      <AdminPanel locale={locale} />
-    </AdminGuard>
+    <AdminPanel locale={locale} />
   );
 }

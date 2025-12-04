@@ -1,20 +1,20 @@
 'use client';
 
 import { httpsCallable } from 'firebase/functions';
-import { FbFunct } from '../../app/lib/services/firebase';
+import { FbFunctions } from '../../app/lib/services/firebase';
 import { loadStripe } from '@stripe/stripe-js';
 
 // Nombres de las callables (verifica que coincidan con tu instancia de la Extension)
 const createCheckoutSession = httpsCallable(
-  FbFunct,
+  FbFunctions,
   'ext-firestore-stripe-payments-createCheckoutSession'
 );
 const createSubscriptionCallable = httpsCallable(
-  FbFunct,
+  FbFunctions,
   'ext-firestore-stripe-subscriptions-createSubscription'
 );
 const createPortalLink = httpsCallable(
-  FbFunct,
+  FbFunctions,
   'ext-firestore-stripe-payments-createPortalLink'
 );
 

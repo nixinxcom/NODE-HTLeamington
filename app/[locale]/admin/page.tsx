@@ -27,6 +27,24 @@ export default function AdminHome() {
       href: L('/admin/styles'),
     },
     {
+      key: 'Factory UI',
+      title: <FM id="factory.title" defaultMessage="Factory UI" />,
+      desc: <FM id="factory.description" defaultMessage="Generar esquemas" />,
+      href: L('/admin/factory'),
+    },
+    {
+      key: 'Panel UI',
+      title: <FM id="panel.title" defaultMessage="Panels UI" />,
+      desc: <FM id="panel.description" defaultMessage="Formularios de datos de UI" />,
+      href: L('/admin/panel'),
+    },
+    {
+      key: 'Campaigns Center',
+      title: <FM id="campaigns.title" defaultMessage="Administrador de Campañas" />,
+      desc: <FM id="campaigns.description" defaultMessage="Administrador de Campañas de Notificaciones" />,
+      href: L('/admin/campaigns-center'),
+    },
+    {
       key: 'cloud',
       title: <FM id="cloud.title" defaultMessage="CloudQueries" />,
       desc: <FM id="cloud.description" defaultMessage="Consultas y herramientas de datos" />,

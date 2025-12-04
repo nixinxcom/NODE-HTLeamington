@@ -551,5 +551,11 @@
 "aai.products": "Products",
 "aai.services": "Services",
 "aai.ui.placeholder": "Type your message here...",
-"aai.ui.send": "Send"
+"aai.ui.send": "Send",
+"factory.title": "Factory UI",
+"factory.description": "Generate schemas",
+"panel.title": "Panel UI",
+"panel.description": "UI data forms",
+"campaigns.title": "Campaign Center",
+"campaigns.description": "Notification Campaigns Manager"
 }

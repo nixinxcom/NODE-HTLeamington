@@ -49,7 +49,7 @@ export const FbDB = (() => {
 
 export const FbAuth = getAuth(Firebase);
 export const FbStorage = getStorage(Firebase);
-export const FbFunct = getFunctions(Firebase, "us-central1");
+export const FbFunctions = getFunctions(Firebase, "us-central1");
 
 // Proveedores (si los usas)
 export const GoogleProvider = new GoogleAuthProvider();

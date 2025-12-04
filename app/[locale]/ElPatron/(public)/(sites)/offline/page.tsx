@@ -141,6 +141,11 @@ export default function OfflinePongPage() {
   const [completed, setCompleted] = useState(false);
   const completedRef = useRef(false);
 
+  // Mantener el ref sincronizado con el estado React
+  useEffect(() => {
+    completedRef.current = completed;
+  }, [completed]);
+
   const resetBall = () => {
     if (!stateRef.current) return;
     const s = stateRef.current;
@@ -152,18 +157,9 @@ export default function OfflinePongPage() {
     s.ballVY = BALL_BASE_SPEED_Y * s.speedFactor;
   };
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
+    const initGameState = () => {
     const initialWaveIndex = 0;
-    const {
-      bricks,
-      area,
-      tooSmall,
-    } = createBricksForWave(
+    const { bricks, area, tooSmall } = createBricksForWave(
       INITIAL_BRICK_COUNT,
       initialWaveIndex,
     );
@@ -189,21 +185,42 @@ export default function OfflinePongPage() {
       waveIndex: initialWaveIndex,
     };
 
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (!stateRef.current) return;
+    // para que el delta de tiempo se recalcule bien
+    lastTimeRef.current = null;
+  };
 
-        if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
-          stateRef.current.leftPressed = true;
-        }
-        if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
-          stateRef.current.rightPressed = true;
-        }
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-        // DEBUG: toggle overlay con la tecla "c"
-        if (e.key.toLowerCase() === "c") {
-          setCompleted(prev => !prev);
-        }
-      };
+    initGameState();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!stateRef.current) return;
+
+      // Reinicio cuando ya terminaste el juego
+      if (
+        completedRef.current &&
+        (e.key === "r" || e.key === "R" || e.key === "Enter")
+      ) {
+        // Quita overlay y reinicia todo
+        setCompleted(false);
+        completedRef.current = false;
+        initGameState();
+        resetBall();
+        return;
+      }
+
+      if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
+        stateRef.current.leftPressed = true;
+      }
+      if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
+        stateRef.current.rightPressed = true;
+      }
+    };
+
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const s = stateRef.current;
@@ -443,9 +460,8 @@ export default function OfflinePongPage() {
       ctx.fill();
       ctx.closePath();
 
-      if (!completedRef.current) {
-        frameRef.current = requestAnimationFrame(loop);
-      }
+      // Siempre seguimos dibujando frames; el reinicio se hace con R/Enter
+      frameRef.current = requestAnimationFrame(loop);
     };
 
     frameRef.current = requestAnimationFrame(loop);

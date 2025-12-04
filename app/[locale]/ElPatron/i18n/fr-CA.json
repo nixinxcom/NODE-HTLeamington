@@ -551,5 +551,12 @@
 "aai.products": "Produits",
 "aai.services": "Services",
 "aai.ui.placeholder": "Comment puis-je vous aider ?",
-"aai.ui.send": "Envoyer"
+"aai.ui.send": "Envoyer",
+"factory.title": "Interface Factory",
+"factory.description": "Générer des schémas",
+"panel.title": "Interface de panneau",
+"panel.description": "Formulaires de données UI",
+"campaigns.title": "Centre de campagnes",
+"campaigns.description": "Gestionnaire de campagnes de notification"
+
 }

@@ -1,11 +1,11 @@
 'use client';
 
 import { httpsCallable } from 'firebase/functions';
-import { FbFunct } from '../../app/lib/services/firebase';
+import { FbFunctions } from '../../app/lib/services/firebase';
 
 // Verifica el nombre exacto en tu extensión instalada:
 const sendStripeInvoice = httpsCallable(
-  FbFunct,
+  FbFunctions,
   'ext-firestore-stripe-invoices-sendInvoice'
 );
 

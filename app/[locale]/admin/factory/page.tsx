@@ -11,8 +11,6 @@ export default async function FactoryPage({ params }: PageProps) {
   const { locale } = await params; // ✅ esto está correcto
 
   return (
-    <AdminGuard agentId="default" showUserChip>
-      <FuiPanel locale={locale} />
-    </AdminGuard>
+    <FuiPanel locale={locale} />
   );
 }

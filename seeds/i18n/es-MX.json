@@ -626,6 +626,11 @@
   "admin.FuiPanel.section.schemaForPui": "Esquema listo para PUI (guardar en el core)",
   "admin.FuiPanel.button.copySchema": "Copiar esquema",
   "admin.FuiPanel.button.copiedSchema": "Copiado",
-  "admin.FuiPanel.schema.description": "Copia este bloque en panelSchemas del core. El nombre sugerido está derivado de schema.id."
-
+  "admin.FuiPanel.schema.description": "Copia este bloque en panelSchemas del core. El nombre sugerido está derivado de schema.id.",
+  "factory.title": "Fábrica de Esquemas",
+  "factory.description": "Generar esquemas de datos",
+  "panel.title": "UI de Paneles",
+  "panel.description": "UI de Formularios de datos ",
+  "campaigns.title": "Centro de Campañas",
+  "campaigns.description": "Centro de Campañas de Notificaciones"
 }

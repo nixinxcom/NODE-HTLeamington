@@ -626,6 +626,11 @@
   "admin.FuiPanel.section.schemaForPui": "Schema ready for PUI (save it in the core)",
   "admin.FuiPanel.button.copySchema": "Copy schema",
   "admin.FuiPanel.button.copiedSchema": "Copied",
-  "admin.FuiPanel.schema.description": "Copy this block into panelSchemas in the core. The suggested constant name is derived from schema.id."
-
+  "admin.FuiPanel.schema.description": "Copy this block into panelSchemas in the core. The suggested constant name is derived from schema.id.",
+  "factory.title": "Factory UI",
+  "factory.description": "Generate schemas",
+  "panel.title": "Panel UI",
+  "panel.description": "UI data forms",
+  "campaigns.title": "Campaign Center",
+  "campaigns.description": "Notification Campaigns Manager"
 }

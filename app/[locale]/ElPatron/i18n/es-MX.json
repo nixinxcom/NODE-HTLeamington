@@ -557,5 +557,11 @@
 "legal.terms.title":"",
 "legal.terms.body":"",
 "legal.privacy.title":"",
-"legal.privacy.body":""
+"legal.privacy.body":"",
+"factory.title": "Fábrica de Esquemas",
+"factory.description": "Generar esquemas de datos",
+"panel.title": "UI de Paneles",
+"panel.description": "UI de Formularios de datos ",
+"campaigns.title": "Centro de Campañas",
+"campaigns.description": "Centro de Campañas de Notificaciones"
 }
