@@ -1,4 +1,4 @@
-// functionalities/functions/notifications/applyCampaign.ts
+// functionalities/functions/notifications/runCampaignNow.ts
 
 import {
   onCall,
@@ -15,14 +15,13 @@ import {
   resolveRecipientsFromAudiences,
   type Recipient,
 } from "./resolveRecipientsFromAudiences";
+import { executeCampaignPush } from "./executeCampaignPush";
 
-// Inicializar admin una sola vez
 if (!getApps().length) {
   initializeApp();
 }
 const db = getFirestore();
 
-/** Tipo mínimo de la campaña en notificationCampaigns */
 type DeliveryChannel = "inApp" | "push" | "email" | "sms";
 
 type NotificationCampaign = {
@@ -45,26 +44,39 @@ type NotificationCampaign = {
   tenantId?: string;
   locale?: string;
 
-  /** Nuevo: canales configurados en notificationCampaigns */
   deliveryChannels?: DeliveryChannel[];
 };
 
-type ApplyPayload = { campaignId: string };
+type RunCampaignPayload = {
+  campaignId: string;
+};
+
+type RunCampaignResult = {
+  executionId: string;
+  targetedIdsCount: number;
+  targetedRunsCount: number;
+  lines: number;
+  sent: number;
+  failed: number;
+};
 
 /**
- * applyCampaignToAudience
+ * runCampaignNow
  *
  * 1) Lee la campaña de notificationCampaigns/<id>.
- * 2) Materializa IDs únicos desde Providers/Audiences (+ AudienceMembers, UTMs cuando se implemente).
- * 3) Crea:
- *    - 1 doc en campaignExecutions (cabecera),
- *    - N docs en campaignExecutionLines (una fila por notificación × formato).
- * 4) Devuelve executionId + conteos planeados.
+ * 2) Materializa IDs únicos desde Providers/Audiences (+ AudienceMembers).
+ * 3) Crea campaignExecutions + campaignExecutionLines (snapshot de planeación).
+ * 4) Llama a executeCampaignPush para enviar push (por ahora solo "push").
  *
- * NO crea NotificationRuns aquí. NO actualiza metrics después.
+ * IMPORTANTE:
+ *  - NO crea NotificationRuns aquí.
+ *  - Los NotificationRuns deben crearse SOLO cuando haya entrega/visualización
+ *    real desde el Service Worker o la app (vía endpoint separado).
  */
-export const applyCampaignToAudience = onCall(
-  async (req: CallableRequest<ApplyPayload>) => {
+export const runCampaignNow = onCall(
+  async (
+    req: CallableRequest<RunCampaignPayload>,
+  ): Promise<RunCampaignResult> => {
     const { campaignId } = req.data || {};
     const uid = req.auth?.uid ?? null;
 
@@ -119,32 +131,28 @@ export const applyCampaignToAudience = onCall(
 
     if (targetedIdsCount === 0) {
       console.warn(
-        `[applyCampaignToAudience] Campaign ${campaignId} tiene 0 destinatarios materializados.`,
+        `[runCampaignNow] Campaign ${campaignId} tiene 0 destinatarios materializados.`,
       );
     }
 
     // Por ahora:
-    //  - formatos: solo "push" (más adelante puedes meter "in-app", "banner", etc.)
-    //  - repetitions: 1 mientras no parseemos repeatRule a algo más fino
-    // Por ahora:
     //  - sólo respetamos el canal "push" a nivel envío real
-    //  - pero guardamos todos los canales en formats para métricas
+    //  - pero usamos deliveryChannels de la campaña para decidir si se manda push
 
     const effectiveChannels: DeliveryChannel[] =
       Array.isArray(campaign.deliveryChannels) &&
       campaign.deliveryChannels.length > 0
         ? campaign.deliveryChannels
-        : ["inApp", "push"]; // default razonable para campañas legacy
+        : ["inApp", "push"]; // default para campañas viejas
 
-    // Para esta Function, sólo cuenta "push" como formato real
-    const formats = effectiveChannels.includes("push") ? ["push"] : [];
+    const shouldSendPush = effectiveChannels.includes("push");
 
+    const formats = shouldSendPush ? ["push"] : [];
     const repetitions = 1;
 
     const formatCount = formats.length;
     const targetedRunsCount =
       targetedIdsCount * notificationIds.length * formatCount * repetitions;
-
 
     // 3) Crear cabecera CampaignExecution
     const execRef = db.collection("campaignExecutions").doc();
@@ -184,10 +192,9 @@ export const applyCampaignToAudience = onCall(
 
     await execRef.set(execDoc);
 
-    // 4) Crear líneas de planeación por notificación × formato
+    // 3b) Crear líneas de planeación por notificación × formato
     const linesCol = db.collection("campaignExecutionLines");
     const batch = db.batch();
-
     let linesCount = 0;
 
     for (const notificationId of notificationIds) {
@@ -227,11 +234,28 @@ export const applyCampaignToAudience = onCall(
 
     await batch.commit();
 
+    let sent = 0;
+    let failed = 0;
+
+    // 4) Enviar push SOLO si la campaña tiene canal "push"
+    if (formats.includes("push")) {
+      // OJO: executeCampaignPush YA NO crea NotificationRuns.
+      const res = await executeCampaignPush(execDoc, recipients);
+      sent = res.sent;
+      failed = res.failed;
+    } else {
+      console.log(
+        `[runCampaignNow] Campaign ${campaignId} sin canal "push" seleccionado. No se envían push.`,
+      );
+    }
+
     return {
       executionId,
       targetedIdsCount,
       targetedRunsCount,
       lines: linesCount,
+      sent,
+      failed,
     };
   },
 );

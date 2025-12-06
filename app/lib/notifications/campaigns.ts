@@ -15,18 +15,30 @@ import { FbDB } from "@/app/lib/services/firebase";
 
 export type CampaignStatus = "draft" | "active" | "paused" | "finished";
 
+/**
+ * Canales soportados para campañas.
+ * Debe alinearse con lo que usas en el Campaigns Center (page.tsx).
+ */
+export type DeliveryChannel = "inApp" | "push" | "email" | "sms";
+
 export interface NotificationCampaign {
-  id: string;                // ID del documento en Firestore
-  campaignId?: string;       // ID legible generado (slug)
+  id: string; // ID del documento en Firestore
+  campaignId?: string; // ID legible generado (slug)
   name: string;
   description?: string;
 
   status: CampaignStatus;
 
   // Relaciones
-  strategyId: string;        // Providers/Strategies.strategies[].strategyId
+  strategyId: string; // Providers/Strategies.strategies[].strategyId
   notificationIds: string[]; // Providers/Notifications.notifications[].notificationId
-  audienceIds: string[];     // Providers/Audiences.audiences[].audienceId
+  audienceIds: string[]; // Providers/Audiences.audiences[].audienceId
+
+  /**
+   * Canales de entrega configurados para esta campaña.
+   * Ej: ["inApp", "push"], ["email", "sms"], etc.
+   */
+  deliveryChannels?: DeliveryChannel[];
 
   // Calendarización simple
   startDate?: string | null;
@@ -70,15 +82,31 @@ function buildCampaignId(input: Partial<NotificationCampaign>): string {
   }
 
   const aCount = input.audienceIds?.length ?? 0;
-    if (aCount > 0) {
+  if (aCount > 0) {
     parts.push(`${aCount}a`);
-    }
+  }
 
   if (parts.length === 0) {
     return `campaign-${Date.now()}`;
   }
 
   return parts.join("__");
+}
+
+/**
+ * Normaliza el campo deliveryChannels desde Firestore
+ * y filtra cualquier basura que no sea un canal válido.
+ */
+function mapDeliveryChannels(raw: any): DeliveryChannel[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+
+  const allowed: DeliveryChannel[] = ["inApp", "push", "email", "sms"];
+
+  const filtered = raw.filter((ch: any) =>
+    allowed.includes(ch as DeliveryChannel),
+  ) as DeliveryChannel[];
+
+  return filtered.length > 0 ? filtered : undefined;
 }
 
 export function mapCampaignDoc(id: string, raw: any): NotificationCampaign {
@@ -93,6 +121,7 @@ export function mapCampaignDoc(id: string, raw: any): NotificationCampaign {
       ? raw.notificationIds
       : [],
     audienceIds: Array.isArray(raw.audienceIds) ? raw.audienceIds : [],
+    deliveryChannels: mapDeliveryChannels(raw.deliveryChannels),
     startDate: raw.startDate ?? null,
     startTime: raw.startTime ?? null,
     endDate: raw.endDate ?? null,
@@ -124,7 +153,8 @@ export async function saveCampaign(
       audienceIds: input.audienceIds ?? [],
     });
 
-  const base = {
+  // Base común
+  const base: any = {
     campaignId,
     name: input.name ?? "Sin nombre",
     description: input.description ?? "",
@@ -139,6 +169,11 @@ export async function saveCampaign(
     repeatRule: input.repeatRule ?? null,
     updatedAt: serverTimestamp(),
   };
+
+  // Sólo guardamos deliveryChannels si viene definido y es array
+  if (Array.isArray(input.deliveryChannels)) {
+    base.deliveryChannels = input.deliveryChannels;
+  }
 
   if (input.id) {
     const docRef = doc(colRef, input.id);

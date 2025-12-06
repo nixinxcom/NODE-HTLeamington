@@ -1,5 +1,6 @@
 // app/api/push/send/route.ts
 import "server-only";
+
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/app/lib/firebaseAdmin";
 import { getMessaging } from "firebase-admin/messaging";
@@ -14,34 +15,92 @@ import type {
 } from "@/app/lib/notifications/types";
 
 /* ─────────────────────────────────────────────────────────
-   Cache de Settings desde FDV (Providers/Settings)
+   Cache simple de Settings (FDV: Providers/Settings)
    ───────────────────────────────────────────────────────── */
 
-const SETTINGS_TTL_MS = 60_000; // 1 minuto; ajusta si quieres
+const SETTINGS_DOC_PATH =
+  process.env.NEXT_PUBLIC_SETTINGS_DOC_PATH || "Providers/Settings";
 
-let cachedSettings: iSettings | undefined;
-let cachedSettingsAt = 0;
+let cachedSettings:
+  | {
+      value: iSettings | null;
+      expiresAt: number;
+    }
+  | null = null;
 
-async function getSettingsCached(): Promise<iSettings | undefined> {
+async function getSettingsCached(): Promise<iSettings | null> {
   const now = Date.now();
-  if (cachedSettings && now - cachedSettingsAt < SETTINGS_TTL_MS) {
-    return cachedSettings;
+  if (cachedSettings && cachedSettings.expiresAt > now) {
+    return cachedSettings.value;
   }
 
   const db = getAdminDb();
-  const snap = await db.collection("Providers").doc("Settings").get();
+  const snap = await db.doc(SETTINGS_DOC_PATH).get();
+  const data = (snap.data() as iSettings | undefined) ?? null;
 
-  cachedSettings = snap.exists ? (snap.data() as iSettings) : undefined;
-  cachedSettingsAt = now;
+  cachedSettings = {
+    value: data,
+    // Cache 30s; ajusta si quieres
+    expiresAt: now + 30_000,
+  };
 
-  return cachedSettings;
+  return data;
 }
 
-/* ───────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────
+   Resolver tokens según el target
+   ───────────────────────────────────────────────────────── */
+
+async function resolveTokensForTarget(
+  target: NotificationTarget,
+  tenantId: string,
+): Promise<string[]> {
+  const db = getAdminDb();
+
+  // 1) Token directo
+  if (target.type === "token") {
+    const t = (target.token || "").trim();
+    return t ? [t] : [];
+  }
+
+  // 2) Por usuario (uid -> tokens activos)
+  if (target.type === "user") {
+    const snap = await db
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("notificationTokens")
+      .where("uid", "==", target.uid)
+      .where("active", "==", true)
+      .get();
+
+    return snap.docs
+      .map((d) => d.get("token") as string | undefined)
+      .filter(Boolean) as string[];
+  }
+
+  // 3) Broadcast (todos los tokens activos del tenant)
+  const snap = await db
+    .collection("tenants")
+    .doc(tenantId)
+    .collection("notificationTokens")
+    .where("active", "==", true)
+    .get();
+
+  return snap.docs
+    .map((d) => d.get("token") as string | undefined)
+    .filter(Boolean) as string[];
+}
+
+/* ─────────────────────────────────────────────────────────
+   Handler principal (POST)
+   ───────────────────────────────────────────────────────── */
 
 export async function POST(req: NextRequest) {
   try {
-    // 1) Verificar que el feature esté habilitado para este tenant (FDV + cache)
+    const db = getAdminDb();
+    const tenantId = getTenantIdFromRequest(req);
+
+    // 1) Revisar facultad de notificaciones (FDV -> Providers/Settings)
     const settings = await getSettingsCached();
     try {
       ensureFaculty(settings, "notifications");
@@ -53,8 +112,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 2) Auth:
-    //    - En PRODUCCIÓN: sigue siendo solo superadmin (como antes).
-    //    - En DESARROLLO: se omite para poder probar desde el botón.
+    //    - En desarrollo: sin restricción (para probar desde UI).
+    //    - En producción: solo superadmin (correo hardcodeado).
     if (process.env.NODE_ENV !== "development") {
       const authHeader = req.headers.get("authorization");
       const decoded = await verifyBearerIdToken(authHeader);
@@ -71,49 +130,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
     }
 
-    const tenantId = getTenantIdFromRequest(req);
-    const db = getAdminDb();
-    const messaging = getMessaging();
-
-    // 4) Resolver tokens según el target
-    const tokens = await resolveTokens(db, tenantId, target);
+    // 4) Resolver tokens FCM
+    const tokens = await resolveTokensForTarget(target, tenantId);
 
     if (!tokens.length) {
-      return NextResponse.json({
-        ok: true,
-        successCount: 0,
-        failureCount: 0,
-      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "no_tokens",
+          successCount: 0,
+          failureCount: 0,
+        },
+        { status: 200 },
+      );
     }
 
-    // 5) Armar mensaje FCM
-    const message = {
+    // 5) Enviar vía FCM
+    const messaging = getMessaging();
+
+    const res = await messaging.sendEachForMulticast({
       tokens,
       notification: {
         title: payload.title,
         body: payload.body,
       },
-      data: payload.data || {},
+      data: payload.data ?? undefined,
       webpush: payload.clickAction
-        ? { fcmOptions: { link: payload.clickAction } }
+        ? {
+            fcmOptions: {
+              link: payload.clickAction,
+            },
+          }
         : undefined,
-    };
+    });
 
-    // 6) Enviar
-    const res = await messaging.sendEachForMulticast(message);
-
-    // 7) Registrar en Firestore (opcional pero útil)
-    await db
-      .collection("tenants")
-      .doc(tenantId)
-      .collection("notifications")
-      .add({
-        target,
-        payload,
-        sentAt: new Date(),
-        successCount: res.successCount,
-        failureCount: res.failureCount,
-      });
+    // 6) Log simple (debug)
+    await db.collection("pushLogs").add({
+      tenantId,
+      target,
+      payload,
+      sentAt: new Date(),
+      successCount: res.successCount,
+      failureCount: res.failureCount,
+    });
 
     return NextResponse.json({
       ok: true,
@@ -122,36 +181,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("[push/send] error", err);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "internal_error" },
+      { status: 500 },
+    );
   }
-}
-
-async function resolveTokens(
-  db: FirebaseFirestore.Firestore,
-  tenantId: string,
-  target: NotificationTarget,
-): Promise<string[]> {
-  if (target.type === "token") {
-    return target.token ? [target.token] : [];
-  }
-
-  if (target.type === "user") {
-    const snap = await db
-      .collection("tenants")
-      .doc(tenantId)
-      .collection("notificationTokens")
-      .where("uid", "==", target.uid)
-      .where("active", "==", true)
-      .get();
-    return snap.docs.map((d) => d.get("token")).filter(Boolean);
-  }
-
-  // broadcast
-  const snap = await db
-    .collection("tenants")
-    .doc(tenantId)
-    .collection("notificationTokens")
-    .where("active", "==", true)
-    .get();
-  return snap.docs.map((d) => d.get("token")).filter(Boolean);
 }

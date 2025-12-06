@@ -35,6 +35,7 @@ import {
 import { FbAuth, FbDB, FbFunctions } from "@/app/lib/services/firebase";
 import { useProvider } from "@/app/providers/FdvProvider";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { exportAudienceCsv } from "@/app/lib/audiences/exportAudienceCsv";
 
 import {
   type NotificationCampaign,
@@ -63,6 +64,12 @@ type AudienceType =
   | "byUserId"
   | "currentUser"
   | "unknown";
+
+/**
+ * Canales que queremos soportar a nivel campaña.
+ * inApp / push funcionan hoy; email / sms quedan listos para Brevo / etc.
+ */
+type DeliveryChannel = "inApp" | "push" | "email" | "sms";
 
 type NotificationConfig = {
   // Identidad de campaña / estrategia
@@ -96,7 +103,19 @@ type NotificationConfig = {
     | "toast"
     | "banner"
     | "silent";
-  deliveryChannel?: "inApp" | "push" | "both";
+
+  /**
+   * Canal “legacy” (estrategia/plantilla) → se sigue usando como fallback.
+   * "both" significa inApp + push.
+   */
+  deliveryChannel?: DeliveryChannel | "both";
+
+  /**
+   * Canales efectivos configurados para la campaña.
+   * Lo que marquemos con checkboxes se guarda aquí.
+   */
+  deliveryChannels?: DeliveryChannel[];
+
   requireReadConfirmation?: boolean;
 
   // Calendarización
@@ -260,20 +279,46 @@ async function syncUtmAudiences(nextList: UtmDefinition[]) {
     const updated =
       typeof u.updatedAt === "number" ? u.updatedAt : now;
 
+    // Usamos el mismo builder para tener el utmstring crudo
+    const qs = buildUtmQueryString({
+      source: u.source,
+      medium: u.medium,
+      campaign: u.campaign,
+      term: u.term,
+      content: u.content,
+      utmId: u.id,
+    });
+
+    const utmstring = qs ? qs.replace(/^\?/, "") : undefined;
+
     return {
-      // clave que usará el Campaign Center
+      // clave que usará el Campaigns Center
       audienceId: `utm:${u.id}`,
       name: u.name || u.id,
       description: u.description ?? "",
       kind: "utm",
 
-      // campos que ya usa tu UI para filtros
+      // IMPORTANTE: para que materializeAudienceMembers la procese
+      type: "ruleBased" as const,
+
+      // Campos de behaviour que ya estás usando para filtros
       track: "utm",
       trigger: "visit",
       target: u.id,
       trackCategory: u.source,
 
-      // metadata útil: estado de la campaña externa
+      // Metadata UTM alineada con app/lib/audiences/types.ts
+      utm: {
+        utmstring,
+        source: u.source,
+        medium: u.medium,
+        campaign: u.campaign,
+        term: u.term,
+        content: u.content,
+        raw: qs || undefined,
+      },
+
+      // Estado de la campaña externa
       active: u.active !== false,
 
       // timestamps
@@ -721,12 +766,21 @@ export default function CampaignsCenterPage() {
   const [campaignsError, setCampaignsError] = useState<string | null>(null);
 
   // Draft para crear / editar campañas rápidas
+  // Draft para crear / editar campañas rápidas
   const [draftName, setDraftName] = useState("");
   const [draftStrategyId, setDraftStrategyId] = useState("");
   const [draftNotificationIds, setDraftNotificationIds] = useState<string[]>(
     [],
   );
   const [draftAudienceIds, setDraftAudienceIds] = useState<string[]>([]);
+
+  /**
+   * Canales elegidos para la campaña.
+   * Por defecto dejamos inApp encendido (pruebas rápidas).
+   */
+  const [draftChannels, setDraftChannels] = useState<DeliveryChannel[]>([
+    "inApp",
+  ]);
   const [draftStartDate, setDraftStartDate] = useState("");
   const [draftStartTime, setDraftStartTime] = useState("");
   const [draftEndDate, setDraftEndDate] = useState("");
@@ -968,6 +1022,19 @@ export default function CampaignsCenterPage() {
     [targetAudiences],
   );
 
+  /**
+   * Normaliza el campo deliveryChannel "legacy" (inApp / push / both)
+   * en un arreglo de DeliveryChannel (inApp, push, email, sms).
+   */
+  const normalizeDeliveryChannel = (
+    ch?: string | null,
+  ): DeliveryChannel[] => {
+    if (ch === "inApp") return ["inApp"];
+    if (ch === "push") return ["push"];
+    if (ch === "both") return ["inApp", "push"];
+    return ["inApp"]; // default razonable
+  };
+
   // Normalizar campañas + templates → filas (campaña + notificación)
   const enabledNotifications: NotificationConfig[] = campaigns
     .flatMap((camp) => {
@@ -995,6 +1062,22 @@ export default function CampaignsCenterPage() {
           n.userInterfaceType ??
           undefined;
 
+        // Canal heredado de estrategia / plantilla
+        const legacyChannel =
+          strategy?.deliveryChannel ?? n.deliveryChannel;
+
+        // Si la campaña ya trae deliveryChannels, usamos esos.
+        const campaignChannels = Array.isArray(
+          (camp as any).deliveryChannels,
+        )
+          ? ((camp as any).deliveryChannels as DeliveryChannel[])
+          : undefined;
+
+        const effectiveChannels: DeliveryChannel[] =
+          campaignChannels && campaignChannels.length > 0
+            ? campaignChannels
+            : normalizeDeliveryChannel(legacyChannel);
+
         return {
           // Campaña / estrategia
           campaignId: camp.id,
@@ -1013,11 +1096,17 @@ export default function CampaignsCenterPage() {
           message: n.message,
           uiType,
           userInterfaceType: uiType,
-          deliveryChannel: strategy?.deliveryChannel ?? n.deliveryChannel,
+
+          // Nuevo: arreglo de canales efectivos
+          deliveryChannels: effectiveChannels,
+
+          // Legacy para compatibilidad con cosas que lean sólo el string
+          deliveryChannel: legacyChannel,
+
           requireReadConfirmation:
-            strategy?.requireReadConfirmation ??
-            n.requireReadConfirmation ??
-            false,
+          strategy?.requireReadConfirmation ??
+          n.requireReadConfirmation ??
+          false,
 
           // Calendarización
           startDate: camp.startDate ?? null,
@@ -1441,27 +1530,26 @@ export default function CampaignsCenterPage() {
         throw new Error("functions-not-configured");
       }
 
-      const fn = httpsCallable(
-        FbFunctions,
-        "applyCampaignToAudience",
-      );
+      const fn = httpsCallable(FbFunctions, "applyCampaignToAudience");
 
       const res = await fn({ campaignId: notif.campaignId });
 
       const data = (res.data || {}) as {
         executionId?: string;
         targetedIdsCount?: number;
-        deliveredCount?: number;
+        targetedRunsCount?: number;
+        lines?: string[];
       };
 
       setAgentContextMessage(
-        `Campaña ejecutada. executionId=${data.executionId ?? "?"}, IDs objetivo=${data.targetedIdsCount ?? 0}, runs creados=${data.deliveredCount ?? 0}.`,
+        `Campaña ejecutada. executionId=${data.executionId ?? "?"}, IDs objetivo=${data.targetedIdsCount ?? 0}, runs planeados=${data.targetedRunsCount ?? 0}.`,
       );
     } catch (e: any) {
       console.error(
         "[CampaignsCenter] Error applyCampaignToAudience",
         e,
       );
+        // guardo el mensaje para verlo en el panel
       setError(String(e?.message ?? e));
     } finally {
       setApplyingAudience(false);
@@ -1505,6 +1593,8 @@ export default function CampaignsCenterPage() {
         startTime: draftStartTime || null,
         endDate: draftEndDate || null,
         endTime: draftEndTime || null,
+        // NUEVO: canales marcados en el formulario
+        deliveryChannels: draftChannels,
       });
 
       setDraftName("");
@@ -1563,6 +1653,26 @@ export default function CampaignsCenterPage() {
     setDraftStartTime(base.startTime ?? "");
     setDraftEndDate(base.endDate ?? "");
     setDraftEndTime(base.endTime ?? "");
+
+    // Canales guardados en la campaña (si existen)
+    const baseChannels = Array.isArray(
+      (base as any).deliveryChannels,
+    )
+      ? ((base as any).deliveryChannels as DeliveryChannel[])
+      : undefined;
+
+    // Fallback: si la campaña no trae deliveryChannels,
+    // usamos lo que ya venía en la notificación normalizada.
+    const defaultFromNotif: DeliveryChannel[] =
+      notif.deliveryChannels && notif.deliveryChannels.length > 0
+        ? notif.deliveryChannels
+        : normalizeDeliveryChannel(notif.deliveryChannel);
+
+    setDraftChannels(
+      baseChannels && baseChannels.length > 0
+        ? baseChannels
+        : defaultFromNotif,
+    );
   };
 
   // Activar / pausar campaña
@@ -1650,8 +1760,24 @@ export default function CampaignsCenterPage() {
     setDraftAudienceIds(values);
   };
 
+  /**
+   * Alterna un canal en el draft.
+   * No dejamos que se quede en 0 canales para evitar campañas “fantasma”.
+   */
+  const toggleDraftChannel = (channel: DeliveryChannel) => {
+    setDraftChannels((prev) => {
+      const exists = prev.includes(channel);
+      if (exists) {
+        if (prev.length === 1) return prev; // mínimo 1 canal
+        return prev.filter((c) => c !== channel);
+      }
+      return [...prev, channel];
+    });
+  };
+
   const canCreateCampaign =
     !!draftStrategyId && draftNotificationIds.length > 0;
+
 
   // Acordeones de secciones
   const [showCampaignPanel, setShowCampaignPanel] = useState(true);
@@ -1878,6 +2004,54 @@ export default function CampaignsCenterPage() {
               </P>
             </DIV>
 
+            {/* Canales de entrega de la campaña */}
+            <DIV className="flex flex-col gap-1 mt-2">
+              <P className="text-xs opacity-70">
+                Canales de entrega de la campaña
+              </P>
+              <DIV className="flex flex-wrap gap-4 text-[11px]">
+                <label className="inline-flex items-center gap-1">
+                  <INPUT
+                    type="checkbox"
+                    checked={draftChannels.includes("inApp")}
+                    onChange={() => toggleDraftChannel("inApp")}
+                  />
+                  <SPAN>In-app</SPAN>
+                </label>
+
+                <label className="inline-flex items-center gap-1">
+                  <INPUT
+                    type="checkbox"
+                    checked={draftChannels.includes("push")}
+                    onChange={() => toggleDraftChannel("push")}
+                  />
+                  <SPAN>Push</SPAN>
+                </label>
+
+                <label className="inline-flex items-center gap-1">
+                  <INPUT
+                    type="checkbox"
+                    checked={draftChannels.includes("email")}
+                    onChange={() => toggleDraftChannel("email")}
+                  />
+                  <SPAN>Email (meta)</SPAN>
+                </label>
+
+                <label className="inline-flex items-center gap-1">
+                  <INPUT
+                    type="checkbox"
+                    checked={draftChannels.includes("sms")}
+                    onChange={() => toggleDraftChannel("sms")}
+                  />
+                  <SPAN>SMS (meta)</SPAN>
+                </label>
+              </DIV>
+              <P className="text-[10px] opacity-60">
+                Hoy sólo se entregan in-app / push. Email y SMS se guardan como
+                metadata para integrarte con Brevo u otros servicios externos.
+              </P>
+            </DIV>
+
             <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
               <DIV className="flex flex-col gap-1">
                 <P className="text-xs opacity-70">Inicio (fecha)</P>
@@ -1993,8 +2167,11 @@ export default function CampaignsCenterPage() {
                             notif.userInterfaceType ??
                             "—"}
                         </TD>
-                        <TD className="px-3 py-2">
-                          {notif.deliveryChannel ?? "—"}
+                        <TD className="px-3 py-2 text-xs">
+                          {notif.deliveryChannels &&
+                          notif.deliveryChannels.length > 0
+                            ? notif.deliveryChannels.join(", ")
+                            : notif.deliveryChannel ?? "—"}
                         </TD>
                         <TD className="px-3 py-2">
                           {formatDateTime(
@@ -2428,6 +2605,7 @@ export default function CampaignsCenterPage() {
                             >
                               Cargar en builder
                             </BUTTON>
+
                             <BUTTON
                               type="button"
                               onClick={() =>
@@ -2436,6 +2614,7 @@ export default function CampaignsCenterPage() {
                             >
                               Recalcular (payload CF)
                             </BUTTON>
+
                             <BUTTON
                               type="button"
                               onClick={() =>
@@ -2446,10 +2625,34 @@ export default function CampaignsCenterPage() {
                             >
                               Eliminar audiencia
                             </BUTTON>
+
+                            {/* NUEVO: Exportar miembros de la audiencia a CSV */}
+                            <BUTTON
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  const res = await exportAudienceCsv(audienceId);
+                                  console.log(
+                                    "[CampaignsCenter] CSV exportado",
+                                    res.rows,
+                                    "filas para audiencia",
+                                    audienceId,
+                                  );
+                                } catch (err) {
+                                  console.error(
+                                    "[CampaignsCenter] Error exportando audiencia",
+                                    err,
+                                  );
+                                  alert("No se pudo exportar el CSV de esta audiencia");
+                                }
+                              }}
+                            >
+                              Exportar CSV
+                            </BUTTON>
                           </DIV>
+
                         </DIV>
                       </DIV>
-
                       {isOpen && (
                         <DIV className="border-t border-white/15 px-2 py-2 space-y-2">
                           <P className="text-[11px] opacity-70">
