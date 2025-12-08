@@ -18,6 +18,7 @@ export type PanelScalarType =
   | 'number'
   | 'boolean'
   | 'date'
+  | 'time'
   | 'select'
   | 'multiselect';
 

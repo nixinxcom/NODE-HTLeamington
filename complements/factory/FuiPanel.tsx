@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from "next/navigation";
 
 import {
   DIV,
@@ -879,6 +880,7 @@ function FieldEditor({
 // ---------------------------------------------------------------------------
 
 export function FuiPanel({ locale }: FuiPanelProps) {
+  const router = useRouter();
   const [savedSchemas, setSavedSchemas] = useState<FuiSchemaSummary[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
 
@@ -1365,6 +1367,23 @@ export function FuiPanel({ locale }: FuiPanelProps) {
 
   return (
     <DIV className="p-4 flex flex-col gap-6">
+      {/* Botones de navegación superior */}
+      <DIV className="flex justify-between items-center mb-2">
+        <DIV className="flex gap-2">
+          <BUTTON
+            type="button"
+            onClick={() => router.push("../admin")}
+          >
+            Admin Panel
+          </BUTTON>
+          <BUTTON
+            type="button"
+            onClick={() => router.push("../../")}
+          >
+            Home
+          </BUTTON>
+        </DIV>
+      </DIV>
       <DIV className="mb-4 flex flex-col gap-1">
         <SPAN className="text-xl font-bold">
           <FM

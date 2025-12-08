@@ -25,20 +25,25 @@ export type SessionUtmInfo = {
 };
 
 export interface SessionBehavior {
-  /** ID de esta sesión lógica (cambia cada flush) */
   sessionId: string;
-  /** Tenant NIXINX */
   tenantId: string;
-  /** UID de Firebase Auth (si existe) */
-  userId?: string | null;
-  /** ID persistente del dispositivo (no requiere login) */
-  deviceId?: string | null;
-  /** Clave unificada para audiencias: userId || deviceId */
-  userOrDeviceId?: string | null;
-  /** Locale con el que navegó */
+  userId: string | null;
+  deviceId: string | null;
+  userOrDeviceId: string | null;
   locale?: string;
-  /** UTM detectada al inicio de la sesión */
-  utm?: SessionUtmInfo | null;
-  /** Eventos registrados durante la sesión */
+  utm: SessionUtmInfo | null;
+
+  /** Eventos detallados de la sesión (histórico fino) */
   events: SessionEvent[];
+
+  /**
+   * Claves normalizadas de comportamiento para segmentar en Firestore
+   * Formato: `${type}::${tag ?? ""}::${category ?? ""}`
+   *
+   * Ejemplos:
+   *  "view::::home"
+   *  "click::cta_hero::landing"
+   *  "conversion::order::::"
+   */
+  behaviorKeys: string[];
 }

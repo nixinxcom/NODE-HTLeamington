@@ -143,6 +143,16 @@ export function SessionBehaviorProvider({ locale, children }: Props) {
     const userOrDeviceId = userId || deviceId || null;
     const utm = utmRef.current ?? null;
 
+    // Claves normalizadas para segmentación:
+    // `${type}::${tag ?? ""}::${category ?? ""}`
+    const behaviorKeys = Array.from(
+      new Set(
+        events.map((e) =>
+          `${e.type}::${e.tag ?? ""}::${e.category ?? ""}`,
+        ),
+      ),
+    );
+
     const payload: SessionBehavior = {
       sessionId: sessionIdRef.current,
       tenantId,
@@ -152,6 +162,7 @@ export function SessionBehaviorProvider({ locale, children }: Props) {
       locale,
       utm,
       events: [...events],
+      behaviorKeys,
     };
 
     try {

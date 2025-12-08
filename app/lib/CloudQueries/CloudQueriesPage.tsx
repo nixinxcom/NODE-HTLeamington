@@ -10,13 +10,48 @@ import styles from './StylesQueries.module.css';
 import { JsonLdClient as JsonLd } from '@/complements/components/Seo/JsonLdClient';
 import { buildVenueSchema, buildWebSiteSchema } from '@/app/lib/seo/schema';
 import FM from '@/complements/i18n/FM';
-import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import {
+  BUTTON,
+  LINK,
+  BUTTON2,
+  LINK2,
+  NEXTIMAGE,
+  IMAGE,
+  DIV,
+  DIV2,
+  DIV3,
+  INPUT,
+  SELECT,
+  LABEL,
+  INPUT2,
+  SPAN,
+  SPAN1,
+  SPAN2,
+  A,
+  B,
+  P,
+  H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+} from "@/complements/components/ui/wrappers";
 
 type FieldKind = 'timestamp' | 'number' | 'unknown';
 
 const CANDIDATES = [
-  'ts', 'fecha', 'Fecha', 'date', 'createdAt', 'created_at',
-  'startAt', 'start_at', 'startDate', 'updatedAt'
+  'ts',
+  'fecha',
+  'Fecha',
+  'date',
+  'createdAt',
+  'created_at',
+  'startAt',
+  'start_at',
+  'startDate',
+  'updatedAt',
+  '_updatedAt', // agregado
 ];
 
 // yyyymmdd -> Date UTC 00:00
@@ -85,13 +120,20 @@ function flattenObject(data: any, parentKey = '', result: any = {}): any {
       continue;
     }
 
-    if (value === null || value === undefined) { result[newKey] = ''; continue; }
+    if (value === null || value === undefined) {
+      result[newKey] = '';
+      continue;
+    }
 
     const t = typeof value;
     if (t === 'string' || t === 'number' || t === 'boolean') {
       result[newKey] = value;
     } else if (Array.isArray(value)) {
-      try { result[newKey] = JSON.stringify(value); } catch { result[newKey] = String(value); }
+      try {
+        result[newKey] = JSON.stringify(value);
+      } catch {
+        result[newKey] = String(value);
+      }
     } else if (t === 'object') {
       flattenObject(value, newKey, result);
     } else {
@@ -101,10 +143,23 @@ function flattenObject(data: any, parentKey = '', result: any = {}): any {
   return result;
 }
 
+// Acceso seguro por path "a.b.c"
+function getByPath(obj: any, path: string): any {
+  if (!path) return obj;
+  const parts = path.split('.').map((p) => p.trim()).filter(Boolean);
+  let cur: any = obj;
+  for (const part of parts) {
+    if (cur == null || typeof cur !== 'object') return undefined;
+    cur = cur[part];
+  }
+  return cur;
+}
+
 export default function CloudQueriesPage() {
   const [coleccion, setColeccion] = useState('');
   const [start, setStart] = useState(''); // opcional
   const [end, setEnd] = useState('');     // opcional
+  const [arrayField, setArrayField] = useState(''); // NUEVO: campo arreglo a expandir
   const [data, setData] = useState<any[]>([]);
   const [meta, setMeta] = useState<{ field?: string | null; kind?: FieldKind }>({});
   const [loading, setLoading] = useState(false);
@@ -118,14 +173,17 @@ export default function CloudQueriesPage() {
       setMeta({});
 
       const col = coleccion.trim();
-      if (!col) { setErr('Indica una colección.'); return; }
+      if (!col) {
+        setErr('Indica una colección.');
+        return;
+      }
 
       const { field, kind } = await detectDateField(col);
       setMeta({ field, kind });
 
       const cons: any[] = [];
       const startDate = parseInputDate(start);
-      const endDate   = parseInputDate(end);
+      const endDate = parseInputDate(end);
 
       if (startDate || endDate) {
         if (!field || kind === 'unknown') {
@@ -134,14 +192,18 @@ export default function CloudQueriesPage() {
         }
         if (kind === 'timestamp') {
           if (startDate) cons.push(where(field, '>=', startDate));
-          if (endDate)   cons.push(where(field, '<=', endDate));
+          if (endDate) cons.push(where(field, '<=', endDate));
           cons.push(orderBy(field, 'desc'));
         } else if (kind === 'number') {
           // Convierte fechas a yyyymmdd numérico para comparar
           const toNum = (d: Date) =>
-            Number(`${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}`);
+            Number(
+              `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(
+                d.getUTCDate(),
+              ).padStart(2, '0')}`,
+            );
           if (startDate) cons.push(where(field, '>=', toNum(startDate)));
-          if (endDate)   cons.push(where(field, '<=', toNum(endDate)));
+          if (endDate) cons.push(where(field, '<=', toNum(endDate)));
           cons.push(orderBy(field, 'desc'));
         }
       } else {
@@ -152,8 +214,66 @@ export default function CloudQueriesPage() {
       cons.push(limit(500)); // tope amigable
       const q = query(collection(FbDB, col), ...cons);
       const snap = await getDocs(q);
-      const rows = snap.docs.map(d => flattenObject({ id: d.id, _path: d.ref.path, ...d.data() }));
-      setData(rows);
+
+      const rowsFlattened: any[] = [];
+      const arrayPath = arrayField.trim();
+
+      snap.forEach((d) => {
+        const raw = d.data() as any;
+        const baseMeta = { id: d.id, _path: d.ref.path };
+
+        // Si se indicó un campo de arreglo (ej: "audiences")
+        if (arrayPath) {
+          const arr = getByPath(raw, arrayPath);
+          if (Array.isArray(arr)) {
+            arr.forEach((item, idx) => {
+              rowsFlattened.push(
+                flattenObject({
+                  ...baseMeta,
+                  _arrayField: arrayPath,
+                  _index: idx,
+                  ...item,
+                }),
+              );
+            });
+            return; // ya agregamos filas por cada elemento del array
+          }
+        }
+
+        // Comportamiento normal: una fila por doc
+        rowsFlattened.push(flattenObject({ ...baseMeta, ...raw }));
+      });
+
+      // ─────────────────────────────────────────────
+      // Normalizar columnas: unión de todas las keys
+      // ─────────────────────────────────────────────
+      if (!rowsFlattened.length) {
+        setData([]);
+        return;
+      }
+
+      const keySet = new Set<string>();
+      for (const row of rowsFlattened) {
+        Object.keys(row).forEach((k) => keySet.add(k));
+      }
+
+      const preferredOrder = ['id', '_path', '_updatedAt', '_arrayField', '_index'];
+      const restKeys = Array.from(keySet).filter((k) => !preferredOrder.includes(k)).sort();
+
+      const allKeys = [
+        ...preferredOrder.filter((k) => keySet.has(k)),
+        ...restKeys,
+      ];
+
+      const normalizedRows = rowsFlattened.map((row) => {
+        const out: Record<string, any> = {};
+        for (const k of allKeys) {
+          out[k] = row[k] ?? '';
+        }
+        return out;
+      });
+
+      setData(normalizedRows);
     } catch (e: any) {
       console.error(e);
       setErr(e?.message || 'Error al consultar.');
@@ -165,13 +285,14 @@ export default function CloudQueriesPage() {
   const exportCSV = () => {
     if (!data.length) return;
     const headers = Object.keys(data[0]);
-    const rows = data.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','));
+    const rows = data.map((r) => headers.map((h) => JSON.stringify(r[h] ?? '')).join(','));
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${(coleccion || 'export')}_${Date.now()}.csv`;
-    a.click(); URL.revokeObjectURL(a.href);
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   const exportJSON = () => {
@@ -180,7 +301,8 @@ export default function CloudQueriesPage() {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${(coleccion || 'export')}_${Date.now()}.json`;
-    a.click(); URL.revokeObjectURL(a.href);
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   return (
@@ -197,7 +319,22 @@ export default function CloudQueriesPage() {
                 type="text"
                 value={coleccion}
                 onChange={(e) => setColeccion(e.target.value)}
-                placeholder="events / surveys / encuesta / leads / ..."
+                placeholder="events / surveys / encuesta / leads / Providers / ..."
+              />
+            </LABEL>
+          </div>
+
+          <div className={styles.cqGroup}>
+            <LABEL className={styles.Label}>
+              <FM
+                id="cloudq.arrayField"
+                defaultMessage="Campo de arreglo a expandir (opcional)"
+              />
+              <INPUT
+                type="text"
+                value={arrayField}
+                onChange={(e) => setArrayField(e.target.value)}
+                placeholder="audiences / notifications / items / ..."
               />
             </LABEL>
           </div>
@@ -224,22 +361,38 @@ export default function CloudQueriesPage() {
           </div>
 
           <div className={styles.cqActions}>
-            <BUTTON className={styles.Consultar} onClick={consultar} disabled={loading || !coleccion.trim()}>
+            <BUTTON
+              className={styles.Consultar}
+              onClick={consultar}
+              disabled={loading || !coleccion.trim()}
+            >
               <FM id="cloudq.query" defaultMessage="Consultar" />
             </BUTTON>
             {data.length > 0 && (
               <>
-                <BUTTON className={styles.Consultar} onClick={exportCSV}>CSV</BUTTON>
-                <BUTTON className={styles.Consultar} onClick={exportJSON}>JSON</BUTTON>
+                <BUTTON className={styles.Consultar} onClick={exportCSV}>
+                  CSV
+                </BUTTON>
+                <BUTTON className={styles.Consultar} onClick={exportJSON}>
+                  JSON
+                </BUTTON>
               </>
             )}
           </div>
 
-          {loading && <div className={styles.cqInfo}><FM id="cloudq.loading" defaultMessage="Cargando…" /></div>}
+          {loading && (
+            <div className={styles.cqInfo}>
+              <FM id="cloudq.loading" defaultMessage="Cargando…" />
+            </div>
+          )}
           {err && <div className={styles.cqError}>{err}</div>}
           {meta.field && (
             <div className={styles.cqInfo}>
-              <FM id="cloudq.usingField" defaultMessage="Usando campo de fecha:" /> <B>{meta.field}</B> ({meta.kind})
+              <FM
+                id="cloudq.usingField"
+                defaultMessage="Usando campo de fecha:"
+              />{' '}
+              <B>{meta.field}</B> ({meta.kind})
             </div>
           )}
         </div>

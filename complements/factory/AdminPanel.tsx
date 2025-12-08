@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes } from 'firebase/storage';
 import { FbDB, FbStorage } from '@/app/lib/services/firebase';
@@ -64,6 +65,8 @@ function buildDefaultValue(field: PanelField): any {
     case 'boolean':
       return false;
     case 'date':
+      return '';
+    case 'time':          // ⬅️ NUEVO
       return '';
     case 'select':
       return '';
@@ -211,13 +214,15 @@ function validateFieldValue(
       break;
     }
 
-    case 'date': {
+    case 'date':
+    case 'time': {
       const s =
         typeof value === 'string'
           ? value
           : value == null
           ? ''
           : String(value);
+
       if (required && s.trim() === '') {
         setErr('Campo requerido.');
       }
@@ -371,10 +376,16 @@ function FieldControl({
   const type: PanelFieldType = field.type;
   const isContainer = type === 'object' || type === 'array';
 
+  // Campos ocultos: existen en el schema/FS pero no se editan en UI
+  if (widget === 'hidden') {
+    return null;
+  }
+
   const [open, setOpen] = useState<boolean>(true);
   const [activeLocale, setActiveLocale] = useState<string>(baseLocale);
   const [showJson, setShowJson] = useState<boolean>(false);
   const [itemsOpen, setItemsOpen] = useState<Record<number, boolean>>({});
+  const [tagInput, setTagInput] = useState<string>('');
 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -606,6 +617,31 @@ function FieldControl({
       const max = (field as any).max as number | undefined;
       const step = (field as any).step as number | undefined;
 
+      if (widget === 'slider') {
+        const numeric =
+          typeof value === 'number'
+            ? value
+            : value == null || value === ''
+            ? (min ?? 0)
+            : Number(value);
+
+        return (
+          <DIV className="flex flex-col gap-1">
+            <input
+              type="range"
+              min={min ?? 0}
+              max={max ?? 100}
+              step={step ?? 1}
+              value={Number.isNaN(numeric) ? min ?? 0 : numeric}
+              onChange={(e) => onChange(Number(e.target.value))}
+            />
+            <SPAN className="text-[11px] opacity-70">
+              {Number.isNaN(numeric) ? '' : numeric}
+            </SPAN>
+          </DIV>
+        );
+      }
+
       const placeholder =
         (field as any).placeholder ??
         (min != null && max != null ? `${min} – ${max}` : '');
@@ -675,6 +711,22 @@ function FieldControl({
       );
     }
 
+    if (type === 'time') {
+      const strVal =
+        typeof value === 'string'
+          ? value
+          : value == null
+          ? ''
+          : String(value);
+      return (
+        <INPUT
+          type="time"
+          value={strVal}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    }
+    
     if (type === 'select' || type === 'multiselect') {
       const opts: PanelFieldOption[] =
         isScalarField(field) && Array.isArray(field.options)
@@ -809,14 +861,88 @@ function FieldControl({
       );
     }
 
+    // Caso especial: array de tags (array<string> + widget="tags")
+    const isTagsArray =
+      field.widget === 'tags' &&
+      isScalarField(elementField) &&
+      elementField.type === 'string';
+
     if (!open) return null;
+
+    if (isTagsArray) {
+      const tags: string[] = items
+        .filter((t) => t != null && t !== '')
+        .map((t) => (typeof t === 'string' ? t : String(t)));
+
+      const handleAddTag = (raw: string) => {
+        const trimmed = raw.trim();
+        if (!trimmed) return;
+        const next = Array.from(new Set([...tags, trimmed]));
+        onChange(next);
+      };
+
+      const handleRemoveTag = (tag: string) => {
+        const next = tags.filter((t) => t !== tag);
+        onChange(next);
+      };
+
+      return (
+        <DIV className="mt-1 flex flex-col gap-2">
+          <DIV className="flex gap-2 items-center">
+            <INPUT
+              type="text"
+              value={tagInput}
+              placeholder="Escribe un tag y presiona Enter"
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                  e.preventDefault();
+                  handleAddTag(tagInput);
+                  setTagInput('');
+                }
+              }}
+            />
+            <BUTTON
+              kind="button"
+              type="button"
+              onClick={() => {
+                handleAddTag(tagInput);
+                setTagInput('');
+              }}
+            >
+              Añadir
+            </BUTTON>
+          </DIV>
+
+          <DIV className="flex flex-wrap gap-1">
+            {tags.length === 0 && (
+              <SPAN className="text-[11px] opacity-60">
+                Aún no hay tags. Agrega uno arriba.
+              </SPAN>
+            )}
+            {tags.map((tag) => (
+              <SPAN
+                key={tag}
+                className="px-2 py-0.5 text-[11px] rounded-full bg-white/10 border border-white/25 flex items-center gap-1"
+              >
+                {tag}
+                <button
+                  type="button"
+                  className="text-[10px] opacity-70 hover:opacity-100"
+                  onClick={() => handleRemoveTag(tag)}
+                >
+                  ✕
+                </button>
+              </SPAN>
+            ))}
+          </DIV>
+        </DIV>
+      );
+    }
 
     // ─────────────────────────────
     // Distinción: array raíz vs array anidado
     // ─────────────────────────────
-    // Ej:
-    //  - "notifications"          → raíz  (grilla 3 columnas)
-    //  - "notifications[0].media" → anidado (columna vertical)
     const isRootArray = !path.includes('.') && !path.includes('[');
 
     const handleItemChange = (index: number, newItem: any) => {
@@ -867,55 +993,85 @@ function FieldControl({
                 ? (item as Record<string, any>)
                 : {};
 
+            // Estado local por item (acordeón)
+            const isItemOpen = itemsOpen[idx] ?? true;
+
+            // Etiqueta amigable: si es notifications intenta usar name
+            const itemLabel =
+              field.name === 'notifications'
+                ? (itemObj as any)?.name || `Notificación #${idx + 1}`
+                : `Item #${idx + 1}`;
+
             return (
               <DIV key={itemPath} className={itemCardClass}>
+                {/* HEADER DEL ACORDEÓN */}
                 <DIV className="flex justify-between items-center mb-1">
-                  <SPAN className="text-xs opacity-70">Item #{idx + 1}</SPAN>
-                  <button
-                    type="button"
-                    className="text-[10px] opacity-70 hover:opacity-100"
-                    onClick={() => handleItemRemove(idx)}
-                  >
-                    Eliminar
-                  </button>
+                  <SPAN className="text-xs opacity-70 truncate">{itemLabel}</SPAN>
+
+                  <DIV className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-[10px] opacity-70 hover:opacity-100"
+                      onClick={() =>
+                        setItemsOpen((prev) => ({
+                          ...prev,
+                          [idx]: !isItemOpen,
+                        }))
+                      }
+                    >
+                      {isItemOpen ? 'Collapse ▲' : 'Expand ▼'}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="text-[10px] opacity-70 hover:opacity-100"
+                      onClick={() => handleItemRemove(idx)}
+                    >
+                      Eliminar
+                    </button>
+                  </DIV>
                 </DIV>
 
-                {Array.isArray(subFields) && subFields.length > 0 ? (
-                  <DIV className="flex flex-col gap-2">
-                    {subFields.map((sf) => {
-                      if (!sf.name) return null;
-                      const subPath = `${itemPath}.${sf.name}`;
-                      const subVal = itemObj[sf.name];
-                      return (
-                        <FieldControl
-                          key={subPath}
-                          field={sf}
-                          value={subVal}
-                          onChange={(newSubVal) => {
-                            const nextItem = {
-                              ...itemObj,
-                              [sf.name]: newSubVal,
-                            };
-                            handleItemChange(idx, nextItem);
-                          }}
-                          path={subPath}
-                          baseLocale={baseLocale}
-                          supportedLocales={supportedLocales}
-                          globalSubToggle={globalSubToggle}
-                          fieldErrors={fieldErrors}
-                        />
-                      );
-                    })}
-                  </DIV>
-                ) : (
-                  <P className="text-xs opacity-60">
-                    (El esquema del elemento no define subcampos.)
-                  </P>
+                {/* CUERPO DEL ACORDEÓN */}
+                {isItemOpen && (
+                  <>
+                    {Array.isArray(subFields) && subFields.length > 0 ? (
+                      <DIV className="flex flex-col gap-2">
+                        {subFields.map((sf) => {
+                          if (!sf.name) return null;
+                          const subPath = `${itemPath}.${sf.name}`;
+                          const subVal = itemObj[sf.name];
+                          return (
+                            <FieldControl
+                              key={subPath}
+                              field={sf}
+                              value={subVal}
+                              onChange={(newSubVal) => {
+                                const nextItem = {
+                                  ...itemObj,
+                                  [sf.name]: newSubVal,
+                                };
+                                handleItemChange(idx, nextItem);
+                              }}
+                              path={subPath}
+                              baseLocale={baseLocale}
+                              supportedLocales={supportedLocales}
+                              globalSubToggle={globalSubToggle}
+                              fieldErrors={fieldErrors}
+                            />
+                          );
+                        })}
+                      </DIV>
+                    ) : (
+                      <P className="text-xs opacity-60 mt-1">
+                        (El esquema del elemento no define subcampos.)
+                      </P>
+                    )}
+                  </>
                 )}
               </DIV>
             );
           }
-
           return (
             <DIV key={itemPath} className={itemCardClass}>
               <DIV className="flex justify-between items-center mb-1">
@@ -1003,6 +1159,7 @@ function FieldControl({
 // -------------------- Componente principal --------------------
 
 export function AdminPanel({ locale }: AdminPanelProps) {
+  const router = useRouter();
   const shortLocale = locale.split('-')[0].toLowerCase();
 
   const availableSchemas: PanelSchema[] = useMemo(
@@ -1592,6 +1749,23 @@ export function AdminPanel({ locale }: AdminPanelProps) {
 
   return (
     <DIV className="p-4 flex flex-col gap-6">
+      {/* Botones de navegación superior */}
+      <DIV className="flex justify-between items-center mb-2">
+        <DIV className="flex gap-2">
+          <BUTTON
+            type="button"
+            onClick={() => router.push("../admin")}
+          >
+            Admin Panel
+          </BUTTON>
+          <BUTTON
+            type="button"
+            onClick={() => router.push("../../")}
+          >
+            Home
+          </BUTTON>
+        </DIV>
+      </DIV>
       {/* Header */}
       <DIV className="mb-2">
         <SPAN className="text-xl font-bold flex items-center gap-2">

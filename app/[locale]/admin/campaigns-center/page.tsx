@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import {
   collection,
@@ -381,9 +382,61 @@ const SPECIAL_AUDIENCE_OPTIONS = [
   { id: SPECIAL_AUDIENCE_NONE, label: "Ninguna audiencia (solo guardar)" },
 ];
 
+// Helpers de fecha/hora para saber si una campaña está "pendiente" por horario
+function parseCampaignDateTime(
+  dateStr?: string | null,
+  timeStr?: string | null,
+): Date | null {
+  if (!dateStr || typeof dateStr !== "string") return null;
+
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return null;
+
+  const [y, m, d] = parts.map((v) => parseInt(v, 10));
+  if (!y || !m || !d) return null;
+
+  let hour = 0;
+  let minute = 0;
+
+  if (typeof timeStr === "string" && timeStr.length > 0) {
+    const tParts = timeStr.split(":");
+    hour = parseInt(tParts[0] ?? "0", 10) || 0;
+    minute = parseInt(tParts[1] ?? "0", 10) || 0;
+  }
+
+  // Interpretamos horario local del admin
+  return new Date(y, m - 1, d, hour, minute);
+}
+
+// Regla para considerar una campaña "pendiente por horario"
+function isCampaignPending(
+  camp: NotificationCampaign,
+  now: Date,
+): boolean {
+  if (camp.status !== "active") return false;
+
+  const startAt = parseCampaignDateTime(camp.startDate, camp.startTime);
+  const endAt = parseCampaignDateTime(camp.endDate, camp.endTime);
+
+  // Solo consideramos "pendientes" las que tienen horario de inicio
+  if (!startAt) return false;
+
+  // Aún no llega la fecha/hora de inicio
+  if (startAt > now) return false;
+
+  // Expirada por fin (si se definió)
+  if (endAt && now > endAt) return false;
+
+  // No evaluamos lastExecutedAt aquí a propósito:
+  // puedes ejecutarla varias veces de forma discrecional.
+  return true;
+}
+
 /* ───────────────────────────────────────────────────────── */
 
 export default function CampaignsCenterPage() {
+  const router = useRouter();
+
   const { value: notificationsDoc } =
     useProvider<NotificationsProviderDoc>("notifications");
 
@@ -442,6 +495,22 @@ export default function CampaignsCenterPage() {
     const slug = buildUtmSlug(utmSource, utmMedium, utmCampaign);
     setUtmSlug(slug);
   }, [utmSource, utmMedium, utmCampaign]);
+
+  // Mantener sincronizadas las audiencias UTM (kind="utm") en Providers/Audiences
+  // a partir del doc canonical providers/utms (lo edites desde aquí o desde el Panel).
+  useEffect(() => {
+    if (!FbDB) return;
+    (async () => {
+      try {
+        await syncUtmAudiences(utmList);
+      } catch (e) {
+        console.error(
+          "[CampaignsCenter] Error syncUtmAudiences desde providers/utms",
+          e,
+        );
+      }
+    })();
+  }, [utmList]);
 
   const utmQueryString = useMemo(
     () =>
@@ -765,7 +834,19 @@ export default function CampaignsCenterPage() {
   const [campaigns, setCampaigns] = useState<NotificationCampaign[]>([]);
   const [campaignsError, setCampaignsError] = useState<string | null>(null);
 
-  // Draft para crear / editar campañas rápidas
+  // Campañas pendientes por horario (derivado de campaigns)
+  const [runningCampaignId, setRunningCampaignId] = useState<string | null>(
+    null,
+  );
+
+  const pendingCampaigns = useMemo(
+    () => {
+      const now = new Date();
+      return campaigns.filter((camp) => isCampaignPending(camp, now));
+    },
+    [campaigns],
+  );
+
   // Draft para crear / editar campañas rápidas
   const [draftName, setDraftName] = useState("");
   const [draftStrategyId, setDraftStrategyId] = useState("");
@@ -1560,6 +1641,122 @@ export default function CampaignsCenterPage() {
      Acciones campañas
      ───────────────────────────────────────────────────────── */
 
+  
+     const handleRunCampaignNow = async (campaignId: string) => {
+    setError(null);
+    setAgentContextMessage(null);
+    setRunningCampaignId(campaignId);
+
+    try {
+      if (!FbFunctions) {
+        throw new Error("functions-not-configured");
+      }
+
+      const fn = httpsCallable(FbFunctions, "runCampaignNow");
+      const res = await fn({ campaignId });
+
+      const data = (res.data || {}) as {
+        executionId?: string;
+        targetedIdsCount?: number;
+        targetedRunsCount?: number;
+        sent?: number;
+        failed?: number;
+      };
+
+      setAgentContextMessage(
+        `Campaña ejecutada ahora. executionId=${data.executionId ?? "?"}, destinatarios=${data.targetedIdsCount ?? 0}, entregados=${data.sent ?? 0}, fallidos=${data.failed ?? 0}.`,
+      );
+    } catch (e: any) {
+      console.error("[CampaignsCenter] Error runCampaignNow", e);
+      setError(String(e?.message ?? e));
+    } finally {
+      setRunningCampaignId(null);
+    }
+  };
+
+  const handleRunAllPending = async () => {
+    if (!pendingCampaigns.length) return;
+
+    setError(null);
+    setAgentContextMessage(null);
+    setRunningCampaignId("__all__");
+
+    try {
+      if (!FbFunctions) {
+        throw new Error("functions-not-configured");
+      }
+
+      const fn = httpsCallable(FbFunctions, "runCampaignNow");
+
+      for (const camp of pendingCampaigns) {
+        try {
+          const res = await fn({ campaignId: camp.id });
+          const data = (res.data || {}) as {
+            executionId?: string;
+            targetedIdsCount?: number;
+            targetedRunsCount?: number;
+            sent?: number;
+            failed?: number;
+          };
+          console.log(
+            "[CampaignsCenter] runCampaignNow OK",
+            camp.id,
+            data.executionId,
+          );
+        } catch (inner) {
+          console.error(
+            "[CampaignsCenter] Error runCampaignNow en execute-all",
+            camp.id,
+            inner,
+          );
+        }
+      }
+
+      setAgentContextMessage(
+        `Se ejecutaron ${pendingCampaigns.length} campañas pendientes.`,
+      );
+    } catch (e: any) {
+      console.error("[CampaignsCenter] Error handleRunAllPending", e);
+      setError(String(e?.message ?? e));
+    } finally {
+      setRunningCampaignId(null);
+    }
+  };
+
+  const handleUpdateCampaignStatus = async (
+    campaignId: string,
+    status: CampaignStatus,
+  ) => {
+    setError(null);
+    setAgentContextMessage(null);
+
+    try {
+      if (!FbDB) {
+        throw new Error("firestore-not-configured");
+      }
+
+      const ref = doc(FbDB, "notificationCampaigns", campaignId);
+      await setDoc(
+        ref,
+        {
+          status,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      setAgentContextMessage(
+        `Campaña ${campaignId} actualizada a estado "${status}".`,
+      );
+    } catch (e: any) {
+      console.error(
+        "[CampaignsCenter] Error handleUpdateCampaignStatus",
+        e,
+      );
+      setError(String(e?.message ?? e));
+    }
+  };
+
    const handleCreateQuickCampaign = async () => {
     setError(null);
     setLastApplied(null);
@@ -1788,8 +1985,26 @@ export default function CampaignsCenterPage() {
 
   return (
     <DIV className="p-4 md:p-6 lg:p-8 space-y-4">
-      <DIV className="flex flex-col gap-1">
-        <H1 className="text-2xl font-semibold">Centro de Campañas</H1>
+        {/* Botones de navegación superior */}
+        <DIV className="flex justify-between items-center mb-2">
+          <DIV className="flex gap-2">
+            <BUTTON
+              type="button"
+              onClick={() => router.push("../admin")}
+            >
+              Admin Panel
+            </BUTTON>
+            <BUTTON
+              type="button"
+              onClick={() => router.push("../../")}
+            >
+              Home
+            </BUTTON>
+          </DIV>
+        </DIV>
+
+        <DIV className="flex flex-col gap-1">
+          <H1 className="text-2xl font-semibold">Centro de Campañas</H1>
         <P className="text-sm opacity-75">
           Aquí se combinan plantillas de{" "}
           <code>Providers/Notifications</code> con estrategias de{" "}
@@ -2104,6 +2319,91 @@ export default function CampaignsCenterPage() {
                 </P>
               )}
             </DIV>
+            {/* Panel de campañas pendientes por horario */}
+            {pendingCampaigns.length > 0 && (
+              <DIV className="mt-4 border border-yellow-500/40 rounded-lg bg-yellow-500/5 p-3">
+                <DIV className="flex items-center justify-between mb-2 gap-2">
+                  <P className="text-sm font-semibold">
+                    Campañas pendientes por horario ({pendingCampaigns.length})
+                  </P>
+                  <BUTTON
+                    type="button"
+                    disabled={runningCampaignId === "__all__"}
+                    onClick={handleRunAllPending}
+                  >
+                    {runningCampaignId === "__all__"
+                      ? "Ejecutando todas…"
+                      : "Ejecutar todas"}
+                  </BUTTON>
+                </DIV>
+
+                <DIV className="flex flex-col gap-2 text-xs">
+                  {pendingCampaigns.map((camp) => (
+                    <DIV
+                      key={camp.id}
+                      className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 border border-white/10 rounded-md px-2 py-1"
+                    >
+                      <DIV>
+                        <P className="font-medium">
+                          {camp.name || camp.campaignId || camp.id}
+                        </P>
+                        <P className="opacity-70">
+                          Inicio: {camp.startDate ?? "—"}{" "}
+                          {camp.startTime ?? ""}
+                          {camp.endDate && (
+                            <>
+                              {" · Fin: "}
+                              {camp.endDate} {camp.endTime ?? ""}
+                            </>
+                          )}
+                        </P>
+                        {Array.isArray((camp as any).deliveryChannels) &&
+                          (camp as any).deliveryChannels.length > 0 && (
+                            <P className="opacity-70">
+                              Canales:{" "}
+                              {(camp as any).deliveryChannels.join(", ")}
+                            </P>
+                          )}
+                      </DIV>
+
+                      <DIV className="flex flex-wrap gap-1">
+                        <BUTTON
+                          type="button"
+                          disabled={runningCampaignId === camp.id}
+                          onClick={() => handleRunCampaignNow(camp.id)}
+                        >
+                          {runningCampaignId === camp.id
+                            ? "Ejecutando…"
+                            : "Ejecutar ahora"}
+                        </BUTTON>
+                        <BUTTON
+                          type="button"
+                          onClick={() =>
+                            handleUpdateCampaignStatus(
+                              camp.id,
+                              "paused",
+                            )
+                          }
+                        >
+                          Pausar
+                        </BUTTON>
+                        <BUTTON
+                          type="button"
+                          onClick={() =>
+                            handleUpdateCampaignStatus(
+                              camp.id,
+                              "finished",
+                            )
+                          }
+                        >
+                          Marcar como finalizada
+                        </BUTTON>
+                      </DIV>
+                    </DIV>
+                  ))}
+                </DIV>
+              </DIV>
+            )}
 
             {/* Tabla de campañas normalizadas (campaña + notificación) */}
             <DIV className="border border-white/10 rounded-lg bg-black/40 overflow-x-auto mt-3">
