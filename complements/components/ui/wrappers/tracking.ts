@@ -6,47 +6,89 @@ import type {
   SessionEventType,
 } from '@/app/lib/audiences/sessionTypes';
 
+// Catálogo de tracking compartido con el Campaign Center
+import type {
+  BehaviorCategory,
+  BehaviorDomain,
+  BehaviorEventType,
+} from '@/app/lib/audiences/behavior.catalog';
+
 /**
  * Props comunes de tracking que pueden usar TODOS los wrappers.
  *
- * - track:        ID del evento (ej: "sales.cta.headphones")
- * - trackCategory:grupo lógico (ej: "sales", "support", "nav")
- * - trigger:      texto/pieza concreta que detonó el click (ej: "Promoción de audífonos")
- * - target:       foco de marca/objetivo (ej: "headphones", "giftcards", "brandAwareness")
- * - trackMeta:    metadatos adicionales (se mezcla con trigger/target)
+ * Las cuatro etiquetas de SessionBehavior quedan así:
+ *
+ * - track:         ID lógico libre del evento (ej: "home.hero.cta", "menu.contact")
+ * - trackCategory: categoría de negocio (ej: "revenue", "training", "agentAI")
+ * - trigger:       tipo de acción (view, click, submit, play, etc.)
+ * - target:        dominio / área (navigation, content, commerce, booking, etc.)
+ *
+ * UTM se adjunta a nivel de sesión en el Provider y NO se configura aquí.
  */
 export type TrackingProps = {
+  /**
+   * Track = bandera / ID lógico del evento.
+   * No tiene catálogo fijo: puedes usar el naming que quieras.
+   * Si no lo defines, se intentará construir un tag a partir de target+category+trigger.
+   */
   track?: string;
-  trackCategory?: string;
+
+  /** Category: categoría de negocio / impacto (revenue, survey, marketing, agentAI, etc.) */
+  trackCategory?: BehaviorCategory;
+
+  /**
+   * Tag específico opcional para eventos de tipo "view" (impresiones).
+   * Si no se usa, las vistas también se registran con `track` o con el tag generado.
+   */
   trackView?: string;
+
+  /**
+   * Trigger = tipo de acción que detonó el evento.
+   * (mismo set que SessionEventType: "view", "click", "submit", "play", etc.)
+   */
+  trigger?: BehaviorEventType;
+
+  /**
+   * Target = dominio / área donde ocurre el evento:
+   * navigation, content, commerce, booking, engagement, account, support, system, custom.
+   */
+  target?: BehaviorDomain;
+
+  /** Metadatos adicionales, se mezclan con trigger/target. */
   trackMeta?: Record<string, unknown>;
-
-  /** Texto de la pieza o mensaje que disparó la acción */
-  trigger?: string;
-
-  /** Aspecto de marca / objetivo al que apunta esta acción */
-  target?: string;
 };
 
 export function useTracking(props: TrackingProps) {
   const { track: trackEvent } = useSessionBehavior();
 
-  function emit(type: SessionEventType = 'click') {
-    // 1) Tag del evento
-    //    - si hay track => tag = track
-    //    - si no, pero hay trackCategory => tag = trackCategory
-    const tag = props.track ?? props.trackCategory;
-    if (!tag) return;
+  function emit(explicitType?: SessionEventType) {
+    // Tipo final del evento:
+    // 1) si se pasa explícito al llamar emit(...) => manda
+    // 2) si no, usamos props.trigger si viene
+    // 3) si tampoco, default "click"
+    const type: SessionEventType =
+      explicitType || props.trigger || "click";
 
-    // 2) Categoría:
-    //    - si hay trackCategory => se usa
-    //    - si no, pero hay track => se toma el prefijo antes del primer punto
-    let category: string | undefined = props.trackCategory;
-    if (!category && props.track) {
-      category = props.track.split('.')[0] || props.track;
-    }
+    // Si no hay ninguna señal de tracking, no hacemos nada
+    const hasAnyTag =
+      props.track ||
+      props.trackView ||
+      props.trackCategory ||
+      props.target ||
+      props.trackMeta;
 
-    // 3) Meta: mezclamos trackMeta + trigger + target
+    if (!hasAnyTag) return;
+
+    // Tag lógico del evento:
+    // - si type === "view" y hay trackView => usamos trackView
+    // - en otro caso, si viene track => respetamos
+    // - si no, armamos algo consistente con target/category/type
+    const tag =
+      (type === "view" && props.trackView) ||
+      props.track ||
+      [props.target, props.trackCategory, type].filter(Boolean).join("::");
+
+    // Meta: mezclamos trackMeta + info redundante útil para analytics
     const meta: Record<string, unknown> | undefined = (() => {
       const base = props.trackMeta ? { ...props.trackMeta } : {};
 
@@ -64,7 +106,9 @@ export function useTracking(props: TrackingProps) {
       t: Date.now(),
       type,
       tag,
-      category,
+      category: props.trackCategory,
+      trigger: props.trigger,
+      target: props.target,
       meta,
     };
 
@@ -75,31 +119,39 @@ export function useTracking(props: TrackingProps) {
 }
 
 /*
-Ejemplo de uso típico en un wrapper (BUTTON, LINK, etc.):
+Ejemplos de uso TÍPICOS en wrappers (BUTTON, LINK, etc.)
+recuerda: `track` SIEMPRE debe existir en el catálogo TS
+(app/lib/audiences/behavior.catalog.ts).
 
+// CTA de hero (ventas)
 <BUTTON
-  // Evento lógico
-  track="sales.cta.headphones"
+  track="cta.hero.primaryClick"
   trackCategory="sales"
-
-  // Texto / pieza específica que detonó la acción
-  trigger="Promoción de audífonos 2x1"
-
-  // Foco de marca u objetivo
-  target="headphones"
-
-  // Meta extra opcional
-  trackMeta={{ campaignId: "spring-2025", variant: "A" }}
+  trigger="Hero principal - CTA 'Reservar ahora'"
+  target="service:reservation"
+  trackMeta={{ campaignId: "spring-2026", variant: "A" }}
 >
-  Ver audífonos
+  Reservar ahora
 </BUTTON>
 
-En Firestore (SessionBehavior.events[].meta) verás algo como:
+// Link de navegación
+<A
+  href="/contact"
+  track="nav.menu.contactClick"
+  trackCategory="nav"
+  trigger="Menú principal"
+  target="section:contact"
+>
+  Contacto
+</A>
 
-meta: {
-  trigger: "Promoción de audífonos 2x1",
-  target: "headphones",
-  campaignId: "spring-2025",
-  variant: "A"
-}
+// Juego / engagement
+<BUTTON
+  track="engagement.game.play"
+  trackCategory="engagement"
+  trigger="Trivia inicial"
+  target="widget:trivia"
+>
+  Jugar trivia
+</BUTTON>
 */

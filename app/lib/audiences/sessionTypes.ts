@@ -1,17 +1,27 @@
 // app/lib/audiences/sessionTypes.ts
 
-export type SessionEventType = "click" | "view" | "submit";
+import type {
+  BehaviorCategory,
+  BehaviorDomain,
+  BehaviorEventType,
+} from "./behavior.catalog";
+
+export type SessionEventType = BehaviorEventType;
 
 export interface SessionEvent {
   /** timestamp en ms (Date.now()) */
   t: number;
-  /** tipo de evento */
+  /** tipo de evento (view, click, submit, play, etc.) */
   type: SessionEventType;
-  /** etiqueta única del evento, ej: "cta.buy", "menu.contact" */
+  /** etiqueta lógica del evento, ej: "home.hero.cta", "menu.contact" */
   tag: string;
-  /** categoría lógica, ej: "sales", "support", "nav" */
-  category?: string;
-  /** metadatos opcionales (productId, campaignId, etc.) */
+  /** Category: impacto / intención (revenue, customer_acquisition, etc.) */
+  category?: BehaviorCategory;
+  /** Trigger: tipo de acción que detonó el evento */
+  trigger?: BehaviorEventType;
+  /** Target: dominio / área (navigation, content, commerce, etc.) */
+  target?: BehaviorDomain;
+  /** Metadatos opcionales (productId, campaignId, etc.) */
   meta?: Record<string, unknown>;
 }
 

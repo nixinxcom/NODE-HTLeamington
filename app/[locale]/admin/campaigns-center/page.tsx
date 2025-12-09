@@ -52,6 +52,12 @@ import {
   rebuildOtherCampaignsContext,
 } from "@/app/lib/notifications/agentCampaignsContext";
 import type { AudienceDoc } from "@/app/lib/audiences/types";
+import {
+  BEHAVIOR_CATEGORIES,
+  BEHAVIOR_EVENT_TYPES,
+  BEHAVIOR_DOMAINS,
+} from "@/app/lib/audiences/behavior.catalog";
+
 
 /* ─────────────────────────────────────────────────────────
    Tipos normalizados que usa el Campaigns Center
@@ -983,11 +989,14 @@ export default function CampaignsCenterPage() {
   const triggerOptions = useMemo(
     () =>
       Array.from(
-        new Set(
-          behaviorAudiences
+        new Set([
+          // catálogo oficial de tipos de evento
+          ...BEHAVIOR_EVENT_TYPES,
+          // más cualquier valor legacy que ya exista en FS
+          ...behaviorAudiences
             .map((a) => (a.trigger as string | undefined)?.trim())
             .filter((v) => v && v.length > 0),
-        ),
+        ]),
       ),
     [behaviorAudiences],
   );
@@ -995,11 +1004,14 @@ export default function CampaignsCenterPage() {
   const targetOptions = useMemo(
     () =>
       Array.from(
-        new Set(
-          behaviorAudiences
+        new Set([
+          // dominios oficiales
+          ...BEHAVIOR_DOMAINS,
+          // más cualquier valor legacy guardado en FS
+          ...behaviorAudiences
             .map((a) => (a.target as string | undefined)?.trim())
             .filter((v) => v && v.length > 0),
-        ),
+        ]),
       ),
     [behaviorAudiences],
   );
@@ -1007,11 +1019,14 @@ export default function CampaignsCenterPage() {
   const categoryOptions = useMemo(
     () =>
       Array.from(
-        new Set(
-          behaviorAudiences
+        new Set([
+          // catálogo oficial de categorías de negocio
+          ...BEHAVIOR_CATEGORIES,
+          // más cualquier valor legacy
+          ...behaviorAudiences
             .map((a) => (a.trackCategory as string | undefined)?.trim())
             .filter((v) => v && v.length > 0),
-        ),
+        ]),
       ),
     [behaviorAudiences],
   );
