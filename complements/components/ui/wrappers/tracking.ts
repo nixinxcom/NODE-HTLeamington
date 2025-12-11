@@ -51,8 +51,11 @@ export type TrackingProps = {
   /**
    * Target = dominio / área donde ocurre el evento:
    * navigation, content, commerce, booking, engagement, account, support, system, custom.
+   *
+   * PERO: en los wrappers podemos pasar también strings arbitrarios ("_blank", "widget:trivia", etc.)
+   * Para SessionBehavior solo se guardarán los valores que coincidan con BehaviorDomain.
    */
-  target?: BehaviorDomain;
+  target?: BehaviorDomain | string;
 
   /** Metadatos adicionales, se mezclan con trigger/target. */
   trackMeta?: Record<string, unknown>;
@@ -67,7 +70,7 @@ export function useTracking(props: TrackingProps) {
     // 2) si no, usamos props.trigger si viene
     // 3) si tampoco, default "click"
     const type: SessionEventType =
-      explicitType || props.trigger || "click";
+      explicitType || props.trigger || 'click';
 
     // Si no hay ninguna señal de tracking, no hacemos nada
     const hasAnyTag =
@@ -84,23 +87,55 @@ export function useTracking(props: TrackingProps) {
     // - en otro caso, si viene track => respetamos
     // - si no, armamos algo consistente con target/category/type
     const tag =
-      (type === "view" && props.trackView) ||
+      (type === 'view' && props.trackView) ||
       props.track ||
-      [props.target, props.trackCategory, type].filter(Boolean).join("::");
+      [props.target, props.trackCategory, type].filter(Boolean).join('::');
 
     // Meta: mezclamos trackMeta + info redundante útil para analytics
     const meta: Record<string, unknown> | undefined = (() => {
-      const base = props.trackMeta ? { ...props.trackMeta } : {};
+      const base: Record<string, unknown> = props.trackMeta
+        ? { ...props.trackMeta }
+        : {};
 
       if (props.trigger) {
         base.trigger = props.trigger;
       }
       if (props.target) {
+        // Aquí guardamos el target "crudo", aunque sea "_blank" o similar
         base.target = props.target;
       }
 
       return Object.keys(base).length > 0 ? base : undefined;
     })();
+
+    // Normalizamos el target para el SessionEvent:
+    //   - si coincide con BehaviorDomain => lo usamos
+    //   - si no, NO lo ponemos (evita el error de tipos)
+    let eventTarget: BehaviorDomain | undefined = undefined;
+
+    if (props.target) {
+      const raw = String(props.target) as string;
+
+      const KNOWN_TARGETS: BehaviorDomain[] = [
+        'navigation',
+        'content',
+        'commerce',
+        'booking',
+        'engagement',
+        'account',
+        'support',
+        'system',
+        'custom',
+      ];
+
+      if (KNOWN_TARGETS.includes(raw as BehaviorDomain)) {
+        eventTarget = raw as BehaviorDomain;
+      } else {
+        // Si quisieras forzar todo lo raro a "custom", cambia aquí:
+        // eventTarget = 'custom';
+        eventTarget = undefined;
+      }
+    }
 
     const evt: SessionEvent = {
       t: Date.now(),
@@ -108,7 +143,7 @@ export function useTracking(props: TrackingProps) {
       tag,
       category: props.trackCategory,
       trigger: props.trigger,
-      target: props.target,
+      target: eventTarget, // ⟵ SOLO BehaviorDomain o undefined
       meta,
     };
 
@@ -126,9 +161,9 @@ recuerda: `track` SIEMPRE debe existir en el catálogo TS
 // CTA de hero (ventas)
 <BUTTON
   track="cta.hero.primaryClick"
-  trackCategory="sales"
-  trigger="Hero principal - CTA 'Reservar ahora'"
-  target="service:reservation"
+  trackCategory="revenue"
+  trigger="click"
+  target="commerce"
   trackMeta={{ campaignId: "spring-2026", variant: "A" }}
 >
   Reservar ahora
@@ -138,9 +173,9 @@ recuerda: `track` SIEMPRE debe existir en el catálogo TS
 <A
   href="/contact"
   track="nav.menu.contactClick"
-  trackCategory="nav"
-  trigger="Menú principal"
-  target="section:contact"
+  trackCategory="navigation"
+  trigger="click"
+  target="navigation"
 >
   Contacto
 </A>
@@ -149,8 +184,8 @@ recuerda: `track` SIEMPRE debe existir en el catálogo TS
 <BUTTON
   track="engagement.game.play"
   trackCategory="engagement"
-  trigger="Trivia inicial"
-  target="widget:trivia"
+  trigger="click"
+  target="engagement"
 >
   Jugar trivia
 </BUTTON>
