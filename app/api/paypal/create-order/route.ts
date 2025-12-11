@@ -1,77 +1,151 @@
 // app/api/paypal/create-order/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { paypalCreateOrder } from "@/app/lib/paypal";
+import { NextRequest, NextResponse } from 'next/server';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { FbDB } from '@/app/lib/services/firebase'; // ajusta ruta si la tuya es distinta
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
 
-function toOrdersLocale(input?: string) {
-  if (!input) return undefined;
-  const cleaned = input.replace("_", "-");
-  const [langRaw, regionRaw] = cleaned.split("-");
-  const lang = (langRaw || "").toLowerCase();
-  const region = regionRaw ? regionRaw.toUpperCase() : "";
-  const cand = region ? `${lang}-${region}` : "";
+// Entorno PayPal
+const PAYPAL_ENV = process.env.PAYPAL_ENV ?? 'sandbox';
 
-  const supported = new Set([
-    "en-US","en-GB","fr-FR","fr-CA","es-ES","it-IT","de-DE","pt-BR",
-    "zh-CN","zh-HK","zh-TW","ja-JP","nl-NL","pl-PL","ru-RU",
-  ]);
-  if (cand && supported.has(cand)) return cand;
+const PAYPAL_CLIENT_ID =
+  PAYPAL_ENV === 'live'
+    ? process.env.PAYPAL_LIVE_APIKEY
+    : process.env.PAYPAL_SANDBOX_APIKEY;
 
-  const fb: Record<string, string> = {
-    es: "es-ES", en: "en-US", fr: "fr-FR", pt: "pt-BR", zh: "zh-CN",
-    de: "de-DE", it: "it-IT", nl: "nl-NL", pl: "pl-PL", ru: "ru-RU", ja: "ja-JP",
-  };
-  return fb[lang] || "en-US";
+const PAYPAL_SECRET =
+  PAYPAL_ENV === 'live'
+    ? process.env.PAYPAL_LIVE_SECRET
+    : process.env.PAYPAL_SANDBOX_SECRET;
+
+const PAYPAL_API_BASE =
+  PAYPAL_ENV === 'live'
+    ? 'https://api-m.paypal.com'
+    : 'https://api-m.sandbox.paypal.com';
+
+// ---------------------------------------------------------------------------
+// Helper: obtener access_token de PayPal
+// ---------------------------------------------------------------------------
+async function getAccessToken(): Promise<string> {
+  if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET) {
+    throw new Error('Missing PayPal credentials');
+  }
+
+  const auth = Buffer.from(
+    `${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`
+  ).toString('base64');
+
+  const res = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials',
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data.access_token) {
+    console.error('PayPal auth error', data);
+    throw new Error('PayPal auth failed');
+  }
+
+  return data.access_token as string;
 }
 
-function toAbsolute(req: NextRequest, url?: string) {
-  if (!url) return undefined;
-  if (/^https?:\/\//i.test(url)) return url;
-  const proto =
-    req.headers.get("x-forwarded-proto") ??
-    (process.env.NODE_ENV === "production" ? "https" : "http");
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
-  const path = url.startsWith("/") ? url : `/${url}`;
-  return `${proto}://${host}${path}`;
-}
-
+// ---------------------------------------------------------------------------
+// POST /api/paypal/create-order
+// ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json();
+
     const {
       amount,
-      currency,
-      intent,
+      currency = 'CAD',
+      intent = 'CAPTURE',
+      metadata = {},
+      locale,
       return_url,
       cancel_url,
-      locale,
-      metadata,
-    } = await req.json();
+    } = body;
 
-    // amount "2800.00"
-    const amountStr = String(amount ?? "").replace(/,/g, "").trim();
-    if (!/^\d+(\.\d{1,2})?$/.test(amountStr)) {
-      return NextResponse.json({ error: "invalid amount format" }, { status: 400 });
+    if (!amount) {
+      return NextResponse.json(
+        { error: 'Missing amount' },
+        { status: 400 }
+      );
     }
 
-    const currencyCode = String(currency || "CAD").toUpperCase();
-    const intentUp = intent === "AUTHORIZE" ? "AUTHORIZE" : "CAPTURE";
+    const accessToken = await getAccessToken();
 
-    const order = await paypalCreateOrder({
-      amount: amountStr,
-      currency: currencyCode as "CAD" | "USD",
-      intent: intentUp,
-      // IMPORTANTES: absolutas y locale con guion
-      return_url: toAbsolute(req, return_url),
-      cancel_url: toAbsolute(req, cancel_url),
-      locale: toOrdersLocale(locale),
-      metadata,
+    // Crear orden en PayPal
+    const orderRes = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        intent,
+        purchase_units: [
+          {
+            amount: {
+              currency_code: currency,
+              value: amount,
+            },
+            custom_id: metadata?.orderRef ?? undefined,
+          },
+        ],
+        application_context: {
+          return_url,
+          cancel_url,
+          locale,
+          brand_name: metadata?.tenantId ?? 'NIXINX',
+        },
+      }),
     });
 
-    return NextResponse.json({ id: order.id }, { status: 200 });
-  } catch (e: any) {
-    console.error("[paypal][create-order]", e?.message || e);
-    return NextResponse.json({ error: e?.message || "paypal error" }, { status: 400 });
+    const order = await orderRes.json();
+
+    if (!orderRes.ok || !order?.id) {
+      console.error('PayPal create order error', order);
+      return NextResponse.json(
+        { error: order?.message || 'PayPal create order failed' },
+        { status: 500 }
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Registrar en Firestore (status: created)
+    // ---------------------------------------------------------------------
+    try {
+      const paymentRef = doc(FbDB, 'Payments', order.id);
+
+      await setDoc(paymentRef, {
+        orderId: order.id,
+        source: 'paypal',
+        tenantId: metadata?.tenantId ?? 'ElPatron',
+        amount: String(amount),
+        currency,
+        intent,
+        status: 'created',
+        metadata,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error('Error writing PayPal payment to Firestore', err);
+      // no rompemos el flujo de pago si falla el log
+    }
+
+    return NextResponse.json({ id: order.id });
+  } catch (err: any) {
+    console.error('create-order error', err);
+    return NextResponse.json(
+      { error: err?.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

@@ -2,12 +2,43 @@
 
 import React, { useRef, useState } from "react";
 import styles from './reservations.module.css';
-import emailjs from '@emailjs/browser';
 import { FormattedMessage, useIntl } from 'react-intl';
 import FM from "@/complements/i18n/FM";
 import { JsonLd } from "@/complements/components/Seo/JsonLd";
 import { buildVenueSchema, buildWebSiteSchema } from "@/app/lib/seo/schema";
-import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import PayPalButtonsComp from "@/complements/components/PayPal/PayPalButtonsComp";
+import {
+  BUTTON,
+  LINK,
+  BUTTON2,
+  LINK2,
+  NEXTIMAGE,
+  IMAGE,
+  DIV,
+  DIV2,
+  DIV3,
+  INPUT,
+  SELECT,
+  LABEL,
+  INPUT2,
+  SPAN,
+  SPAN1,
+  SPAN2,
+  A,
+  B,
+  P,
+  H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+} from "@/complements/components/ui/wrappers";
+
+import {
+  sendEmailJsForm,
+  type EmailJsConfig,
+} from "@/complements/components/Email/EmailJsFormSender";
 
 type Props = { locale: string };
 
@@ -18,7 +49,7 @@ interface IContactForm {
   message: string;
   date: Date;
   phone: string;
-  asistentes: string; // mantenemos string para patrón/longitud como en tu versión
+  asistentes: string;
 }
 
 // "mañana" 00:00
@@ -29,7 +60,15 @@ const tomorrowAtMidnight = () => {
   return d;
 };
 
-const formatDateTimeLocal = (date: Date) => date.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+const formatDateTimeLocal = (date: Date) =>
+  date.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+
+// Config EmailJS (puedes cambiarla por cliente / env.vars del módulo)
+const EMAILJS_CONFIG: EmailJsConfig = {
+  serviceId: process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID ?? '',
+  templateId: process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE ?? '',
+  publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY ?? '',
+};
 
 export default function ReservationsPage({ locale }: Props) {
   const intl = useIntl();
@@ -47,35 +86,56 @@ export default function ReservationsPage({ locale }: Props) {
     asistentes: '',
   });
 
-  const sendEmail = (e: React.FormEvent) => {
+  // Se activa cuando la reserva se envía correctamente
+  const [reservationSent, setReservationSent] = useState(false);
+
+  const sendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    emailjs.sendForm(
-      'service_0ectyef',
-      'reservations_El_Patron',
-      form.current!,
-      'o7g5WOnlU57u5KjeT'
-    ).then(
-      (result) => {
-        alert(
-          intl.formatMessage({ id: 'reservation.sent', defaultMessage: 'Reserva enviada' }) +
-          (result?.text ? `: ${result.text}` : '')
-        );
-        setContactForm({
-          name: '',
-          email: '',
-          reason: '',
-          message: '',
-          date: tomorrowAtMidnight(),
-          phone: '',
-          asistentes: '',
-        });
-      },
-      (error) => {
-        console.error('Reservation error: ', error?.text || error);
-        alert(intl.formatMessage({ id: 'reservation.error', defaultMessage: 'Error al enviar la reserva.' }));
-      }
-    );
+    if (!form.current) {
+      console.error('Reservation form ref is null');
+      alert(
+        intl.formatMessage({
+          id: 'reservation.error',
+          defaultMessage: 'Error al enviar la reserva.',
+        })
+      );
+      return;
+    }
+
+    try {
+      const result = await sendEmailJsForm(form.current, EMAILJS_CONFIG);
+
+      alert(
+        intl.formatMessage({
+          id: 'reservation.sent',
+          defaultMessage: 'Reserva enviada',
+        }) + (result?.text ? `: ${result.text}` : '')
+      );
+
+      setContactForm({
+        name: '',
+        email: '',
+        reason: '',
+        message: '',
+        date: tomorrowAtMidnight(),
+        phone: '',
+        asistentes: '',
+      });
+
+      // Habilita la sección de anticipo
+      setReservationSent(true);
+    } catch (error: any) {
+      console.error('Reservation error: ', error?.text || error);
+      alert(
+        intl.formatMessage({
+          id: 'reservation.error',
+          defaultMessage: 'Error al enviar la reserva.',
+        })
+      );
+      // Por seguridad, no mostramos el pago si falló el envío
+      setReservationSent(false);
+    }
   };
 
   const phoneInvalid =
@@ -85,8 +145,8 @@ export default function ReservationsPage({ locale }: Props) {
   const asistentesInvalid =
     contactForm.asistentes.length >= 1 &&
     (contactForm.asistentes.startsWith('0') ||
-     Number(contactForm.asistentes) < 1 ||
-     Number(contactForm.asistentes) > 199);
+      Number(contactForm.asistentes) < 1 ||
+      Number(contactForm.asistentes) > 199);
 
   return (
     <>
@@ -95,7 +155,12 @@ export default function ReservationsPage({ locale }: Props) {
 
       <main className={styles.main}>
         <div className={styles.container}>
-          <form method="post" ref={form} onSubmit={sendEmail} className={styles.form}>
+          <form
+            method="post"
+            ref={form}
+            onSubmit={sendEmail}
+            className={styles.form}
+          >
             {/* Nombre */}
             <LABEL htmlFor="name">
               <FM id="reservation.name" defaultMessage="Nombre:" />
@@ -105,9 +170,17 @@ export default function ReservationsPage({ locale }: Props) {
               id="name"
               type="text"
               value={contactForm.name}
-              onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-              placeholder={intl.formatMessage({ id: 'reservation.name.ph', defaultMessage: 'Tu nombre' })}
-              aria-label={intl.formatMessage({ id: 'reservation.name', defaultMessage: 'Nombre:' })}
+              onChange={(e) =>
+                setContactForm({ ...contactForm, name: e.target.value })
+              }
+              placeholder={intl.formatMessage({
+                id: 'reservation.name.ph',
+                defaultMessage: 'Tu nombre',
+              })}
+              aria-label={intl.formatMessage({
+                id: 'reservation.name',
+                defaultMessage: 'Nombre:',
+              })}
               required
             />
 
@@ -120,9 +193,17 @@ export default function ReservationsPage({ locale }: Props) {
               id="email"
               type="email"
               value={contactForm.email}
-              onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-              placeholder={intl.formatMessage({ id: 'reservation.email.ph', defaultMessage: 'tucorreo@ejemplo.com' })}
-              aria-label={intl.formatMessage({ id: 'reservation.email', defaultMessage: 'Correo:' })}
+              onChange={(e) =>
+                setContactForm({ ...contactForm, email: e.target.value })
+              }
+              placeholder={intl.formatMessage({
+                id: 'reservation.email.ph',
+                defaultMessage: 'tucorreo@ejemplo.com',
+              })}
+              aria-label={intl.formatMessage({
+                id: 'reservation.email',
+                defaultMessage: 'Correo:',
+              })}
               required
             />
 
@@ -137,8 +218,14 @@ export default function ReservationsPage({ locale }: Props) {
               value={contactForm.phone}
               maxLength={10}
               pattern="[1-9][0-9]{9}"
-              placeholder={intl.formatMessage({ id: 'reservation.phone.ph', defaultMessage: 'Ej. 5199999999' })}
-              aria-label={intl.formatMessage({ id: 'reservation.phone', defaultMessage: 'Teléfono:' })}
+              placeholder={intl.formatMessage({
+                id: 'reservation.phone.ph',
+                defaultMessage: 'Ej. 5199999999',
+              })}
+              aria-label={intl.formatMessage({
+                id: 'reservation.phone',
+                defaultMessage: 'Teléfono:',
+              })}
               onChange={(e) => {
                 const value = e.target.value.replace(/\D/g, '');
                 setContactForm({ ...contactForm, phone: value });
@@ -147,7 +234,10 @@ export default function ReservationsPage({ locale }: Props) {
             />
             {phoneInvalid && (
               <P className={styles.errorText} role="alert">
-                <FM id="reservation.phoneWarning" defaultMessage="Debe tener 10 dígitos y no iniciar en 0" />
+                <FM
+                  id="reservation.phoneWarning"
+                  defaultMessage="Debe tener 10 dígitos y no iniciar en 0"
+                />
               </P>
             )}
 
@@ -161,8 +251,16 @@ export default function ReservationsPage({ locale }: Props) {
               name="date"
               value={formatDateTimeLocal(contactForm.date)}
               min={formatDateTimeLocal(tomorrow)}
-              onChange={(e) => setContactForm({ ...contactForm, date: new Date(e.target.value) })}
-              aria-label={intl.formatMessage({ id: 'reservation.date', defaultMessage: 'Fecha y hora:' })}
+              onChange={(e) =>
+                setContactForm({
+                  ...contactForm,
+                  date: new Date(e.target.value),
+                })
+              }
+              aria-label={intl.formatMessage({
+                id: 'reservation.date',
+                defaultMessage: 'Fecha y hora:',
+              })}
               required
             />
 
@@ -175,14 +273,25 @@ export default function ReservationsPage({ locale }: Props) {
               id="reason"
               type="text"
               value={contactForm.reason}
-              onChange={(e) => setContactForm({ ...contactForm, reason: e.target.value })}
-              placeholder={intl.formatMessage({ id: 'reservation.reason.ph', defaultMessage: 'Cumpleaños, aniversario, etc.' })}
-              aria-label={intl.formatMessage({ id: 'reservation.reason', defaultMessage: 'Motivo:' })}
+              onChange={(e) =>
+                setContactForm({ ...contactForm, reason: e.target.value })
+              }
+              placeholder={intl.formatMessage({
+                id: 'reservation.reason.ph',
+                defaultMessage: 'Cumpleaños, aniversario, etc.',
+              })}
+              aria-label={intl.formatMessage({
+                id: 'reservation.reason',
+                defaultMessage: 'Motivo:',
+              })}
             />
 
             {/* Asistentes */}
             <LABEL htmlFor="asistentes">
-              <FM id="reservation.asistants" defaultMessage="Número de asistentes:" />
+              <FM
+                id="reservation.asistants"
+                defaultMessage="Número de asistentes:"
+              />
             </LABEL>
             <INPUT
               type="number"
@@ -192,17 +301,29 @@ export default function ReservationsPage({ locale }: Props) {
               inputMode="numeric"
               min={1}
               max={199}
-              placeholder={intl.formatMessage({ id: 'reservation.asistants.ph', defaultMessage: 'Ej. 2' })}
-              aria-label={intl.formatMessage({ id: 'reservation.asistants', defaultMessage: 'Número de asistentes:' })}
+              placeholder={intl.formatMessage({
+                id: 'reservation.asistants.ph',
+                defaultMessage: 'Ej. 2',
+              })}
+              aria-label={intl.formatMessage({
+                id: 'reservation.asistants',
+                defaultMessage: 'Número de asistentes:',
+              })}
               onChange={(e) => {
                 const onlyDigits = e.target.value.replace(/\D/g, '');
-                setContactForm({ ...contactForm, asistentes: onlyDigits });
+                setContactForm({
+                  ...contactForm,
+                  asistentes: onlyDigits,
+                });
               }}
               required
             />
             {asistentesInvalid && (
               <P className="text-red-500 text-sm mt-1" role="alert">
-                <FM id="reservation.asistantsWarning" defaultMessage="Entre 1 y 199" />
+                <FM
+                  id="reservation.asistantsWarning"
+                  defaultMessage="Entre 1 y 199"
+                />
               </P>
             )}
 
@@ -215,15 +336,69 @@ export default function ReservationsPage({ locale }: Props) {
               id="message"
               rows={4}
               value={contactForm.message}
-              onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-              placeholder={intl.formatMessage({ id: 'reservation.message.ph', defaultMessage: 'Detalles adicionales (opcional)' })}
-              aria-label={intl.formatMessage({ id: 'reservation.message', defaultMessage: 'Mensaje:' })}
+              onChange={(e) =>
+                setContactForm({ ...contactForm, message: e.target.value })
+              }
+              placeholder={intl.formatMessage({
+                id: 'reservation.message.ph',
+                defaultMessage: 'Detalles adicionales (opcional)',
+              })}
+              aria-label={intl.formatMessage({
+                id: 'reservation.message',
+                defaultMessage: 'Mensaje:',
+              })}
             />
-
             <BUTTON type="submit">
               <FM id="reservation.submit" defaultMessage="Enviar" />
             </BUTTON>
           </form>
+
+          {reservationSent && (
+            <DIV className={styles.depositSection}>
+              <H3>
+                <FM
+                  id="reservation.deposit.title"
+                  defaultMessage="Anticipo de reserva"
+                />
+              </H3>
+
+              <P className={styles.depositNote}>
+                <FM
+                  id="reservation.deposit.description"
+                  defaultMessage="Para confirmar tu reserva, puedes pagar un anticipo de $50.00 CAD. El cargo se realiza una sola vez por reserva."
+                />
+              </P>
+
+              <PayPalButtonsComp
+                amount="50.00"
+                currency="CAD"
+                intent="CAPTURE"
+                metadata={{
+                  purpose: "reservation_deposit",
+                  tenantId: "ElPatron",
+                  orderRef: "ElPatron-Reservation-Deposit",
+                }}
+                locale={locale}
+                onResult={() => {
+                  alert(
+                    intl.formatMessage({
+                      id: "reservation.deposit.success",
+                      defaultMessage: "Anticipo pagado correctamente.",
+                    })
+                  );
+                }}
+                onError={() => {
+                  alert(
+                    intl.formatMessage({
+                      id: "reservation.deposit.error",
+                      defaultMessage:
+                        "Ocurrió un error al procesar el anticipo. Intenta de nuevo.",
+                    })
+                  );
+                }}
+              />
+            </DIV>
+          )}
         </div>
       </main>
     </>

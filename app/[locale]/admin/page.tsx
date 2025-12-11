@@ -45,6 +45,12 @@ export default function AdminHome() {
       href: L('/admin/campaigns-center'),
     },
     {
+      key: 'Payments',
+      title: <FM id="payments.title" defaultMessage="Administrador de Pagos" />,
+      desc: <FM id="payments.description" defaultMessage="Administrador de Pagos PayPal" />,
+      href: L('/admin/payments'),
+    },
+    {
       key: 'cloud',
       title: <FM id="cloud.title" defaultMessage="CloudQueries" />,
       desc: <FM id="cloud.description" defaultMessage="Consultas y herramientas de datos" />,

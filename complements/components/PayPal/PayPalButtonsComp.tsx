@@ -45,7 +45,8 @@ function normalizeSdkLocale(input?: string): string | undefined {
 }
 
 export default function PayPalButtonsComp(p: Props) {
-  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
+
   if (!clientId) {
     console.error("Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID");
     return null;

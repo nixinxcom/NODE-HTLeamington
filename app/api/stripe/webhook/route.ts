@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server';
 import { stripe } from '@/app/lib/stripe'; // si moviste lib/ a raíz: '@/lib/stripe'
 import { saveStripePaymentByPI, saveStripePaymentFromSession } from '@/app/lib/payments';
 
+type MetadataLike = { [key: string]: any } | null | undefined;
+
+function extractTenantAndPurpose(meta: MetadataLike) {
+  const tenantId =
+    (meta?.tenantId as string | undefined) ??
+    (meta?.tenant_id as string | undefined) ??
+    (meta?.tenant as string | undefined) ??
+    null;
+
+  const purpose =
+    (meta?.purpose as string | undefined) ??
+    (meta?.usage as string | undefined) ??
+    (meta?.type as string | undefined) ??
+    null;
+
+  return { tenantId, purpose };
+}
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -32,10 +50,15 @@ export async function POST(req: Request) {
           session?.metadata?.uid ??
           null;
 
-        // Guarda por session y, si trae payment_intent, lo normaliza a PI
+        const { tenantId, purpose } = extractTenantAndPurpose(
+          session?.metadata as any
+        );
+
         await saveStripePaymentFromSession(session, {
           orderId: session?.id ?? null,
           userId,
+          tenantId,
+          purpose,
         });
         break;
       }
@@ -45,10 +68,15 @@ export async function POST(req: Request) {
       case 'payment_intent.payment_failed': {
         const pi = event.data.object;
         const userId = pi?.metadata?.uid ?? null;
+        const { tenantId, purpose } = extractTenantAndPurpose(
+          pi?.metadata as any
+        );
 
         await saveStripePaymentByPI(pi, {
           orderId: pi?.metadata?.orderId ?? null,
           userId,
+          tenantId,
+          purpose,
         });
         break;
       }
@@ -56,17 +84,25 @@ export async function POST(req: Request) {
       case 'charge.succeeded':
       case 'charge.refunded':
       case 'charge.failed': {
-        // Si prefieres consolidar por PaymentIntent:
         const charge = event.data.object;
-        if (charge?.payment_intent) {
-          const pi = await stripe.paymentIntents.retrieve(charge.payment_intent as string, {
-            expand: ['charges'],
-          });
+        if (
+          charge?.payment_intent &&
+          typeof charge.payment_intent === 'string'
+        ) {
+          const pi = await stripe.paymentIntents.retrieve(
+            charge.payment_intent as string,
+            { expand: ['charges'] }
+          );
           const userId = pi?.metadata?.uid ?? null;
+          const { tenantId, purpose } = extractTenantAndPurpose(
+            pi?.metadata as any
+          );
 
           await saveStripePaymentByPI(pi, {
             orderId: pi?.metadata?.orderId ?? null,
             userId,
+            tenantId,
+            purpose,
           });
         }
         break;
@@ -74,17 +110,24 @@ export async function POST(req: Request) {
 
       case 'invoice.paid':
       case 'invoice.payment_failed': {
-        // Suscripciones: también normalizamos por PI
         const invoice = event.data.object;
         if (invoice?.payment_intent) {
-          const pi = await stripe.paymentIntents.retrieve(invoice.payment_intent as string, {
-            expand: ['charges'],
-          });
-          const userId = pi?.metadata?.uid ?? invoice?.customer_email ?? null;
+          const pi = await stripe.paymentIntents.retrieve(
+            invoice.payment_intent as string,
+            { expand: ['charges'] }
+          );
+          const userId =
+            pi?.metadata?.uid ?? invoice?.customer_email ?? null;
+
+          const { tenantId, purpose } = extractTenantAndPurpose(
+            (pi?.metadata as any) ?? (invoice?.metadata as any)
+          );
 
           await saveStripePaymentByPI(pi, {
             orderId: invoice?.id ?? null,
             userId,
+            tenantId,
+            purpose,
           });
         }
         break;

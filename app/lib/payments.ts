@@ -6,7 +6,16 @@ function centsToMajor(v?: number | null) {
   return Math.round(v) / 100;
 }
 
-type SaveExtra = { userId?: string | null; orderId?: string | null };
+type SaveExtra = {
+  userId?: string | null;
+  orderId?: string | null;
+
+  /** NX / Tenant que generó el pago (ElPatron, HTWindsor, etc.) */
+  tenantId?: string | null;
+
+  /** Propósito de negocio del pago: 'booking', 'product', 'points', 'membership', etc. */
+  purpose?: string | null;
+};
 
 export async function saveStripePaymentByPI(pi: any, extra: SaveExtra = {}) {
   const paymentIntentId = pi?.id ?? 'unknown';
@@ -27,11 +36,16 @@ export async function saveStripePaymentByPI(pi: any, extra: SaveExtra = {}) {
     currency,
     customerId: (pi?.customer ?? charge?.customer) ?? null,
     email: pi?.receipt_email ?? charge?.billing_details?.email ?? null,
+
+    // Negocio
     orderId: extra.orderId ?? null,
     userId: extra.userId ?? null,
+    tenantId: extra.tenantId ?? null,
+    purpose: extra.purpose ?? null,
+
     raw: pi,
     updatedAt: FieldValue.serverTimestamp(),
-    createdAt: FieldValue.serverTimestamp(),               // idempotente: merge no lo sobreescribe con serverTimestamp previo
+    createdAt: FieldValue.serverTimestamp(),               // idempotente
   };
 
   await ref.set(data, { merge: true });
@@ -41,7 +55,6 @@ export async function saveStripePaymentByPI(pi: any, extra: SaveExtra = {}) {
 export async function saveStripePaymentFromSession(session: any, extra: SaveExtra = {}) {
   const piId = session?.payment_intent ?? null;
   if (!piId) {
-    // Sin PI: guarda por sessionId para no perder el rastro
     const ref = db.collection('payments').doc(session?.id ?? `sess_${Date.now()}`);
     await ref.set({
       provider: 'stripe',
@@ -53,8 +66,13 @@ export async function saveStripePaymentFromSession(session: any, extra: SaveExtr
       currency: (session?.currency ?? '').toUpperCase() || null,
       customerId: session?.customer ?? null,
       email: session?.customer_details?.email ?? null,
+
+      // Negocio
       orderId: extra.orderId ?? null,
       userId: extra.userId ?? null,
+      tenantId: extra.tenantId ?? null,
+      purpose: extra.purpose ?? null,
+
       raw: session,
       updatedAt: FieldValue.serverTimestamp(),
       createdAt: FieldValue.serverTimestamp(),
@@ -95,8 +113,13 @@ export async function savePayPalCapture(capture: any, extra: SaveExtra = {}) {
         payer_id: capture?.seller_receivable_breakdown?.net_amount?.payer_id ?? null,
       },
     receipt: capture?.links ?? null,                      // links útiles
-    raw: capture,                                         // payload completo
+
+    // Negocio
     userId: extra.userId ?? null,
+    tenantId: extra.tenantId ?? null,
+    purpose: extra.purpose ?? null,
+
+    raw: capture,                                         // payload completo
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   };
