@@ -7,26 +7,58 @@ import {
   PayPalButtons,
   type ReactPayPalScriptOptions,
 } from "@paypal/react-paypal-js";
-import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import {
+  BUTTON,
+  LINK,
+  BUTTON2,
+  LINK2,
+  NEXTIMAGE,
+  IMAGE,
+  DIV,
+  DIV2,
+  DIV3,
+  INPUT,
+  SELECT,
+  LABEL,
+  INPUT2,
+  SPAN,
+  SPAN1,
+  SPAN2,
+  A,
+  B,
+  P,
+  H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+} from "@/complements/components/ui/wrappers";
 
 type Props = {
-  amount: string | number;                // "2800.00" (unidades mayores)
+  amount: string | number;                // "2800.00"
   currency?: "CAD" | "MXN" | "USD";
   intent?: "CAPTURE" | "AUTHORIZE";
-  locale?: string;                         // "es", "es_CA", "es-ES" (se normaliza)
+  locale?: string;
   className?: string;
 
-  /** Compatibilidad con tu page.tsx */
+  /** API endpoints (por si luego los quieres cambiar) */
   createOrderUrl?: string;                 // default: /api/paypal/create-order
   captureOrderUrl?: string;                // default: /api/paypal/capture-order
+
+  /** Callbacks */
   onApproved?: (d: any) => void;          // alias de onResult
   onError?: (e: any) => void;
+  onResult?: (r: any) => void;
 
-  /** Opcionales “nuevos” */
+  /** Navegación opcional */
   returnUrl?: string;
   cancelUrl?: string;
-  metadata?: Record<string, string>;
-  onResult?: (r: any) => void;
+
+  /** Metadatos que viajarán a la API y a Firestore */
+  tenantId?: string;                      // "ElPatron", "HTWindsor", etc.
+  concept?: string;                       // "Anticipo de reserva", "Compra de puntos", etc.
+  metadata?: Record<string, string>;      // extras (orderRef, campaignId, etc.)
 };
 
 function normalizeSdkLocale(input?: string): string | undefined {
@@ -34,12 +66,13 @@ function normalizeSdkLocale(input?: string): string | undefined {
   const cleaned = input.replace("-", "_");
   const [l, r] = cleaned.split("_");
   const loc = `${(l || "").toLowerCase()}${r ? "_" + r.toUpperCase() : ""}`;
-  const supported = new Set([
-    "en_CA","fr_CA","es_MX",
-  ]);
+  const supported = new Set(["en_CA", "fr_CA", "es_MX"]);
   if (supported.has(loc)) return loc;
+
   const fb: Record<string, string> = {
-    es: "es_MX", en: "en_CA", fr: "fr_CA",
+    es: "es_MX",
+    en: "en_CA",
+    fr: "fr_CA",
   };
   return fb[(l || "").toLowerCase()] || "en_CA";
 }
@@ -53,12 +86,25 @@ export default function PayPalButtonsComp(p: Props) {
   }
 
   const currency = p.currency ?? "CAD";
-  const intentLower = (p.intent ?? "CAPTURE").toLowerCase() as "capture" | "authorize";
-  const amountStr = typeof p.amount === "number" ? p.amount.toFixed(2) : p.amount;
+  const intentLower = (p.intent ?? "CAPTURE").toLowerCase() as
+    | "capture"
+    | "authorize";
+  const amountStr =
+    typeof p.amount === "number" ? p.amount.toFixed(2) : p.amount;
   const sdkLocale = normalizeSdkLocale(p.locale);
 
   const createOrderUrl = p.createOrderUrl || "/api/paypal/create-order";
   const captureOrderUrl = p.captureOrderUrl || "/api/paypal/capture-order";
+
+  // Metadatos consolidados que se mandan a la API y se guardan en Firestore
+  const baseMetadata = React.useMemo(() => {
+    const m = p.metadata ?? {};
+    return {
+      ...m,
+      tenantId: p.tenantId ?? m.tenantId ?? "NIXINX",
+      concept: p.concept ?? m.concept,
+    };
+  }, [p.metadata, p.tenantId, p.concept]);
 
   const options: ReactPayPalScriptOptions = {
     clientId,
@@ -89,17 +135,21 @@ export default function PayPalButtonsComp(p: Props) {
                   currency,
                   intent: intentLower.toUpperCase(), // "CAPTURE" | "AUTHORIZE"
                   locale: p.locale,
-                  metadata: p.metadata,
+                  metadata: baseMetadata,
                   return_url: p.returnUrl,
                   cancel_url: p.cancelUrl,
                 }),
               });
+
               const data = await res.json();
+
               if (!res.ok || !data?.id) {
                 throw new Error(data?.error || "create-order failed");
               }
+
               return data.id as string; // PayPal Order ID
             } catch (e) {
+              console.error(e);
               p.onError?.(e);
               throw e;
             }
@@ -109,11 +159,15 @@ export default function PayPalButtonsComp(p: Props) {
               const res = await fetch(captureOrderUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ orderId: data.orderID, metadata: p.metadata }),
+                body: JSON.stringify({
+                  orderId: data.orderID,
+                  metadata: baseMetadata,
+                }),
               });
               const out = await res.json();
               handleApproved(out);
             } catch (e) {
+              console.error(e);
               p.onError?.(e);
             }
           }}

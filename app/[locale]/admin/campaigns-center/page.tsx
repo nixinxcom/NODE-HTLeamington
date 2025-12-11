@@ -15,7 +15,6 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 
-import AdminGuard from "@/complements/admin/AdminGuard";
 import {
   DIV,
   H1,

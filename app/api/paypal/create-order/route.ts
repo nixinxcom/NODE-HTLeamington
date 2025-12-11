@@ -123,18 +123,20 @@ export async function POST(req: NextRequest) {
     try {
       const paymentRef = doc(FbDB, 'Payments', order.id);
 
-      await setDoc(paymentRef, {
-        orderId: order.id,
-        source: 'paypal',
-        tenantId: metadata?.tenantId ?? 'ElPatron',
-        amount: String(amount),
-        currency,
-        intent,
-        status: 'created',
-        metadata,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+    await setDoc(paymentRef, {
+      orderId: order.id,
+      source: 'paypal',
+      tenantId: process.env.NIXINX_TENANT_ID ?? metadata?.tenantId ?? '',
+      concept: metadata?.concept ?? null,
+      amount: String(amount),
+      currency,
+      intent,
+      status: 'created',
+      metadata,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
     } catch (err) {
       console.error('Error writing PayPal payment to Firestore', err);
       // no rompemos el flujo de pago si falla el log

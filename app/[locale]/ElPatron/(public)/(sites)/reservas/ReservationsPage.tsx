@@ -373,9 +373,10 @@ export default function ReservationsPage({ locale }: Props) {
                 amount="50.00"
                 currency="CAD"
                 intent="CAPTURE"
+                tenantId="ElPatron"
+                concept="Anticipo de reserva"
                 metadata={{
                   purpose: "reservation_deposit",
-                  tenantId: "ElPatron",
                   orderRef: "ElPatron-Reservation-Deposit",
                 }}
                 locale={locale}
@@ -397,6 +398,7 @@ export default function ReservationsPage({ locale }: Props) {
                   );
                 }}
               />
+
             </DIV>
           )}
         </div>
