@@ -57,6 +57,12 @@ export default function AdminHome() {
       href: L('/admin/CloudQueries'),
     },
     {
+      key: 'FDV',
+      title: <FM id="fdv.title" defaultMessage="Fuente de Verdad" />,
+      desc: <FM id="fdv.description" defaultMessage="Data en contexto del AAI" />,
+      href: L('/admin/fdv'),
+    },
+    {
       key: 'posts',
       title: <FM id="posts.title" defaultMessage="Publicaciones" />,
       desc: <FM id="posts.description" defaultMessage="Gestionar posts / noticias" />,

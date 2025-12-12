@@ -37,6 +37,7 @@ import {
   H5,
   H6,
 } from "@/complements/components/ui/wrappers";
+import { useRouter } from "next/navigation";
 
 type FieldKind = 'timestamp' | 'number' | 'unknown';
 
@@ -156,6 +157,7 @@ function getByPath(obj: any, path: string): any {
 }
 
 export default function CloudQueriesPage() {
+  const router = useRouter();
   const [coleccion, setColeccion] = useState('');
   const [start, setStart] = useState(''); // opcional
   const [end, setEnd] = useState('');     // opcional
@@ -307,6 +309,23 @@ export default function CloudQueriesPage() {
 
   return (
     <>
+      {/* Botones de navegación superior */}
+      <DIV className="flex justify-between items-center mb-2">
+        <DIV className="flex gap-2">
+          <BUTTON
+            type="button"
+            onClick={() => router.push("../admin")}
+          >
+            Admin Panel
+          </BUTTON>
+          <BUTTON
+            type="button"
+            onClick={() => router.push("../../")}
+          >
+            Home
+          </BUTTON>
+        </DIV>
+      </DIV>
       <JsonLd data={buildVenueSchema()} />
       <JsonLd data={buildWebSiteSchema()} />
 

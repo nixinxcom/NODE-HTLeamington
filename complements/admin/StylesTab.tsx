@@ -8,6 +8,7 @@ import { FbDB } from "@/app/lib/services/firebase";
 import StyleDesigner from "@/complements/components/StyleDesigner/StyleDesigner";
 // (si quieres tipos, también puedes importar { StylesSchema } de ese mismo archivo)
 import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import AdminGuard from "./AdminGuard";
 
 const STYLES_REF = doc(
   FbDB,
@@ -108,14 +109,16 @@ export default function StylesTab() {
   };
 
   return (
-    <StyleDesigner
-      loadStyles={loadStyles}
-      saveStyles={saveStyles}
-      aliasInitial={aliasInitial}
-      initialSlot={initialSlot}
-      onSaveAliases={onSaveAliases}
-      onSaveInitialSlot={onSaveInitialSlot}
-      className="pb-20"
-    />
+    <AdminGuard>
+      <StyleDesigner
+        loadStyles={loadStyles}
+        saveStyles={saveStyles}
+        aliasInitial={aliasInitial}
+        initialSlot={initialSlot}
+        onSaveAliases={onSaveAliases}
+        onSaveInitialSlot={onSaveInitialSlot}
+        className="pb-20"
+      />
+    </AdminGuard>
   );
 }

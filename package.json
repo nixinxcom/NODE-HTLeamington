@@ -108,6 +108,7 @@
   ],
   "dependencies": {
     "@capacitor/core": "7.4.4",
+    "@nixinx/core": "^0.1.22",
     "@ducanh2912/next-pwa": "10.2.4",
     "@emailjs/browser": "3.10.0",
     "@paypal/react-paypal-js": "8.8.3",

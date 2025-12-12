@@ -1,28 +1,28 @@
-// app/ui/providers.tsx
-"use client";
+// app\ui\providers.tsx
+'use client';
 
-import type { ReactNode, ComponentProps } from "react";
+import type { ReactNode } from 'react';
 
-import GTMProvider from "@/app/providers/GTMProvider";
-import { ContextProvider } from "@/context/AppContext";
-import ThemeProviders from "@/app/providers/ThemeProviders";
-import { AuthProvider } from "@/complements/components/AuthenticationComp/AuthContext";
-import { NotificationsProvider } from "@/app/lib/notifications/provider";
+import GTMProvider from '@/app/providers/GTMProvider';
+import { ContextProvider } from '@/context/AppContext';
+import ThemeProviders from '@/app/providers/ThemeProviders';
+import { AuthProvider } from '@/complements/components/AuthenticationComp/AuthContext';
+import { NotificationsProvider } from '@/app/lib/notifications/provider';
 import FdvProvider from "@/app/providers/FdvProvider";
 import NotificationPopupHost from "@/complements/components/Notifications/NotificationPopupHost";
 
-type ContextProps = ComponentProps<typeof ContextProvider>;
-
-export type ProvidersProps = {
+// Tipamos por inferencia desde tu propio ContextProvider
+type AppProviderProps = React.ComponentProps<typeof ContextProvider>;
+type CoreProvidersProps = {
   children: ReactNode;
-} & Pick<ContextProps, "initialLocale" | "initialBranding" | "initialSettings">;
+} & Pick<AppProviderProps, 'initialLocale' | 'initialBranding' | 'initialSettings'>;
 
-export default function Providers({
+export function CoreProviders({
   children,
   initialLocale,
   initialBranding,
   initialSettings,
-}: ProvidersProps) {
+}: CoreProvidersProps) {
   return (
     <GTMProvider>
       <ContextProvider
@@ -44,3 +44,5 @@ export default function Providers({
     </GTMProvider>
   );
 }
+
+export default CoreProviders;

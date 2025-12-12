@@ -1,6 +1,5 @@
-// app/[locale]/admin/factory/page.tsx
+// /complements/factory/FuiPanel
 
-import AdminGuard from '@/complements/admin/AdminGuard';
 import FuiPanel from '@/complements/factory/FuiPanel';
 
 type PageProps = {
