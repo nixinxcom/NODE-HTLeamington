@@ -60,7 +60,7 @@ export default function AdminHome() {
       key: 'posts',
       title: <FM id="posts.title" defaultMessage="Publicaciones" />,
       desc: <FM id="posts.description" defaultMessage="Gestionar posts / noticias" />,
-      href: L('/admin/Publicaciones'),
+      href: L('/Publicaciones'),
     },
   ];
 

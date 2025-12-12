@@ -1,6 +1,6 @@
 {
   "name": "@nixinx/core",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "private": false,
   "publishConfig": {
     "access": "restricted",

@@ -21,7 +21,6 @@ import { collection, addDoc, doc, setDoc, serverTimestamp } from "firebase/fires
 import FilesUploaderComp, {
   IFile as UploaderFile,
 } from "@/complements/CloudComponents/FilesUploaderComp/FilesUploaderComp";
-import ThemeToggle from "@/complements/components/ThemeToggle/ThemeToggle";
 
 /* ========= Config ========= */
 const APP_NAME = "ElPatronWebApp";
@@ -391,7 +390,6 @@ export default function NewPublicationPage() {
   return (
     <main className={`mx-auto max-w-5xl ${styles.pagePad}`}>
       <H1 className={styles.title}>
-        <ThemeToggle />
         <FM id="pub.new.h1" defaultMessage="Nueva publicación" />
       </H1>
 
