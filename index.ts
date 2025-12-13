@@ -95,6 +95,11 @@ export { default as ThemeToggle } from "./complements/components/ThemeToggle/The
 // ────────────────────
 export { default as AdminGuard } from "./complements/admin/AdminGuard";
 export { default as SuperAdminOnly } from "./complements/admin/SuperAdminOnly";
+export { default as AgreementTab } from "./complements/admin/AgreementTab";
+export { default as CampaignsCenter } from "./complements/admin/CampaignCenter";
+export { default as FDVTest } from "./complements/admin/fdv";
+export { default as PaymentsAdmin } from "./complements/admin/PaymentsAdmin";
+export { default as StylesTab } from "./complements/admin/StylesTab";
 
 // ────────────────────
 // EndPoints
