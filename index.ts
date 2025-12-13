@@ -23,16 +23,6 @@ export { default as FMsTab } from "./complements/admin/FMsTab";
 export { default as SeedStyles } from "./seeds/styles";
 
 // ────────────────────
-// Seeds JSON
-// ────────────────────
-import metaGlobal from "./seeds/meta.global.json";
-import metaPages  from "./seeds/meta.pages.json";
-import metaSite   from "./seeds/meta.site.json";
-export const SeedMetaGlobal = metaGlobal;
-export const SeedMetaPages  = metaPages;
-export const SeedMetaSite   = metaSite;
-
-// ────────────────────
 // Providers
 // ────────────────────
 export { default as Providers } from "./app/ui/providers";
@@ -52,7 +42,6 @@ export { default as NotificationPopupHost } from "./complements/components/Notif
 // ────────────────────
 // Interfaces
 // ────────────────────
-export * from "./coreinterfaces";
 export type { default as iSettings } from "./app/lib/settings/interface";
 export type { default as iBranding } from "./app/lib/branding/interface";
 
@@ -100,6 +89,7 @@ export { default as CampaignsCenter } from "./complements/admin/CampaignCenter";
 export { default as FDVTest } from "./complements/admin/fdv";
 export { default as PaymentsAdmin } from "./complements/admin/PaymentsAdmin";
 export { default as StylesTab } from "./complements/admin/StylesTab";
+export { default as Settings } from "./complements/admin/Setting";
 
 // ────────────────────
 // EndPoints

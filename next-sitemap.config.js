@@ -43,25 +43,6 @@ function resolveAlternateRefs(baseUrl) {
   return refs.length ? refs : undefined;
 }
 
-// 3) Excluir dinámicamente páginas con noindex desde meta.pages.json
-function resolveNoindexExcludes() {
-  try {
-    const pagesMeta = require('./seeds/meta.pages.json'); // { routeKey: { noindex?: true, path?: "/x" } }
-    const keys = Object.keys(pagesMeta || {});
-    const toExclude = [];
-    for (const k of keys) {
-      const cfg = pagesMeta[k];
-      if (cfg?.noindex) {
-        if (cfg.path) toExclude.push(cfg.path);
-        else toExclude.push(`/${k}`);
-      }
-    }
-    return toExclude;
-  } catch {
-    return [];
-  }
-}
-
 const SITE_URL = resolveSiteUrl();
 const ALTERNATE_REFS = resolveAlternateRefs(SITE_URL);
 
@@ -75,15 +56,12 @@ const BASE_EXCLUDES = [
   '/server-sitemap.xml',
 ];
 
-// Dinámicos desde meta.pages.json
-const META_EXCLUDES = resolveNoindexExcludes();
-
 module.exports = {
   siteUrl: SITE_URL,
   generateRobotsTxt: true,
   changefreq: 'weekly',
   priority: 0.7,
-  exclude: [...BASE_EXCLUDES, ...META_EXCLUDES],
+  exclude: [...BASE_EXCLUDES],
   alternateRefs: ALTERNATE_REFS,
   robotsTxtOptions: {
     policies: [{ userAgent: '*', allow: '/' }],

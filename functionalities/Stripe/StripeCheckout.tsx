@@ -83,39 +83,3 @@ export async function openBillingPortal(returnUrl: string) {
   const { url } = (res.data as { url?: string }) ?? {};
   if (url) window.location.href = url;
 }
-
-/* ─────────────────────────────────────────────────────────
-DOC: Stripe Checkout (Payment Element) — functionalities/Stripe/StripeCheckout.tsx
-QUÉ HACE:
-  Componente cliente que inicializa Stripe Elements con un clientSecret (de PaymentIntent/SetupIntent),
-  renderiza <PaymentElement> y confirma el pago.
-
-API / EXPORTS / RUTA:
-  — export interface StripeCheckoutProps {
-      clientSecret: string                    // requerido (desde /api/stripe/create-order)
-      returnUrl?: string                      // opcional | default: location.href
-      locale?: "es"|"en"|"fr"                 // opcional | default: "es"
-      appearance?: Record<string,any>         // opcional
-      onResult?: (r:{ status:string; paymentIntentId?:string; error?:string }) => void // opcional
-      className?: string
-    }
-  — export default function StripeCheckout(props: StripeCheckoutProps): JSX.Element
-
-USO (ejemplo completo):
-  "use client";
-  import { Elements } from "@stripe/react-stripe-js";
-  import { stripePromise, buildElementsOptions } from "@/app/lib/stripe";
-  import StripeCheckout from "@/functionalities/Stripe/StripeCheckout";
-  const options = buildElementsOptions({ clientSecret, locale:"es" });
-  <Elements stripe={stripePromise} options={options}>
-    <StripeCheckout clientSecret={clientSecret} returnUrl="/checkout/success" />
-  </Elements>
-
-NOTAS CLAVE:
-  — Seguridad: el backend crea/captura; no calcular montos aquí.
-  — 3DS: gestionar redirección con returnUrl.
-  — Webhooks: actualizar orden en /api/stripe/webhook.
-
-DEPENDENCIAS:
-  @stripe/react-stripe-js · @stripe/stripe-js · "@/app/lib/stripe"
-────────────────────────────────────────────────────────── */

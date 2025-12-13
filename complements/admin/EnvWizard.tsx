@@ -5,6 +5,7 @@ import { FbDB, FbAuth } from '../../app/lib/services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { resolveTenantFromHost } from '../../app/lib/tenant/resolve';
 import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import SuperAdminOnly from './SuperAdminOnly';
 
 // En UI todo se maneja como string
 type EnvValues = Partial<Record<keyof iEnvVars, string>>;
@@ -115,84 +116,86 @@ export default function EnvWizard() {
   }
 
   return (
-    <section className="grid gap-6">
-      <header className="space-y-1">
-        <H2 className="text-xl font-semibold">Variables de Entorno</H2>
-        <P className="text-sm text-muted-foreground">
-          Requeridas por el Core. Las que comienzan con <code>NEXT_PUBLIC_</code>{' '}
-          pueden mostrarse en UI; otras se tratan como secretas.
-        </P>
-      </header>
+    <SuperAdminOnly>
+      <section className="grid gap-6">
+        <header className="space-y-1">
+          <H2 className="text-xl font-semibold">Variables de Entorno</H2>
+          <P className="text-sm text-muted-foreground">
+            Requeridas por el Core. Las que comienzan con <code>NEXT_PUBLIC_</code>{' '}
+            pueden mostrarse en UI; otras se tratan como secretas.
+          </P>
+        </header>
 
-      <div className="grid gap-4">
-        {requiredKeys.map((k) => {
-          const meta = (envMeta as any)[k] as
-            | { label?: string; placeholder?: string; doc?: string; secret?: boolean }
-            | undefined;
-          const label = meta?.label || (k as string);
-          const placeholder = meta?.placeholder || '';
-          const docUrl = meta?.doc;
-          const secret = Boolean(meta?.secret) && !String(k).startsWith('NEXT_PUBLIC_');
+        <div className="grid gap-4">
+          {requiredKeys.map((k) => {
+            const meta = (envMeta as any)[k] as
+              | { label?: string; placeholder?: string; doc?: string; secret?: boolean }
+              | undefined;
+            const label = meta?.label || (k as string);
+            const placeholder = meta?.placeholder || '';
+            const docUrl = meta?.doc;
+            const secret = Boolean(meta?.secret) && !String(k).startsWith('NEXT_PUBLIC_');
 
-          return (
-            <LABEL key={String(k)} className="grid gap-2">
-              <SPAN className="text-sm font-medium">
-                {label} <code className="opacity-70">({String(k)})</code>
-                {docUrl ? (
-                  <>
-                    {' '}
-                    —{' '}
-                    <a className="underline" href={docUrl} target="_blank" rel="noreferrer">
-                      guía
-                    </a>
-                  </>
-                ) : null}
-              </SPAN>
-              <INPUT
-                type={secret ? 'password' : 'text'}
-                autoComplete="off"
-                className="border rounded px-3 py-2"
-                placeholder={placeholder}
-                value={(values[k] as string) ?? ''}
-                onChange={(e) => setVal(String(k), e.target.value)}
-              />
-            </LABEL>
-          );
-        })}
-      </div>
-
-      <div className="grid gap-2">
-        <div className="flex items-center justify-between">
-          <H3 className="font-medium">Variables adicionales (opcionales)</H3>
-          <BUTTON onClick={addExtra} className="px-3 py-1 rounded border">
-            Añadir
-          </BUTTON>
+            return (
+              <LABEL key={String(k)} className="grid gap-2">
+                <SPAN className="text-sm font-medium">
+                  {label} <code className="opacity-70">({String(k)})</code>
+                  {docUrl ? (
+                    <>
+                      {' '}
+                      —{' '}
+                      <a className="underline" href={docUrl} target="_blank" rel="noreferrer">
+                        guía
+                      </a>
+                    </>
+                  ) : null}
+                </SPAN>
+                <INPUT
+                  type={secret ? 'password' : 'text'}
+                  autoComplete="off"
+                  className="border rounded px-3 py-2"
+                  placeholder={placeholder}
+                  value={(values[k] as string) ?? ''}
+                  onChange={(e) => setVal(String(k), e.target.value)}
+                />
+              </LABEL>
+            );
+          })}
         </div>
 
-        {Object.entries(extra).map(([k, v]) => (
-          <div key={k} className="flex gap-2 items-center">
-            <code className="min-w-56">{k}</code>
-            <INPUT
-              className="flex-1 border rounded px-3 py-2"
-              value={v}
-              onChange={(e) => setExtra((s) => ({ ...s, [k]: e.target.value }))}
-            />
-            <BUTTON onClick={() => rmExtra(k)} className="px-2 py-1 border rounded">
-              Eliminar
+        <div className="grid gap-2">
+          <div className="flex items-center justify-between">
+            <H3 className="font-medium">Variables adicionales (opcionales)</H3>
+            <BUTTON onClick={addExtra} className="px-3 py-1 rounded border">
+              Añadir
             </BUTTON>
           </div>
-        ))}
-      </div>
 
-      <div>
-        <BUTTON
-          disabled={busy}
-          onClick={save}
-          className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
-        >
-          {busy ? 'Guardando…' : 'Guardar ENV'}
-        </BUTTON>
-      </div>
-    </section>
+          {Object.entries(extra).map(([k, v]) => (
+            <div key={k} className="flex gap-2 items-center">
+              <code className="min-w-56">{k}</code>
+              <INPUT
+                className="flex-1 border rounded px-3 py-2"
+                value={v}
+                onChange={(e) => setExtra((s) => ({ ...s, [k]: e.target.value }))}
+              />
+              <BUTTON onClick={() => rmExtra(k)} className="px-2 py-1 border rounded">
+                Eliminar
+              </BUTTON>
+            </div>
+          ))}
+        </div>
+
+        <div>
+          <BUTTON
+            disabled={busy}
+            onClick={save}
+            className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
+          >
+            {busy ? 'Guardando…' : 'Guardar ENV'}
+          </BUTTON>
+        </div>
+      </section>
+    </SuperAdminOnly>
   );
 }

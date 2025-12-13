@@ -38,6 +38,7 @@ import {
   H6,
 } from "@/complements/components/ui/wrappers";
 import { useRouter } from "next/navigation";
+import { AdminGuard } from '@/index';
 
 type FieldKind = 'timestamp' | 'number' | 'unknown';
 
@@ -308,7 +309,7 @@ export default function CloudQueriesPage() {
   };
 
   return (
-    <>
+    <AdminGuard>
       {/* Botones de navegación superior */}
       <DIV className="flex justify-between items-center mb-2">
         <DIV className="flex gap-2">
@@ -418,6 +419,6 @@ export default function CloudQueriesPage() {
 
         {data.length > 0 && <TableComp data={data} />}
       </div>
-    </>
+    </AdminGuard>
   );
 }

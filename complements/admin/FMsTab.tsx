@@ -36,6 +36,7 @@ import {
   H5,
   H6,
 } from "@/complements/components/ui/wrappers";
+import AdminGuard from "./AdminGuard";
 
 /* Wrappers defensivos */
 const delGlobal =
@@ -427,342 +428,344 @@ export default function FMsTab() {
 
   /* ============================== UI ============================== */
   return (
-    <div className="space-y-6">
-      {/* Top bar */}
-      <div className="sticky top-0 z-20 bg-neutral-100/20 dark:bg-neutral-900/90 backdrop-blur border-b border-neutral-200 dark:border-neutral-800">
-        <div className="max-w-6xl mx-auto px-3 py-2 flex flex-wrap items-center gap-3">
-          <div className="text-sm flex items-center gap-2">
-            <Badge s="red" />{" "}
-            <SPAN>
-              <FM id="metaTab.filter.red" defaultMessage="id = valor" />
-            </SPAN>
-            <Badge s="yellow" />{" "}
-            <SPAN>
-              <FM
-                id="metaTab.filter.yellow"
-                defaultMessage="vacío / incompleto"
-              />
-            </SPAN>
-            <Badge s="green" />{" "}
-            <SPAN>
-              <FM id="metaTab.filter.green" defaultMessage="ok" />
-            </SPAN>
-          </div>
-          <div className="text-sm opacity-80">
-            {loading
-              ? status || "Procesando…"
-              : `Celdas: ${counts.total} · ✓ ${counts.green} · ! ${counts.yellow} · × ${counts.red}`}
-          </div>
-          <div className="ml-auto flex gap-2">
-            <BUTTON
-              onClick={() => reloadData()}
-              className={btnBase}
-              disabled={loading}
-            >
-              <FM
-                id="metaTab.reload"
-                defaultMessage="Cargar desde Firestore"
-              />
-            </BUTTON>
-            <BUTTON
-              onClick={saveAll}
-              className={btnPrimary}
-              disabled={loading}
-            >
-              <FM id="metaTab.saveAll" defaultMessage="Guardar todo" />
-            </BUTTON>
-          </div>
-        </div>
-      </div>
-
-      {/* Controles */}
-      <section className={surface}>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <div className={label}>
-              <FM
-                id="metaTab.activeLocales"
-                defaultMessage="Locales activos"
-              />
+    <AdminGuard>
+      <div className="space-y-6">
+        {/* Top bar */}
+        <div className="sticky top-0 z-20 bg-neutral-100/20 dark:bg-neutral-900/90 backdrop-blur border-b border-neutral-200 dark:border-neutral-800">
+          <div className="max-w-6xl mx-auto px-3 py-2 flex flex-wrap items-center gap-3">
+            <div className="text-sm flex items-center gap-2">
+              <Badge s="red" />{" "}
+              <SPAN>
+                <FM id="metaTab.filter.red" defaultMessage="id = valor" />
+              </SPAN>
+              <Badge s="yellow" />{" "}
+              <SPAN>
+                <FM
+                  id="metaTab.filter.yellow"
+                  defaultMessage="vacío / incompleto"
+                />
+              </SPAN>
+              <Badge s="green" />{" "}
+              <SPAN>
+                <FM id="metaTab.filter.green" defaultMessage="ok" />
+              </SPAN>
             </div>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {locales.map((loc) => {
-                const active = activeLocales.includes(loc);
-                return (
-                  <BUTTON
-                    key={loc}
-                    data-active={active}
-                    className={pill}
-                    onClick={() =>
-                      setActiveLocales((prev) =>
-                        prev.includes(loc)
-                          ? prev.filter((x) => x !== loc)
-                          : [...prev, loc]
-                      )
-                    }
-                  >
-                    {loc}
-                  </BUTTON>
-                );
-              })}
+            <div className="text-sm opacity-80">
+              {loading
+                ? status || "Procesando…"
+                : `Celdas: ${counts.total} · ✓ ${counts.green} · ! ${counts.yellow} · × ${counts.red}`}
             </div>
-          </div>
-
-          <div>
-            <div className={label}>
-              <FM id="metaTab.searchId" defaultMessage="Buscar ID" />
-            </div>
-            <INPUT
-              className={inputBase + " mt-1"}
-              placeholder="filtra por texto del ID…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <div className={label}>
-              <FM
-                id="metaTab.filterByStatus"
-                defaultMessage="Filtrar por estado"
-              />
-            </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="ml-auto flex gap-2">
               <BUTTON
-                className={pill}
-                data-active={colorFilter === "all"}
-                onClick={() => setColorFilter("all")}
+                onClick={() => reloadData()}
+                className={btnBase}
+                disabled={loading}
               >
-                <FM id="metaTab.filter.all" defaultMessage="Todos" />
+                <FM
+                  id="metaTab.reload"
+                  defaultMessage="Cargar desde Firestore"
+                />
               </BUTTON>
               <BUTTON
-                className={pill + " flex items-center gap-2"}
-                data-active={colorFilter === "green"}
-                onClick={() => setColorFilter("green")}
+                onClick={saveAll}
+                className={btnPrimary}
+                disabled={loading}
               >
-                <Badge s="green" />{" "}
-                <FM id="metaTab.filter.green" defaultMessage="Verde" />
-              </BUTTON>
-              <BUTTON
-                className={pill + " flex items-center gap-2"}
-                data-active={colorFilter === "yellow"}
-                onClick={() => setColorFilter("yellow")}
-              >
-                <Badge s="yellow" />{" "}
-                <FM id="metaTab.filter.yellow" defaultMessage="Amarillo" />
-              </BUTTON>
-              <BUTTON
-                className={pill + " flex items-center gap-2"}
-                data-active={colorFilter === "red"}
-                onClick={() => setColorFilter("red")}
-              >
-                <Badge s="red" />{" "}
-                <FM id="metaTab.filter.red" defaultMessage="Rojo" />
+                <FM id="metaTab.saveAll" defaultMessage="Guardar todo" />
               </BUTTON>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Añadir & Importar IDs */}
-      <section className="grid gap-4 md:grid-cols-2">
-        <div className={surface}>
-          <div className={h6}>
-            <FM id="metaTab.addId" defaultMessage="Añadir ID" />
+        {/* Controles */}
+        <section className={surface}>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <div className={label}>
+                <FM
+                  id="metaTab.activeLocales"
+                  defaultMessage="Locales activos"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {locales.map((loc) => {
+                  const active = activeLocales.includes(loc);
+                  return (
+                    <BUTTON
+                      key={loc}
+                      data-active={active}
+                      className={pill}
+                      onClick={() =>
+                        setActiveLocales((prev) =>
+                          prev.includes(loc)
+                            ? prev.filter((x) => x !== loc)
+                            : [...prev, loc]
+                        )
+                      }
+                    >
+                      {loc}
+                    </BUTTON>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className={label}>
+                <FM id="metaTab.searchId" defaultMessage="Buscar ID" />
+              </div>
+              <INPUT
+                className={inputBase + " mt-1"}
+                placeholder="filtra por texto del ID…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <div className={label}>
+                <FM
+                  id="metaTab.filterByStatus"
+                  defaultMessage="Filtrar por estado"
+                />
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <BUTTON
+                  className={pill}
+                  data-active={colorFilter === "all"}
+                  onClick={() => setColorFilter("all")}
+                >
+                  <FM id="metaTab.filter.all" defaultMessage="Todos" />
+                </BUTTON>
+                <BUTTON
+                  className={pill + " flex items-center gap-2"}
+                  data-active={colorFilter === "green"}
+                  onClick={() => setColorFilter("green")}
+                >
+                  <Badge s="green" />{" "}
+                  <FM id="metaTab.filter.green" defaultMessage="Verde" />
+                </BUTTON>
+                <BUTTON
+                  className={pill + " flex items-center gap-2"}
+                  data-active={colorFilter === "yellow"}
+                  onClick={() => setColorFilter("yellow")}
+                >
+                  <Badge s="yellow" />{" "}
+                  <FM id="metaTab.filter.yellow" defaultMessage="Amarillo" />
+                </BUTTON>
+                <BUTTON
+                  className={pill + " flex items-center gap-2"}
+                  data-active={colorFilter === "red"}
+                  onClick={() => setColorFilter("red")}
+                >
+                  <Badge s="red" />{" "}
+                  <FM id="metaTab.filter.red" defaultMessage="Rojo" />
+                </BUTTON>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2 mt-2">
-            <INPUT
-              className={inputBase}
-              placeholder="ej: home.welcome"
-              value={newKey}
-              onChange={(e) => setNewKey(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
+        </section>
+
+        {/* Añadir & Importar IDs */}
+        <section className="grid gap-4 md:grid-cols-2">
+          <div className={surface}>
+            <div className={h6}>
+              <FM id="metaTab.addId" defaultMessage="Añadir ID" />
+            </div>
+            <div className="flex gap-2 mt-2">
+              <INPUT
+                className={inputBase}
+                placeholder="ej: home.welcome"
+                value={newKey}
+                onChange={(e) => setNewKey(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    addKey(newKey);
+                    setNewKey("");
+                  }
+                }}
+              />
+              <BUTTON
+                className={btnBase}
+                onClick={() => {
                   addKey(newKey);
                   setNewKey("");
-                }
-              }}
-            />
-            <BUTTON
-              className={btnBase}
-              onClick={() => {
-                addKey(newKey);
-                setNewKey("");
-              }}
-            >
-              <FM id="metaTab.addId" defaultMessage="Añadir" />
-            </BUTTON>
-          </div>
-          <P className="text-xs opacity-70 mt-2">
-            <FM
-              id="metaTab.addId.description"
-              defaultMessage="Se crea una fila por cada locale activo. Por defecto, el valor = id (rojo) para ubicarlo en la UI."
-            />
-          </P>
-        </div>
-
-        <div className={surface}>
-          <div className={h6}>
-            <FM
-              id="metaTab.importIds"
-              defaultMessage="Importar IDs (pegar varios)"
-            />
-          </div>
-          <div className="flex gap-2 mt-2">
-            <textarea
-              className={inputBase + " h-9"}
-              rows={1}
-              placeholder="Pega IDs (uno por línea) y pulsa Importar o Ctrl/Cmd+Enter"
-              value={bulkIds}
-              onChange={(e) => setBulkIds(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) importIds();
-              }}
-            />
-            <BUTTON className={btnBase} onClick={importIds}>
-              <FM id="metaTab.import" defaultMessage="Importar" />
-            </BUTTON>
-          </div>
-        </div>
-      </section>
-
-      {/* Importar JSON (archivo) — GLOBAL */}
-      <section className={surface}>
-        <div className={h6}>
-          <FM
-            id="metaTab.importJson"
-            defaultMessage="Importar JSON masivo (es/en/fr)"
-          />
-        </div>
-        <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end mt-2">
-          <div className="space-y-2">
-            <div className={label}>
-              <FM
-                id="metaTab.mode.global"
-                defaultMessage="Global (1 documento por idioma)"
-              />
+                }}
+              >
+                <FM id="metaTab.addId" defaultMessage="Añadir" />
+              </BUTTON>
             </div>
-            <P className="text-xs opacity-70">
+            <P className="text-xs opacity-70 mt-2">
               <FM
-                id="metaTab.uploadFiles"
-                defaultMessage="Sube archivos es.json, en.json, fr.json. Todo se guardará en el ámbito Global por idioma."
+                id="metaTab.addId.description"
+                defaultMessage="Se crea una fila por cada locale activo. Por defecto, el valor = id (rojo) para ubicarlo en la UI."
               />
             </P>
           </div>
 
-          <div className="flex items-center gap-3 justify-end">
-            <INPUT
-              id="i18n-json-file"
-              type="file"
-              accept=".json"
-              multiple
-              className={btnBase + " cursor-pointer"}
-              onChange={(e) => handleJsonImport(e.currentTarget.files)}
-            />
-            {inlineStatus && (
-              <SPAN className="text-xs text-emerald-600 dark:text-emerald-400">
-                {inlineStatus}
-              </SPAN>
-            )}
+          <div className={surface}>
+            <div className={h6}>
+              <FM
+                id="metaTab.importIds"
+                defaultMessage="Importar IDs (pegar varios)"
+              />
+            </div>
+            <div className="flex gap-2 mt-2">
+              <textarea
+                className={inputBase + " h-9"}
+                rows={1}
+                placeholder="Pega IDs (uno por línea) y pulsa Importar o Ctrl/Cmd+Enter"
+                value={bulkIds}
+                onChange={(e) => setBulkIds(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) importIds();
+                }}
+              />
+              <BUTTON className={btnBase} onClick={importIds}>
+                <FM id="metaTab.import" defaultMessage="Importar" />
+              </BUTTON>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Tabla */}
-      <section className={surface}>
-        <div className="overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <table className="min-w-full text-sm border-collapse table-fixed">
-            <thead className="bg-neutral-900/80">
-              <tr>
-                <th className="text-left p-2 w-[360px] text-neutral-700 dark:text-neutral-200">
-                  <FM id="metaTab.id" defaultMessage="ID" />
-                </th>
-                {activeLocales.map((loc) => (
-                  <th
-                    key={loc}
-                    className="text-left p-2 text-neutral-700 dark:text-neutral-200"
-                  >
-                    {loc}
-                  </th>
-                ))}
-                <th className="text-left p-2 w-[80px] text-neutral-700 dark:text-neutral-200">
-                  <FM id="metaTab.delete" defaultMessage="Borrar" />
-                </th>
-                <th className="text-left p-2 w-[80px] text-neutral-700 dark:text-neutral-200">
-                  <FM id="metaTab.status" defaultMessage="Estado" />
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-800">
-              {filteredRows.length === 0 && (
-                <tr>
-                  <td
-                    className="p-4 text-neutral-500 dark:text-neutral-400"
-                    colSpan={1 + activeLocales.length + 2}
-                  >
-                    {loading
-                      ? status || "Cargando…"
-                      : "Sin claves (cambia filtro, añade o importa JSON)"}
-                  </td>
-                </tr>
+        {/* Importar JSON (archivo) — GLOBAL */}
+        <section className={surface}>
+          <div className={h6}>
+            <FM
+              id="metaTab.importJson"
+              defaultMessage="Importar JSON masivo (es/en/fr)"
+            />
+          </div>
+          <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end mt-2">
+            <div className="space-y-2">
+              <div className={label}>
+                <FM
+                  id="metaTab.mode.global"
+                  defaultMessage="Global (1 documento por idioma)"
+                />
+              </div>
+              <P className="text-xs opacity-70">
+                <FM
+                  id="metaTab.uploadFiles"
+                  defaultMessage="Sube archivos es.json, en.json, fr.json. Todo se guardará en el ámbito Global por idioma."
+                />
+              </P>
+            </div>
+
+            <div className="flex items-center gap-3 justify-end">
+              <INPUT
+                id="i18n-json-file"
+                type="file"
+                accept=".json"
+                multiple
+                className={btnBase + " cursor-pointer"}
+                onChange={(e) => handleJsonImport(e.currentTarget.files)}
+              />
+              {inlineStatus && (
+                <SPAN className="text-xs text-emerald-600 dark:text-emerald-400">
+                  {inlineStatus}
+                </SPAN>
               )}
-              {filteredRows.map((r) => (
-                <tr key={r.id} className="odd:bg-neutral-900/40">
-                  <td className="p-2 align-top">
-                    <code className="text-xs opacity-80 break-all">{r.id}</code>
-                  </td>
+            </div>
+          </div>
+        </section>
 
-                  {activeLocales.map((loc) => {
-                    const val = (data[r.id]?.[loc] ?? "") as string;
-                    const st = statusFor(r.id, committed[r.id]?.[loc]);
-                    return (
-                      <td key={loc} className="p-2 align-top">
-                        <div className="flex items-center gap-2">
-                          <Badge s={st} />
-                          <INPUT
-                            className={inputBase}
-                            value={val}
-                            onChange={(e) =>
-                              setCell(r.id, loc, e.target.value)
-                            }
-                            onBlur={() => confirmCell(r.id, loc)}
-                            placeholder={r.id}
-                          />
-                        </div>
-                      </td>
-                    );
-                  })}
-
-                  <td className="p-2 align-top">
-                    <BUTTON
-                      className={btnBase + " px-2 py-1"}
-                      onClick={() => deleteIdHere(r.id)}
-                      title="Eliminar"
+        {/* Tabla */}
+        <section className={surface}>
+          <div className="overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <table className="min-w-full text-sm border-collapse table-fixed">
+              <thead className="bg-neutral-900/80">
+                <tr>
+                  <th className="text-left p-2 w-[360px] text-neutral-700 dark:text-neutral-200">
+                    <FM id="metaTab.id" defaultMessage="ID" />
+                  </th>
+                  {activeLocales.map((loc) => (
+                    <th
+                      key={loc}
+                      className="text-left p-2 text-neutral-700 dark:text-neutral-200"
                     >
-                      🗑
-                    </BUTTON>
-                  </td>
-
-                  <td className="p-2 align-top">
-                    <div className="flex items-center justify-center">
-                      <Badge
-                        s={rowStatusFor(activeLocales, r.id, committed)}
-                      />
-                    </div>
-                  </td>
+                      {loc}
+                    </th>
+                  ))}
+                  <th className="text-left p-2 w-[80px] text-neutral-700 dark:text-neutral-200">
+                    <FM id="metaTab.delete" defaultMessage="Borrar" />
+                  </th>
+                  <th className="text-left p-2 w-[80px] text-neutral-700 dark:text-neutral-200">
+                    <FM id="metaTab.status" defaultMessage="Estado" />
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-neutral-800">
+                {filteredRows.length === 0 && (
+                  <tr>
+                    <td
+                      className="p-4 text-neutral-500 dark:text-neutral-400"
+                      colSpan={1 + activeLocales.length + 2}
+                    >
+                      {loading
+                        ? status || "Cargando…"
+                        : "Sin claves (cambia filtro, añade o importa JSON)"}
+                    </td>
+                  </tr>
+                )}
+                {filteredRows.map((r) => (
+                  <tr key={r.id} className="odd:bg-neutral-900/40">
+                    <td className="p-2 align-top">
+                      <code className="text-xs opacity-80 break-all">{r.id}</code>
+                    </td>
 
-        <P className="text-xs opacity-70 mt-2">
-          <FM
-            id="metaTab.importTip"
-            defaultMessage="Tip: Ctrl/Cmd + Enter en “Importar IDs” para agregar rápido."
-          />
-        </P>
-      </section>
-    </div>
+                    {activeLocales.map((loc) => {
+                      const val = (data[r.id]?.[loc] ?? "") as string;
+                      const st = statusFor(r.id, committed[r.id]?.[loc]);
+                      return (
+                        <td key={loc} className="p-2 align-top">
+                          <div className="flex items-center gap-2">
+                            <Badge s={st} />
+                            <INPUT
+                              className={inputBase}
+                              value={val}
+                              onChange={(e) =>
+                                setCell(r.id, loc, e.target.value)
+                              }
+                              onBlur={() => confirmCell(r.id, loc)}
+                              placeholder={r.id}
+                            />
+                          </div>
+                        </td>
+                      );
+                    })}
+
+                    <td className="p-2 align-top">
+                      <BUTTON
+                        className={btnBase + " px-2 py-1"}
+                        onClick={() => deleteIdHere(r.id)}
+                        title="Eliminar"
+                      >
+                        🗑
+                      </BUTTON>
+                    </td>
+
+                    <td className="p-2 align-top">
+                      <div className="flex items-center justify-center">
+                        <Badge
+                          s={rowStatusFor(activeLocales, r.id, committed)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <P className="text-xs opacity-70 mt-2">
+            <FM
+              id="metaTab.importTip"
+              defaultMessage="Tip: Ctrl/Cmd + Enter en “Importar IDs” para agregar rápido."
+            />
+          </P>
+        </section>
+      </div>
+    </AdminGuard>
   );
 }

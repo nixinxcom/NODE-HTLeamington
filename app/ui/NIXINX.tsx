@@ -44,7 +44,6 @@ export default function NIXINX({
   return (
     <GTMProvider>
       <SpeedInsights />
-
       <FdvProvider>
         <BootGate>
           <SessionBehaviorProvider locale={effectiveLocale}>

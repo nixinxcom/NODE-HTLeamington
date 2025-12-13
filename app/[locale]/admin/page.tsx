@@ -5,13 +5,10 @@ import { useParams } from 'next/navigation';
 import AdminGuard from '@/complements/admin/AdminGuard'; 
 import styles from './admin-home.module.css';
 import FM from '@/complements/i18n/FM';
-import { useAppContext } from "@/context/AppContext";
 
 export default function AdminHome() {
   const { locale } = useParams<{ locale: string }>();
   const L = (p: string) => `/${locale}${p}`;
-
-  const { Settings } = useAppContext();
 
   const cards = [
     {

@@ -2004,20 +2004,20 @@ export default function CampaignsCenter() {
         <DIV className="p-4 md:p-6 lg:p-8 space-y-4">
             {/* Botones de navegación superior */}
             <DIV className="flex justify-between items-center mb-2">
-            <DIV className="flex gap-2">
-                <BUTTON
-                type="button"
-                onClick={() => router.push("../admin")}
-                >
-                Admin Panel
-                </BUTTON>
-                <BUTTON
-                type="button"
-                onClick={() => router.push("../../")}
-                >
-                Home
-                </BUTTON>
-            </DIV>
+              <DIV className="flex gap-2">
+                  <BUTTON
+                  type="button"
+                  onClick={() => router.push("../admin")}
+                  >
+                  Admin Panel
+                  </BUTTON>
+                  <BUTTON
+                  type="button"
+                  onClick={() => router.push("../../")}
+                  >
+                  Home
+                  </BUTTON>
+              </DIV>
             </DIV>
 
             <DIV className="flex flex-col gap-1">

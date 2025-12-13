@@ -60,6 +60,10 @@ const defaultContracted: Contracted = {
   socialmedia: true,
   styles: true,
   website: true,
+  wrappers: true,
+  sessionBehaviour: true,
+  accessControl: true,
+  paymentsPortal: true,
 };
 
 const emptyAgreement: Agreement = {

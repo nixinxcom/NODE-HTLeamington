@@ -21,8 +21,12 @@ export type Contracted = {
   services: boolean;
   settings: boolean;
   socialmedia: boolean;
-  styles: boolean;
   website: boolean;
+  styles: boolean;
+  wrappers: boolean;
+  sessionBehaviour: boolean;
+  accessControl: boolean;
+  paymentsPortal: boolean;
 };
 
 export type LicenseInfo = {
