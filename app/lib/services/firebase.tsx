@@ -1,17 +1,8 @@
-// lib/services/firebase.ts
+// LOCATION : lib/services/firebase.ts
+
 import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-  getFirestore,
-  initializeFirestore,
-} from "firebase/firestore";
-import {
-  getAuth,
-  setPersistence,
-  browserLocalPersistence,
-  signInAnonymously,
-  GoogleAuthProvider,
-  FacebookAuthProvider,
-} from "firebase/auth";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
+import { getAuth, setPersistence, browserLocalPersistence, signInAnonymously, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
 
@@ -20,30 +11,26 @@ const FirebaseConfig = {
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-  messagingSenderId:
-    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID!,
 };
 
 // App (una sola vez)
-export const Firebase = getApps().length
-  ? getApp()
-  : initializeApp(FirebaseConfig);
+export const Firebase = getApps().length ? getApp() : initializeApp(FirebaseConfig);
 
 // Firestore: inicializa UNA vez.
 // Sin single-tab manager para evitar el error de "exclusive access".
 export const FbDB = (() => {
   if (typeof window === "undefined") {
     return getFirestore(Firebase);
-  }
-  try {
-    return initializeFirestore(Firebase, {
-      ignoreUndefinedProperties: true,
-    });
+  
+  } try {
+    return initializeFirestore(Firebase, { ignoreUndefinedProperties: true });
+
   } catch {
-    // Ya estaba inicializado
     return getFirestore(Firebase);
+    
   }
 })();
 
