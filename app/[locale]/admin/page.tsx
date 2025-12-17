@@ -42,6 +42,12 @@ export default function AdminHome() {
       href: L('/admin/campaigns-center'),
     },
     {
+      key: 'Control Access Roles',
+      title: <FM id="car.title" defaultMessage="Control de Accesos" />,
+      desc: <FM id="car.description" defaultMessage="Administrador de Control de Acceso a Usuarios" />,
+      href: L('/admin/ControlAccessRoles'),
+    },
+    {
       key: 'Payments',
       title: <FM id="payments.title" defaultMessage="Administrador de Pagos" />,
       desc: <FM id="payments.description" defaultMessage="Administrador de Pagos PayPal" />,

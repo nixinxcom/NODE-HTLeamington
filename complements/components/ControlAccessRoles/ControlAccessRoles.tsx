@@ -177,7 +177,7 @@ function uniq<T>(arr: T[]): T[] {
  *  ========================= */
 type Tab = "roles" | "users";
 
-export default function CarPage() {
+export default function ControlAccessRoles() {
   const { locale } = useParams<{ locale: string }>();
 
   const [tab, setTab] = useState<Tab>("roles");
