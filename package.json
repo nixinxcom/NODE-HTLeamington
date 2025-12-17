@@ -70,18 +70,18 @@
 
     "project:fromscratch": "npm run toscratch && npm install && npm run functions:clean && npm run functions:install && npm run functions:build",
 
-    "release:patch:dev": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version patch; git push origin main; git push --tags; npm publish --access=restricted\" && npm run dev",
+    "release:patch:dev": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version patch; git push origin main; git push --tags; npm publish --access=restricted\" ",
     "release:patch:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version patch; git push origin main; git push --tags; npm publish --access=restricted\" && npm run start",
-    "release:minor:dev": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version minor; git push origin main; git push --tags; npm publish --access=restricted\" && npm run dev",
+    "release:minor:dev": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version minor; git push origin main; git push --tags; npm publish --access=restricted\" ",
     "release:minor:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version minor; git push origin main; git push --tags; npm publish --access=restricted\" && npm run start",
-    "release:major:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version major; git push origin main; git push --tags; npm publish --access=restricted\" && npm run dev",
+    "release:major:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version major; git push origin main; git push --tags; npm publish --access=restricted\" ",
     "release:major:dev": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version major; git push origin main; git push --tags; npm publish --access=restricted\" && npm run start",
 
     "all:main:dev": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run github && npm run dev",
     "all:main:start": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run github && npm run start",
-    "all:main:patch": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run release:patch:dev",
-    "all:main:minor": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run release:minor:dev",
-    "all:main:major": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run release:major:dev",
+    "all:main:patch": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run release:patch && npm run github && npm run dev",
+    "all:main:minor": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run release:minor && npm run github && npm run dev",
+    "all:main:major": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run release:major && npm run github && npm run dev",
 
     "ToProduction": "npm run toscratch && npm run reinstall && npm run rebuild && npm run github && npm run mirrors"
   },
