@@ -1,3 +1,5 @@
+'use client'
+
 // app/lib/sdk/facultiesClient.ts
 
 export type FacultyKey =

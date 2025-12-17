@@ -1,5 +1,3 @@
-'use client';
-
 // ────────────────────
 // Wrappers
 // ────────────────────
@@ -18,7 +16,7 @@ export { default as MetaTab } from "./complements/admin/MetaTab";
 export { default as FMsTab } from "./complements/admin/FMsTab";
 
 // ────────────────────
-// Seeds TS
+// Seeds TS - Server safe
 // ────────────────────
 export { default as SeedStyles } from "./seeds/styles";
 
@@ -40,7 +38,7 @@ export { default as NotificationsInbox } from "./complements/components/Notifica
 export { default as NotificationPopupHost } from "./complements/components/Notifications/NotificationPopupHost";
 
 // ────────────────────
-// Interfaces
+// Interfaces - server safe
 // ────────────────────
 export type { default as iSettings } from "./app/lib/settings/interface";
 export type { default as iBranding } from "./app/lib/branding/interface";
@@ -66,7 +64,7 @@ export { default as InstallPWAComp } from "./complements/components/InstallPWACo
 
 // i18n switcher (alias doble para evitar rupturas)
 export { default as InterComp } from "./complements/components/InterComp/InterComp";
-export { default as MapEmbed } from "./complements/components/Maps/MapEmbed/MapEmbed";
+export { default as MapEmbed } from "./complements/components/Maps/MapEmbed/MapEmbed";  // Server
 export { default as MapGoogle } from "./complements/components/Maps/MapGoogle/MapGoogle";
 export { default as NavBar } from "./complements/components/NavBar/NavBar";
 export { default as PayPal } from "./complements/components/PayPal/PayPalButtonsComp";
@@ -99,7 +97,7 @@ export {
   fetchFaculties,
   canUseFaculty,
   type FacultyKey,
-} from "./lib/sdk/facultiesClient";
+} from "./lib/sdk/facultiesClient";  // Server
 
 // FM (wrapper de react-intl)
 export { default as CoreShell } from "./complements/shell/CoreShell";

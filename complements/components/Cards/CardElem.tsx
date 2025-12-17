@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useRef, useEffect  } from 'react';
 import { useAppContext } from '@/context/AppContext';
 import {IntlProvider, FormattedMessage, FormattedNumber} from 'react-intl';

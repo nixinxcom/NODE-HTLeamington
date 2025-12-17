@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useRef, useEffect } from 'react';
 import styles from './BackgroundMediaComp.module.css';
 import { FormattedMessage, useIntl } from "react-intl";

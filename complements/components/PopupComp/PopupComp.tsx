@@ -1,3 +1,5 @@
+'use client'
+
 /*Modulos*/
 import React, { useState } from 'react'
 import ReactPlayer from 'react-player/lazy'

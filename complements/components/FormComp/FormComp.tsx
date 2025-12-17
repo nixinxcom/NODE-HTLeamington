@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, ReactNode, FormEvent, ReactElement } from 'react';
 import styles from './FormComp.module.css';
 import { UseFirestoreFunc } from '@/functionalities/CommonFunctions/UseFirestoreFunc';
