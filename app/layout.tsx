@@ -7,7 +7,7 @@ import { Inter } from "next/font/google";
 import { Suspense } from "react";
 
 import { withSitesLayoutMetadata } from "@/app/lib/seo/withPageMetadata";
-import NIXINX from "./ui/NIXINX";
+import NIXINX from "./ui/NIXINXproviders";
 
 export const generateMetadata = withSitesLayoutMetadata();
 

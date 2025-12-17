@@ -3,47 +3,45 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { IntlProvider } from 'react-intl';
-import Providers from '../../app/ui/providers';
+
+import NIXINX from '../../app/ui/NIXINXproviders';
 import InterComp from '../components/InterComp/InterComp';
 
 type Messages = Record<string, string>;
 type LocaleDict = Record<string, Messages>;
 
-/** Estructura compatible con InterComp (no exporta su tipo) */
 type ILanguage = {
   language?: string;
-  locale: string;          // 'es' | 'es-MX' | 'en-US' | 'fr-CA'...
+  locale: string;
   icon?: string;
   country?: string;
   alt?: string;
   width?: number;
   height?: number;
   prioritario?: boolean;
+  fill?: boolean;
 };
 
 export type CoreShellProps = {
   children: React.ReactNode;
-  /** Fallback temporal de mensajes para maquetadores */
   localMessages?: LocaleDict;
-  /** Si no hay nada, usa este (default del core) */
   coreDefaultLocale?: string;
-  /** Mostrar/ocultar conmutador de idioma */
   showLocaleSwitcher?: boolean;
 };
-
-/* ───────────────── helpers ───────────────── */
 
 function fromUrl(pathname: string): string | undefined {
   const seg = pathname.split('/').filter(Boolean)[0] ?? '';
   if (!seg) return undefined;
-  return seg.replace('_', '-'); // en_US -> en-US
+  return seg.replace('_', '-');
 }
 
 function fromRDD(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   try {
     return window.localStorage.getItem('nixinx.locale') || undefined;
-  } catch { return undefined; }
+  } catch {
+    return undefined;
+  }
 }
 
 function labelOf(code: string): string {
@@ -54,15 +52,28 @@ function labelOf(code: string): string {
 }
 
 function buildLangs(): ILanguage[] {
-  const raw = process.env.NEXT_PUBLIC_LANGS; // p.ej. "es-MX,en-US,fr-CA"
+  const raw = process.env.NEXT_PUBLIC_LANGS; // "es-MX,en-US,fr-CA"
   const list = raw?.split(',').map(s => s.trim()).filter(Boolean);
   const base = (list?.length ? list : ['es-MX', 'en-US', 'fr-CA']);
   return base.map(code => ({ locale: code, language: labelOf(code) }));
 }
 
-/* ───────────────── CoreShell ───────────────── */
+function pickMessages(localMessages: LocaleDict | undefined, locale: string, coreDefault: string): Messages {
+  if (!localMessages) return {};
+  const short = labelOf(locale);
+  const coreShort = labelOf(coreDefault);
 
-export default function CoreShell({
+  return (
+    localMessages[locale] ??
+    localMessages[short] ??
+    localMessages[coreDefault] ??
+    localMessages[coreShort] ??
+    {}
+  );
+}
+
+// ✅ puedes renombrar el componente a NIXINXShell si quieres
+export default function NIXIN({
   children,
   localMessages,
   coreDefaultLocale = 'en',
@@ -77,23 +88,27 @@ export default function CoreShell({
   const urlLocale  = fromUrl(pathname);
   const effective  = (rddLocale ?? urlLocale ?? envDefault);
 
-  const messages = useMemo<Messages>(() => {
-    return (localMessages?.[effective]) ?? {};
-  }, [effective, localMessages]);
+  const messages = useMemo(() => {
+    return pickMessages(localMessages, effective, coreDefaultLocale);
+  }, [effective, localMessages, coreDefaultLocale]);
 
   const langs: ILanguage[] = useMemo(buildLangs, []);
 
   return (
-    <IntlProvider locale={effective} defaultLocale={coreDefaultLocale} messages={messages}
-        onError={(e) => {
-          if ((e as any).code === 'MISSING_TRANSLATION') return;
-          console.error(e);
-        }}
-      >
-      <Providers initialLocale={effective}>
+    <IntlProvider
+      locale={effective}
+      defaultLocale={coreDefaultLocale}
+      messages={messages}
+      onError={(e) => {
+        if ((e as any).code === 'MISSING_TRANSLATION') return;
+        console.error(e);
+      }}
+    >
+      {/* ✅ NIXINX trae SessionBehaviorProvider y todo lo demás */}
+      <NIXINX locale={effective} showLangSwitch={false}>
         {showLocaleSwitcher && <InterComp Langs={langs} />}
         {children}
-      </Providers>
+      </NIXINX>
     </IntlProvider>
   );
 }

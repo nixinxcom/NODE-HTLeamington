@@ -23,7 +23,8 @@ export { default as SeedStyles } from "./seeds/styles";
 // ────────────────────
 // Providers
 // ────────────────────
-export { default as Providers } from "./app/ui/providers";
+// export { default as Providers } from "./app/ui/providers";
+export { default as NIXINX } from "./app/ui/NIXINXproviders";
 export {
   NotificationsProvider,
   useNotifications,
@@ -100,7 +101,7 @@ export {
 } from "./lib/sdk/facultiesClient";  // Server
 
 // FM (wrapper de react-intl)
-export { default as CoreShell } from "./complements/shell/CoreShell";
+export { default as NIXIN } from "./complements/shell/NIXIN";
 export { default as FM } from "./complements/i18n/FM";
 
 // Final obligatorio
