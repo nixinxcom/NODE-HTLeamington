@@ -42,13 +42,26 @@ function adminDocRef(db: any, segments: string[]) {
 
 const readDoc = cache(async (...segments: string[]) => {
   const { admin, db } = await getDbMode();
+
+  // 1) intenta Admin SDK
   if (admin) {
-    const snap = await adminDocRef(db, segments).get();
-    return snap.exists ? (snap.data() as Record<string, any>) : {};
-  } else {
+    try {
+      const snap = await adminDocRef(db, segments).get();
+      return snap.exists ? (snap.data() as Record<string, any>) : {};
+    } catch (err) {
+      console.warn("[meta.server] Admin read failed -> fallback Web SDK", err);
+      // sigue abajo al web fallback
+    }
+  }
+
+  // 2) fallback Web SDK (requiere reglas allow read)
+  try {
     const { doc: webDoc, getDoc: webGetDoc } = await import("firebase/firestore");
     const snap = await webGetDoc(webDoc(db, ...segments));
     return snap.exists() ? (snap.data() as Record<string, any>) : {};
+  } catch (err) {
+    console.warn("[meta.server] Web read failed -> empty meta", err);
+    return {};
   }
 });
 

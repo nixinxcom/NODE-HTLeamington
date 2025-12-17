@@ -1,60 +1,60 @@
 // app/manifest.ts
-import type { MetadataRoute } from 'next';
-import { doc, getDoc } from 'firebase/firestore';
-import { ref, listAll, getDownloadURL } from 'firebase/storage';
-import { FbDB, FbStorage } from '@/app/lib/services/firebase';
+import type { MetadataRoute } from "next";
+import { doc, getDoc } from "firebase/firestore";
+import { ref, listAll, getDownloadURL } from "firebase/storage";
+import { FbDB, FbStorage } from "@/app/lib/services/firebase";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /* ───────────────────────── Tipados básicos ───────────────────────── */
 
-type DisplayMode = 'fullscreen' | 'standalone' | 'minimal-ui' | 'browser';
-type DisplayOverride = DisplayMode | 'window-controls-overlay';
+type DisplayMode = "fullscreen" | "standalone" | "minimal-ui" | "browser";
+type DisplayOverride = DisplayMode | "window-controls-overlay";
 type Orientation =
-  | 'any'
-  | 'natural'
-  | 'landscape'
-  | 'portrait'
-  | 'portrait-primary'
-  | 'portrait-secondary'
-  | 'landscape-primary'
-  | 'landscape-secondary';
+  | "any"
+  | "natural"
+  | "landscape"
+  | "portrait"
+  | "portrait-primary"
+  | "portrait-secondary"
+  | "landscape-primary"
+  | "landscape-secondary";
 
 const DISPLAY: readonly DisplayMode[] = [
-  'fullscreen',
-  'standalone',
-  'minimal-ui',
-  'browser',
+  "fullscreen",
+  "standalone",
+  "minimal-ui",
+  "browser",
 ] as const;
 
 const DISPLAY_OVERRIDE: readonly DisplayOverride[] = [
   ...DISPLAY,
-  'window-controls-overlay',
+  "window-controls-overlay",
 ] as const;
 
 const ORIENTATIONS: readonly Orientation[] = [
-  'any',
-  'natural',
-  'landscape',
-  'portrait',
-  'portrait-primary',
-  'portrait-secondary',
-  'landscape-primary',
-  'landscape-secondary',
+  "any",
+  "natural",
+  "landscape",
+  "portrait",
+  "portrait-primary",
+  "portrait-secondary",
+  "landscape-primary",
+  "landscape-secondary",
 ] as const;
 
 type ManifestIcon = {
   src: string;
   sizes?: string;
   type?: string;
-  purpose?: 'any' | 'maskable' | 'monochrome';
+  purpose?: "any" | "maskable" | "monochrome";
 };
 
 type ManifestScreenshot = {
   src: string;
   sizes?: string;
   type?: string;
-  form_factor?: 'wide' | 'narrow';
+  form_factor?: "wide" | "narrow";
   label?: string;
 };
 
@@ -64,7 +64,7 @@ function isOneOf<A extends readonly string[]>(
   arr: A,
   v: unknown,
 ): v is A[number] {
-  return typeof v === 'string' && (arr as readonly string[]).includes(v as string);
+  return typeof v === "string" && (arr as readonly string[]).includes(v as string);
 }
 
 function asArray<T = any>(v: unknown): T[] {
@@ -86,17 +86,17 @@ function parseSizeFromName(name: string): { width: number; height: number } | nu
 }
 
 function inferMimeType(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase();
+  const ext = name.split(".").pop()?.toLowerCase();
   switch (ext) {
-    case 'webp':
-      return 'image/webp';
-    case 'png':
-      return 'image/png';
-    case 'jpg':
-    case 'jpeg':
-      return 'image/jpeg';
+    case "webp":
+      return "image/webp";
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
     default:
-      return 'image/*';
+      return "image/*";
   }
 }
 
@@ -106,20 +106,48 @@ function inferMimeType(name: string): string {
  *   { es: '...', en: '...' } -> usar baseLocale, o .default, o vacío
  */
 function unwrapTranslatable(val: any, baseLocale: string): string | undefined {
-  if (typeof val === 'string') return val;
-  if (val && typeof val === 'object' && !Array.isArray(val)) {
+  if (typeof val === "string") return val;
+  if (val && typeof val === "object" && !Array.isArray(val)) {
     const obj = val as Record<string, unknown>;
-    const direct = obj[baseLocale] ?? obj.default;
-    if (typeof direct === 'string') return direct;
+    const direct = (obj as any)[baseLocale] ?? (obj as any).default;
+    if (typeof direct === "string") return direct;
   }
   return undefined;
+}
+
+function isStorageUnauthorized(err: any): boolean {
+  const code = err?.code || err?.error?.code;
+  const status = err?.status_ || err?.status || err?.customData?.status;
+  return code === "storage/unauthorized" || status === 401 || status === 403;
+}
+
+function isFirestorePermission(err: any): boolean {
+  const code = err?.code || err?.error?.code;
+  return code === "permission-denied" || code === "unauthenticated";
+}
+
+/* ───────────────────────── Logging (sin spam) ───────────────────────── */
+
+let warnedFsOnce = false;
+let warnedStorageOnce = false;
+
+function warnOnce(kind: "fs" | "storage", msg: string, err: any) {
+  if (kind === "fs") {
+    if (warnedFsOnce) return;
+    warnedFsOnce = true;
+    console.warn(msg, err?.code ?? err);
+    return;
+  }
+  if (warnedStorageOnce) return;
+  warnedStorageOnce = true;
+  console.warn(msg, err?.code ?? err);
 }
 
 /* ───────────────────────── Icons desde Storage ───────────────────────── */
 
 async function buildIcons(): Promise<ManifestIcon[]> {
   try {
-    const baseRef = ref(FbStorage, 'manifest/icons');
+    const baseRef = ref(FbStorage, "manifest/icons");
     const res = await listAll(baseRef);
 
     const all = await Promise.all(
@@ -132,14 +160,17 @@ async function buildIcons(): Promise<ManifestIcon[]> {
           src,
           sizes: `${size.width}x${size.height}`,
           type: inferMimeType(item.name),
-          purpose: 'any',
+          purpose: "any",
         } satisfies ManifestIcon;
       }),
     );
 
     return all.filter(Boolean) as ManifestIcon[];
-  } catch (err) {
-    console.error('[manifest] Error building icons from Storage', err);
+  } catch (err: any) {
+    // Si no hay permisos, no ensucies consola. Solo fallback.
+    if (!isStorageUnauthorized(err)) {
+      warnOnce("storage", "[manifest] Storage icons failed (non-unauthorized)", err);
+    }
     return [];
   }
 }
@@ -152,7 +183,7 @@ async function buildScreenshots(appName: string): Promise<ManifestScreenshot[]> 
 
     const collect = async (
       folder: string,
-      formFactor: 'narrow' | 'wide',
+      formFactor: "narrow" | "wide",
       labelSuffix: string,
     ) => {
       const baseRef = ref(FbStorage, folder);
@@ -180,22 +211,16 @@ async function buildScreenshots(appName: string): Promise<ManifestScreenshot[]> 
     };
 
     // móvil (vertical)
-    await collect(
-      'manifest/screenshots/narrow',
-      'narrow',
-      'Pantalla principal (móvil)',
-    );
+    await collect("manifest/screenshots/narrow", "narrow", "Pantalla principal (móvil)");
 
     // escritorio (horizontal)
-    await collect(
-      'manifest/screenshots/wide',
-      'wide',
-      'Pantalla principal (escritorio)',
-    );
+    await collect("manifest/screenshots/wide", "wide", "Pantalla principal (escritorio)");
 
     return result;
-  } catch (err) {
-    console.error('[manifest] Error building screenshots from Storage', err);
+  } catch (err: any) {
+    if (!isStorageUnauthorized(err)) {
+      warnOnce("storage", "[manifest] Storage screenshots failed (non-unauthorized)", err);
+    }
     return [];
   }
 }
@@ -209,11 +234,11 @@ function buildCategories(raw: any, baseLocale: string): string[] | undefined {
   const out: string[] = [];
 
   for (const item of arr) {
-    if (typeof item === 'string') {
+    if (typeof item === "string") {
       out.push(item);
       continue;
     }
-    if (item && typeof item === 'object') {
+    if (item && typeof item === "object") {
       const cat = unwrapTranslatable((item as any).category, baseLocale);
       if (cat) out.push(cat);
     }
@@ -226,85 +251,100 @@ function buildCategories(raw: any, baseLocale: string): string[] | undefined {
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   // 1) Leer configuración PWA del tenant actual: FS = FDV
-  const snap = await getDoc(doc(FbDB, 'Providers', 'pwa'));
-  const pwa = (snap.exists() ? snap.data() : {}) as any;
+  let pwa: any = {};
+  try {
+    const snap = await getDoc(doc(FbDB, "Providers", "pwa"));
+    pwa = snap.exists() ? (snap.data() as any) : {};
+  } catch (err: any) {
+    // Si está cerrado por rules o aún no existe el setup, no rompas el manifest.
+    if (!isFirestorePermission(err)) {
+      warnOnce("fs", "[manifest] Firestore Providers/pwa read failed (non-permission)", err);
+    }
+    pwa = {};
+  }
 
   // defaultLocale (2 letras, ej: "es", "en", "fr")
   const defaultLocaleRaw =
-    typeof pwa.defaultLocale === 'string' ? pwa.defaultLocale.trim() : '';
-  const defaultLocale = (defaultLocaleRaw || 'en').toLowerCase();
+    typeof pwa.defaultLocale === "string" ? pwa.defaultLocale.trim() : "";
+  const defaultLocale = (defaultLocaleRaw || "en").toLowerCase();
 
   // Nombre público de la app
   const appName =
-    (typeof pwa.appName === 'string' && pwa.appName.trim()) ||
+    (typeof pwa.appName === "string" && pwa.appName.trim()) ||
     process.env.NEXT_PUBLIC_APP_NAME ||
-    'App';
+    "App";
 
   const shortName =
-    (typeof pwa.shortName === 'string' && pwa.shortName.trim()) || appName;
+    (typeof pwa.shortName === "string" && pwa.shortName.trim()) || appName;
 
   // Descripción (usa campo translatable si lo llenas así)
   const description =
     unwrapTranslatable(pwa.description, defaultLocale) ||
-    (typeof pwa.description === 'string' ? pwa.description : '') ||
-    '';
+    (typeof pwa.description === "string" ? pwa.description : "") ||
+    "";
 
   // Rutas base
   const startUrl =
-    (typeof pwa.startUrl === 'string' && pwa.startUrl.trim()) ||
-    `/${defaultLocale}`;
+    (typeof pwa.startUrl === "string" && pwa.startUrl.trim()) || `/${defaultLocale}`;
 
-  const scope =
-    (typeof pwa.scope === 'string' && pwa.scope.trim()) || '/';
+  const scope = (typeof pwa.scope === "string" && pwa.scope.trim()) || "/";
 
   // Display / orientación
   const display: DisplayMode = isOneOf(DISPLAY, pwa.display)
     ? (pwa.display as DisplayMode)
-    : 'standalone';
+    : "standalone";
 
-  const orientation: Orientation | undefined = isOneOf(
-    ORIENTATIONS,
-    pwa.orientation,
-  )
+  const orientation: Orientation | undefined = isOneOf(ORIENTATIONS, pwa.orientation)
     ? (pwa.orientation as Orientation)
     : undefined;
 
   // Colores:
   const themeColorFromBg =
-    typeof pwa.backgroundColor === 'string' && pwa.backgroundColor.trim()
+    typeof pwa.backgroundColor === "string" && pwa.backgroundColor.trim()
       ? pwa.backgroundColor.trim()
       : undefined;
 
-  const themeColorFallback =
-    pwa.themeColor === 'dark' ? '#000000' : '#ffffff';
+  const themeColorFallback = pwa.themeColor === "dark" ? "#000000" : "#ffffff";
 
   const theme_color = themeColorFromBg || themeColorFallback;
   const background_color = themeColorFromBg || theme_color;
 
-  // 2) Cargar icons + screenshots desde Storage en runtime
+  // 2) Cargar icons + screenshots desde Storage en runtime (si hay permisos)
   const [icons, screenshots] = await Promise.all([
     buildIcons(),
     buildScreenshots(appName),
   ]);
 
+  // Fallback local (SIEMPRE válido aunque Storage esté bloqueado)
+  const safeIcons: ManifestIcon[] =
+    icons && icons.length
+      ? icons
+      : [
+          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+        ];
+
+  const safeScreenshots =
+    screenshots && screenshots.length ? screenshots : undefined;
+
   // 3) Categorías (si las usas)
   const categories = buildCategories(pwa, defaultLocale);
 
   // 4) Manifest final para este tenant
-  const manifest: MetadataRoute.Manifest = {
+  const out: MetadataRoute.Manifest = {
     name: appName,
     short_name: shortName,
     description,
     start_url: startUrl,
     scope,
     display,
-    orientation,
+    ...(orientation ? { orientation } : {}),
     theme_color,
     background_color,
-    icons,
-    screenshots,
+    icons: safeIcons,
+    ...(safeScreenshots ? { screenshots: safeScreenshots } : {}),
     ...(categories ? { categories } : {}),
   };
 
-  return manifest;
+  return out;
 }

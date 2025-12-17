@@ -141,7 +141,6 @@ export default async function LocaleLayout({ children, params }: Props) {
 
       {/* Proveedor con el locale inicial (SSR y cliente quedan alineados) */}
       <I18nRouteProvider>
-        {/* Si quieres scoping, puedes envolver en <div className="brand">…</div> */}
         {children}
       </I18nRouteProvider>
     </>

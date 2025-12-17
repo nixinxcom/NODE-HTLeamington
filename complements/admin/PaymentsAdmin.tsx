@@ -27,6 +27,7 @@ import {
   SELECT,
 } from "@/complements/components/ui/wrappers";
 import { AdminGuard } from '@/index';
+import { CapGuard } from '@/complements/admin/CapGuard';
 
 type PaymentDoc = {
   id: string;
@@ -137,132 +138,138 @@ export default function PaymentsAdmin() {
   }, [payments, search, statusFilter, sortField, sortDir]);
 
   return (
-    <AdminGuard>
-        <DIV className="p-6 space-y-4">
-            {/* Botones de navegación superior */}
-            <DIV className="flex justify-between items-center mb-2">
-                <DIV className="flex gap-2">
-                    <BUTTON
-                    type="button"
-                    onClick={() => router.push("../admin")}
-                    >
-                    Admin Panel
-                    </BUTTON>
-                    <BUTTON
-                    type="button"
-                    onClick={() => router.push("../../")}
-                    >
-                    Home
-                    </BUTTON>
-                </DIV>
-            </DIV>
-        <h1 className="text-xl font-semibold">
-            Pagos PayPal
-        </h1>
+    <CapGuard
+      cap="CampaignsCenter"
+      fallback={<DIV style={{ padding: 16 }}>No tienes contratado CampaignsCenter.</DIV>}
+      loadingFallback={<DIV style={{ padding: 16 }}>Cargando licencias…</DIV>}
+    >
+      <AdminGuard>
+          <DIV className="p-6 space-y-4">
+              {/* Botones de navegación superior */}
+              <DIV className="flex justify-between items-center mb-2">
+                  <DIV className="flex gap-2">
+                      <BUTTON
+                      type="button"
+                      onClick={() => router.push("../admin")}
+                      >
+                      Admin Panel
+                      </BUTTON>
+                      <BUTTON
+                      type="button"
+                      onClick={() => router.push("../../")}
+                      >
+                      Home
+                      </BUTTON>
+                  </DIV>
+              </DIV>
+          <h1 className="text-xl font-semibold">
+              Pagos PayPal
+          </h1>
 
-        {/* Filtros */}
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-            <input
-            type="text"
-            placeholder="Buscar por orden, tenant, email o concepto…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="px-2 py-1 rounded border border-gray-700 bg-black/40"
-            />
+          {/* Filtros */}
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+              <input
+              type="text"
+              placeholder="Buscar por orden, tenant, email o concepto…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="px-2 py-1 rounded border border-gray-700 bg-black/40"
+              />
 
-            <select
-            value={statusFilter}
-            onChange={(e) =>
-                setStatusFilter(e.target.value as any)
-            }
-            className="px-2 py-1 rounded border border-gray-700 bg-black/40"
-            >
-            <option value="all">Todos los estatus</option>
-            <option value="created">Solo creados</option>
-            <option value="captured">Solo capturados</option>
-            <option value="failed">Solo fallidos</option>
-            </select>
+              <select
+              value={statusFilter}
+              onChange={(e) =>
+                  setStatusFilter(e.target.value as any)
+              }
+              className="px-2 py-1 rounded border border-gray-700 bg-black/40"
+              >
+              <option value="all">Todos los estatus</option>
+              <option value="created">Solo creados</option>
+              <option value="captured">Solo capturados</option>
+              <option value="failed">Solo fallidos</option>
+              </select>
 
-            <select
-            value={sortField}
-            onChange={(e) =>
-                setSortField(e.target.value as SortField)
-            }
-            className="px-2 py-1 rounded border border-gray-700 bg-black/40"
-            >
-            <option value="createdAt">Ordenar por fecha</option>
-            <option value="amount">Ordenar por monto</option>
-            <option value="tenantId">Ordenar por tenant</option>
-            <option value="status">Ordenar por estatus</option>
-            </select>
+              <select
+              value={sortField}
+              onChange={(e) =>
+                  setSortField(e.target.value as SortField)
+              }
+              className="px-2 py-1 rounded border border-gray-700 bg-black/40"
+              >
+              <option value="createdAt">Ordenar por fecha</option>
+              <option value="amount">Ordenar por monto</option>
+              <option value="tenantId">Ordenar por tenant</option>
+              <option value="status">Ordenar por estatus</option>
+              </select>
 
-            <button
-            type="button"
-            onClick={() =>
-                setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-            }
-            className="px-2 py-1 rounded border border-gray-700 bg-black/40"
-            >
-            {sortDir === 'asc' ? 'Ascendente ↑' : 'Descendente ↓'}
-            </button>
-        </div>
+              <button
+              type="button"
+              onClick={() =>
+                  setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+              }
+              className="px-2 py-1 rounded border border-gray-700 bg-black/40"
+              >
+              {sortDir === 'asc' ? 'Ascendente ↑' : 'Descendente ↓'}
+              </button>
+          </div>
 
-        {/* Tabla */}
-        <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-            <thead>
-                <tr className="border-b border-gray-700">
-                <th className="text-left py-2 pr-2">Fecha</th>
-                <th className="text-left py-2 pr-2">Tenant</th>
-                <th className="text-left py-2 pr-2">Concepto</th>
-                <th className="text-left py-2 pr-2">Orden</th>
-                <th className="text-left py-2 pr-2">Monto</th>
-                <th className="text-left py-2 pr-2">Estatus</th>
-                <th className="text-left py-2 pr-2">Email pagador</th>
-                </tr>
-            </thead>
-            <tbody>
-                {viewPayments.map((p) => (
-                <tr
-                    key={p.id}
-                    className="border-b border-gray-800 hover:bg-white/5"
-                >
-                    <td className="py-1 pr-2">
-                    {p.createdAt?.toDate
-                        ? p.createdAt
-                            .toDate()
-                            .toLocaleString()
-                        : '—'}
-                    </td>
-                    <td className="py-1 pr-2">{p.tenantId}</td>
-                    <td className="py-1 pr-2">
-                    {p.concept ?? '—'}
-                    </td>
-                    <td className="py-1 pr-2">{p.orderId}</td>
-                    <td className="py-1 pr-2">
-                    {p.amount} {p.currency}
-                    </td>
-                    <td className="py-1 pr-2">{p.status}</td>
-                    <td className="py-1 pr-2">
-                    {p.payerEmail ?? '—'}
-                    </td>
-                </tr>
-                ))}
+          {/* Tabla */}
+          <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+              <thead>
+                  <tr className="border-b border-gray-700">
+                  <th className="text-left py-2 pr-2">Fecha</th>
+                  <th className="text-left py-2 pr-2">Tenant</th>
+                  <th className="text-left py-2 pr-2">Concepto</th>
+                  <th className="text-left py-2 pr-2">Orden</th>
+                  <th className="text-left py-2 pr-2">Monto</th>
+                  <th className="text-left py-2 pr-2">Estatus</th>
+                  <th className="text-left py-2 pr-2">Email pagador</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  {viewPayments.map((p) => (
+                  <tr
+                      key={p.id}
+                      className="border-b border-gray-800 hover:bg-white/5"
+                  >
+                      <td className="py-1 pr-2">
+                      {p.createdAt?.toDate
+                          ? p.createdAt
+                              .toDate()
+                              .toLocaleString()
+                          : '—'}
+                      </td>
+                      <td className="py-1 pr-2">{p.tenantId}</td>
+                      <td className="py-1 pr-2">
+                      {p.concept ?? '—'}
+                      </td>
+                      <td className="py-1 pr-2">{p.orderId}</td>
+                      <td className="py-1 pr-2">
+                      {p.amount} {p.currency}
+                      </td>
+                      <td className="py-1 pr-2">{p.status}</td>
+                      <td className="py-1 pr-2">
+                      {p.payerEmail ?? '—'}
+                      </td>
+                  </tr>
+                  ))}
 
-                {viewPayments.length === 0 && (
-                <tr>
-                    <td
-                    colSpan={7}
-                    className="py-4 text-center text-gray-400"
-                    >
-                    No hay pagos registrados todavía.
-                    </td>
-                </tr>
-                )}
-            </tbody>
-            </table>
-        </div>
-        </DIV>
-    </AdminGuard>
+                  {viewPayments.length === 0 && (
+                  <tr>
+                      <td
+                      colSpan={7}
+                      className="py-4 text-center text-gray-400"
+                      >
+                      No hay pagos registrados todavía.
+                      </td>
+                  </tr>
+                  )}
+              </tbody>
+              </table>
+          </div>
+          </DIV>
+      </AdminGuard>
+    </CapGuard>
   );
 }

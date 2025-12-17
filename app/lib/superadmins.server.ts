@@ -4,6 +4,7 @@ import 'server-only';
 /** Correos hardcodeados (única fuente de verdad) */
 const HARDCODED_SUPERADMINS: string[] = [
   'admin@nixinx.com',
+  'admin@nixinx.org',
   'juzzyssi@gmail.com',
 ];
 

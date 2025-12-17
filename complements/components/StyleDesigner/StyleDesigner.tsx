@@ -5,6 +5,7 @@ import { saveSettingsClient } from "@/app/lib/settings/client";
 import Link from "next/link";
 import Image from "next/image";
 import { BUTTON, LINK, BUTTON2, LINK2, NEXTIMAGE, IMAGE, DIV, DIV2, DIV3, INPUT, SELECT, LABEL, INPUT2, SPAN, SPAN1, SPAN2, A, B, P, H1, H2, H3, H4, H5, H6 } from "@/complements/components/ui/wrappers";
+import { CapGuard } from "@/complements/admin/CapGuard";
 
 /* ========= Tipos / Constantes ========= */
 type ThemeKey = string;
@@ -864,129 +865,123 @@ const ColorField: React.FC<{ value?: string; onChange: (v: string) => void; plac
   };
 
   return (
-    <div className="relative" ref={ref}>
-      <BUTTON
-        type="button"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggle();
-        }}
-        aria-expanded={open}
-        className="flex items-center gap-2 w-full rounded-xl border border-gray-300 bg-white text-black px-2 py-2"
-      >
-        <SPAN
-          className="inline-block h-5 w-5 rounded border border-gray-300 overflow-hidden"
-          style={
-            showChecker
-              ? {
-                  backgroundImage: "conic-gradient(#ccc 25%, #eee 0 50%, #ccc 0 75%, #eee 0)",
-                  backgroundSize: "8px 8px",
-                  boxShadow: `inset 0 0 0 9999px ${fillColor}`,
-                }
-              : { background: fillColor }
-          }
-        />
-        <SPAN className="truncate text-left text-gray-800 dark:text-gray-100">
-          {isTransparent ? "transparent" : value || placeholder || "Select color"}
-        </SPAN>
-        <SPAN className="ml-auto text-xs text-gray-500">{open ? "▲" : "▼"}</SPAN>
-      </BUTTON>
-
-      {open &&
-        typeof document !== "undefined" &&
-        ReactDOM.createPortal(
-          <div
-            className="fixed z-[9999] w-80 rounded-2xl border border-gray-300 bg-gray-900 text-white shadow-lg p-4"
-            style={{ top: popupPos.top, left: popupPos.left }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <SPAN className="text-xs font-medium text-gray-300">Selecciona un color</SPAN>
-              <BUTTON
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setOpen(false);
-                }}
-                aria-label="Cerrar selector"
-                className="p-1 rounded hover:bg-gray-800"
-              >
-                ✕
-              </BUTTON>
-            </div>
-
-            <div className="mb-2">
-              <INPUT
-                type="color"
-                className="w-full h-10 rounded disabled:opacity-50"
-                disabled={isTransparent}
-                value={baseForInputColor}
-                onChange={(e) => {
-                  setTemp(normalizeHex((e.target as HTMLInputElement).value));
-                }}
-              />
-            </div>
-
-            <div className="mb-2">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                <SPAN>Opacidad (alpha)</SPAN>
-                <SPAN>{Math.round(effectiveAlpha * 100)}%</SPAN>
-              </div>
-              <INPUT
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round(effectiveAlpha * 100)}
-                disabled={isTransparent}
-                onChange={(e) => {
-                  const a = clamp01(Number((e.target as HTMLInputElement).value) / 100);
-                  setAlpha(a);
-                }}
-                className="w-full"
-              />
-            </div>
-
-            <div>
-              <INPUT
-                type="text"
-                className="w-full rounded-lg border border-gray-300 bg-white text-black px-2 py-2 font-mono text-xs"
-                placeholder={placeholder || "#111827 | rgba(...) | hsla(...) | transparent"}
-                value={isTransparent ? "transparent" : temp}
-                // 👇 ya NO lo deshabilitamos; así puedes salir de "transparent"
-                onChange={(e) => {
-                  const val = (e.target as HTMLInputElement).value;
-                  setTemp(val);
-
-                  const low = val.trim().toLowerCase();
-
-                  if (low === "transparent") {
-                    // entra en modo transparente
-                    setIsTransparent(true);
-                    setAlpha(0);
-                  } else {
-                    // si estaba en transparente y ahora escribes un color, salimos de ese modo
-                    if (isTransparent) {
-                      setIsTransparent(false);
-                      setAlpha(1);
-                    }
+    <CapGuard
+      cap="StyleDesigner"
+      fallback={<div style={{ padding: 16 }}>No tienes contratado StyleDesigner.</div>}
+      loadingFallback={<div style={{ padding: 16 }}>Cargando licencias…</div>}
+    >
+      <div className="relative" ref={ref}>
+        <BUTTON
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggle();
+          }}
+          aria-expanded={open}
+          className="flex items-center gap-2 w-full rounded-xl border border-gray-300 bg-white text-black px-2 py-2"
+        >
+          <SPAN
+            className="inline-block h-5 w-5 rounded border border-gray-300 overflow-hidden"
+            style={
+              showChecker
+                ? {
+                    backgroundImage: "conic-gradient(#ccc 25%, #eee 0 50%, #ccc 0 75%, #eee 0)",
+                    backgroundSize: "8px 8px",
+                    boxShadow: `inset 0 0 0 9999px ${fillColor}`,
                   }
-                }}
-                onBlur={() => {
-                  const low = (temp || "").trim().toLowerCase();
+                : { background: fillColor }
+            }
+          />
+          <SPAN className="truncate text-left text-gray-800 dark:text-gray-100">
+            {isTransparent ? "transparent" : value || placeholder || "Select color"}
+          </SPAN>
+          <SPAN className="ml-auto text-xs text-gray-500">{open ? "▲" : "▼"}</SPAN>
+        </BUTTON>
 
-                  if (low === "transparent") {
-                    onChange("transparent");
-                  } else {
-                    onChange(compose(temp || "#ffffff", alpha || 1));
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+        {open &&
+          typeof document !== "undefined" &&
+          ReactDOM.createPortal(
+            <div
+              className="fixed z-[9999] w-80 rounded-2xl border border-gray-300 bg-gray-900 text-white shadow-lg p-4"
+              style={{ top: popupPos.top, left: popupPos.left }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <SPAN className="text-xs font-medium text-gray-300">Selecciona un color</SPAN>
+                <BUTTON
+                  type="button"
+                  onMouseDown={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
+                    setOpen(false);
+                  }}
+                  aria-label="Cerrar selector"
+                  className="p-1 rounded hover:bg-gray-800"
+                >
+                  ✕
+                </BUTTON>
+              </div>
+
+              <div className="mb-2">
+                <INPUT
+                  type="color"
+                  className="w-full h-10 rounded disabled:opacity-50"
+                  disabled={isTransparent}
+                  value={baseForInputColor}
+                  onChange={(e) => {
+                    setTemp(normalizeHex((e.target as HTMLInputElement).value));
+                  }}
+                />
+              </div>
+
+              <div className="mb-2">
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                  <SPAN>Opacidad (alpha)</SPAN>
+                  <SPAN>{Math.round(effectiveAlpha * 100)}%</SPAN>
+                </div>
+                <INPUT
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round(effectiveAlpha * 100)}
+                  disabled={isTransparent}
+                  onChange={(e) => {
+                    const a = clamp01(Number((e.target as HTMLInputElement).value) / 100);
+                    setAlpha(a);
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <INPUT
+                  type="text"
+                  className="w-full rounded-lg border border-gray-300 bg-white text-black px-2 py-2 font-mono text-xs"
+                  placeholder={placeholder || "#111827 | rgba(...) | hsla(...) | transparent"}
+                  value={isTransparent ? "transparent" : temp}
+                  // 👇 ya NO lo deshabilitamos; así puedes salir de "transparent"
+                  onChange={(e) => {
+                    const val = (e.target as HTMLInputElement).value;
+                    setTemp(val);
+
+                    const low = val.trim().toLowerCase();
+
+                    if (low === "transparent") {
+                      // entra en modo transparente
+                      setIsTransparent(true);
+                      setAlpha(0);
+                    } else {
+                      // si estaba en transparente y ahora escribes un color, salimos de ese modo
+                      if (isTransparent) {
+                        setIsTransparent(false);
+                        setAlpha(1);
+                      }
+                    }
+                  }}
+                  onBlur={() => {
                     const low = (temp || "").trim().toLowerCase();
 
                     if (low === "transparent") {
@@ -994,73 +989,85 @@ const ColorField: React.FC<{ value?: string; onChange: (v: string) => void; plac
                     } else {
                       onChange(compose(temp || "#ffffff", alpha || 1));
                     }
-                    setOpen(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const low = (temp || "").trim().toLowerCase();
+
+                      if (low === "transparent") {
+                        onChange("transparent");
+                      } else {
+                        onChange(compose(temp || "#ffffff", alpha || 1));
+                      }
+                      setOpen(false);
+                    }
+                  }}
+                />
+              </div>
+
+            {/* Toggle explícito de transparent */}
+            <div className="mt-2 flex items-center gap-2 text-xs text-gray-200">
+              <INPUT
+                type="checkbox"
+                checked={isTransparent}
+                onChange={(e) => {
+                  const checked = (e.target as HTMLInputElement).checked;
+
+                  if (checked) {
+                    // Entrar a modo transparente
+                    setIsTransparent(true);
+                    setAlpha(0);
+                  } else {
+                    // Salir de modo transparente
+                    setIsTransparent(false);
+                    // Si el texto actual es "transparent" o está vacío, pon un color seguro
+                    const low = (temp || "").trim().toLowerCase();
+                    if (!temp || low === "transparent") {
+                      setTemp("#ffffff");
+                    }
+                    setAlpha(1);
                   }
                 }}
               />
+              <SPAN>Usar transparent</SPAN>
             </div>
 
-          {/* Toggle explícito de transparent */}
-          <div className="mt-2 flex items-center gap-2 text-xs text-gray-200">
-            <INPUT
-              type="checkbox"
-              checked={isTransparent}
-              onChange={(e) => {
-                const checked = (e.target as HTMLInputElement).checked;
+              <div className="flex justify-end gap-2 mt-3">
+                <BUTTON
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOpen(false);
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700"
+                >
+                  Cerrar
+                </BUTTON>
+                <BUTTON
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (isTransparent) {
+                      onChange("transparent");
+                    } else {
+                      onChange(compose(temp || "#ffffff", alpha || 1));
+                    }
+                    setOpen(false);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  Aplicar
+                </BUTTON>
+              </div>
+            </div>,
+            document.body
+          )}
 
-                if (checked) {
-                  // Entrar a modo transparente
-                  setIsTransparent(true);
-                  setAlpha(0);
-                } else {
-                  // Salir de modo transparente
-                  setIsTransparent(false);
-                  // Si el texto actual es "transparent" o está vacío, pon un color seguro
-                  const low = (temp || "").trim().toLowerCase();
-                  if (!temp || low === "transparent") {
-                    setTemp("#ffffff");
-                  }
-                  setAlpha(1);
-                }
-              }}
-            />
-            <SPAN>Usar transparent</SPAN>
-          </div>
-
-            <div className="flex justify-end gap-2 mt-3">
-              <BUTTON
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setOpen(false);
-                }}
-                className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700"
-              >
-                Cerrar
-              </BUTTON>
-              <BUTTON
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (isTransparent) {
-                    onChange("transparent");
-                  } else {
-                    onChange(compose(temp || "#ffffff", alpha || 1));
-                  }
-                  setOpen(false);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                Aplicar
-              </BUTTON>
-            </div>
-          </div>,
-          document.body
-        )}
-
-    </div>
+      </div>
+    </CapGuard>
   );
 };
 

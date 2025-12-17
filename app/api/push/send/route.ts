@@ -13,6 +13,7 @@ import type {
   CreateNotificationInput,
   NotificationTarget,
 } from "@/app/lib/notifications/types";
+import { requireCctCapAsync } from "@/app/lib/cct/guard";
 
 /* ─────────────────────────────────────────────────────────
    Cache simple de Settings (FDV: Providers/Settings)
@@ -100,20 +101,48 @@ export async function POST(req: NextRequest) {
     const db = getAdminDb();
     const tenantId = getTenantIdFromRequest(req);
 
-    // 1) Revisar facultad de notificaciones (FDV -> Providers/Settings)
-    const settings = await getSettingsCached();
-    try {
-      ensureFaculty(settings, "notifications");
-    } catch {
+    // Leer body UNA sola vez (y permitir cct en body para PowerShell)
+    const raw = (await req.json().catch(() => ({}))) as any;
+
+    // Detectar si VIENE CCT realmente (para decidir bypass legacy en dev)
+    const hasCct =
+      !!req.headers.get("x-nixinx-cct")?.trim() ||
+      (req.headers.get("authorization")?.startsWith("CCT ") ?? false) ||
+      (typeof raw?.cct === "string" && raw.cct.trim().length > 0);
+
+    // CCT gating (independiente)
+    const cctRes = await requireCctCapAsync({
+      req,
+      tenantId,
+      cap: "Notifications",
+      body: raw,
+      allowMissingInDev: true,
+    });
+
+    const cctOkForNotifications = hasCct && cctRes.ok;
+
+    if (!cctRes.ok) {
       return NextResponse.json(
-        { error: "notifications_disabled" },
-        { status: 403 },
+        { error: cctRes.error },
+        { status: cctRes.status },
       );
     }
 
-    // 2) Auth:
-    //    - En desarrollo: sin restricción (para probar desde UI).
-    //    - En producción: solo superadmin (correo hardcodeado).
+    // 1) Legacy Faculties (se mantiene). PERO:
+    // En development, si traes CCT válido para Notifications, no bloqueamos por faculties.
+    const settings = await getSettingsCached();
+    if (!(process.env.NODE_ENV === "development" && cctOkForNotifications)) {
+      try {
+        ensureFaculty(settings, "notifications");
+      } catch {
+        return NextResponse.json(
+          { error: "notifications_disabled" },
+          { status: 403 },
+        );
+      }
+    }
+
+    // 2) Auth prod: superadmin
     if (process.env.NODE_ENV !== "development") {
       const authHeader = req.headers.get("authorization");
       const decoded = await verifyBearerIdToken(authHeader);
@@ -122,8 +151,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3) Leer body
-    const input = (await req.json()) as CreateNotificationInput;
+    // 3) Interpretar body como input real
+    const input = raw as CreateNotificationInput;
     const { target, payload } = input || ({} as CreateNotificationInput);
 
     if (!target || !payload?.title || !payload?.body) {
@@ -181,9 +210,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("[push/send] error", err);
-    return NextResponse.json(
-      { error: "internal_error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }

@@ -5,10 +5,12 @@ import { getAdminDb } from "@/app/lib/firebaseAdmin";
 import type iSettings from "@/app/lib/settings/interface";
 import { hasNotificationsFaculty } from "@/app/lib/notifications/config";
 import { getTenantIdFromRequest } from "@/app/lib/notifications/tenant";
+import { requireCctCapAsync } from "@/app/lib/cct/guard";
 
 type Body = {
   token?: string;
   platform?: "web" | "ios" | "android";
+  cct?: string; // opcional (PowerShell/tooling)
 };
 
 /* ─────────────────────────────────────────────────────────
@@ -47,17 +49,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "missing_token" }, { status: 400 });
     }
 
-    // Settings desde FDV + cache
-    const settings = await getSettingsCached();
+    const tenantId = getTenantIdFromRequest(req);
 
-    if (!hasNotificationsFaculty(settings)) {
+    // Detectar si VIENE CCT realmente (para decidir bypass legacy en dev)
+    const hasCct =
+      !!req.headers.get("x-nixinx-cct")?.trim() ||
+      (req.headers.get("authorization")?.startsWith("CCT ") ?? false) ||
+      (typeof body?.cct === "string" && body.cct.trim().length > 0);
+
+    // CCT gating (independiente)
+    const cctRes = await requireCctCapAsync({
+      req,
+      tenantId,
+      cap: "Notifications",
+      body,
+      allowMissingInDev: true,
+    });
+
+    const cctOkForNotifications = hasCct && cctRes.ok;
+
+    if (!cctRes.ok) {
       return NextResponse.json(
-        { error: "notifications_disabled" },
-        { status: 403 },
+        { error: cctRes.error },
+        { status: cctRes.status },
       );
     }
 
-    const tenantId = getTenantIdFromRequest(req);
+    // Settings desde FDV + cache (legacy)
+    // En development: si ya traes CCT válido, no bloqueamos por faculties
+    const settings = await getSettingsCached();
+
+    if (!(process.env.NODE_ENV === "development" && cctOkForNotifications)) {
+      if (!hasNotificationsFaculty(settings)) {
+        return NextResponse.json(
+          { error: "notifications_disabled" },
+          { status: 403 },
+        );
+      }
+    }
+
     const db = getAdminDb();
     const now = new Date();
 
@@ -80,9 +110,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[push/subscribe] error", err);
-    return NextResponse.json(
-      { error: "internal_error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }

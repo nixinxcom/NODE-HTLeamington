@@ -58,7 +58,7 @@ import {
   BEHAVIOR_DOMAINS,
 } from "@/app/lib/audiences/behavior.catalog";
 import AdminGuard from "./AdminGuard";
-
+import { CapGuard } from "@/complements/admin/CapGuard";
 
 /* ─────────────────────────────────────────────────────────
    Tipos normalizados que usa el Campaigns Center
@@ -2000,1503 +2000,1509 @@ export default function CampaignsCenter() {
   /* ───────────────────────────────────────────────────────── */
 
   return (
-    <AdminGuard>
-        <DIV className="p-4 md:p-6 lg:p-8 space-y-4">
-            {/* Botones de navegación superior */}
-            <DIV className="flex justify-between items-center mb-2">
-              <DIV className="flex gap-2">
-                  <BUTTON
-                  type="button"
-                  onClick={() => router.push("../admin")}
-                  >
-                  Admin Panel
-                  </BUTTON>
-                  <BUTTON
-                  type="button"
-                  onClick={() => router.push("../../")}
-                  >
-                  Home
-                  </BUTTON>
+    <CapGuard
+      cap="CampaignsCenter"
+      fallback={<div style={{ padding: 16 }}>No tienes contratado CampaignsCenter.</div>}
+      loadingFallback={<div style={{ padding: 16 }}>Cargando licencias…</div>}
+    >
+      <AdminGuard>
+          <DIV className="p-4 md:p-6 lg:p-8 space-y-4">
+              {/* Botones de navegación superior */}
+              <DIV className="flex justify-between items-center mb-2">
+                <DIV className="flex gap-2">
+                    <BUTTON
+                    type="button"
+                    onClick={() => router.push("../admin")}
+                    >
+                    Admin Panel
+                    </BUTTON>
+                    <BUTTON
+                    type="button"
+                    onClick={() => router.push("../../")}
+                    >
+                    Home
+                    </BUTTON>
+                </DIV>
               </DIV>
-            </DIV>
-
-            <DIV className="flex flex-col gap-1">
-            <H1 className="text-2xl font-semibold">Centro de Campañas</H1>
-            <P className="text-sm opacity-75">
-            Aquí se combinan plantillas de{" "}
-            <code>Providers/Notifications</code> con estrategias de{" "}
-            <code>Providers/Strategies</code> para generar campañas
-            activas. Las campañas se guardan en{" "}
-            <code>notificationCampaigns</code>. Desde aquí puedes probar la
-            entrega <strong>in-app</strong> contra el usuario actual
-            escribiendo en{" "}
-            <code>userNotifications/&lt;uid&gt;/items</code>. Las audiencias
-            se leen de <code>Providers/Audiences</code>.
-            </P>
-
-            <P className="text-xs opacity-70 mt-1">
-            Plantillas (Notifications): {totalTemplates} · Estrategias:{" "}
-            {totalStrategies} · Audiencias totales (todas las clases):{" "}
-            {totalAudiences} · Campañas: {campaigns.length} · Filas
-            (campaña + notificación): {enabledNotifications.length}
-            </P>
-        </DIV>
-
-        <DIV className="border border-white/10 rounded-lg p-3 bg-black/40 space-y-2">
-            <H2 className="text-lg font-semibold">Usuario actual</H2>
-            {currentUser ? (
-            <P className="text-sm">
-                UID:{" "}
-                <SPAN className="font-mono text-xs">
-                {currentUser.uid}
-                </SPAN>
-            </P>
-            ) : (
-            <P className="text-sm text-yellow-400">
-                No hay usuario autenticado; inicia sesión para probar
-                campañas.
-            </P>
-            )}
-
-            {error && (
-            <P className="text-xs text-red-400 mt-1">
-                Error: <SPAN className="font-mono">{error}</SPAN>
-            </P>
-            )}
-            {lastApplied && (
-            <P className="text-xs text-emerald-400 mt-1">
-                Última operación:{" "}
-                <SPAN className="font-mono">{lastApplied}</SPAN>
-            </P>
-            )}
-            {campaignsError && (
-            <P className="text-xs text-red-400 mt-1">
-                Error campañas:{" "}
-                <SPAN className="font-mono">{campaignsError}</SPAN>
-            </P>
-            )}
-            {agentContextMessage && (
-            <P className="text-xs text-emerald-400 mt-1">
-                {agentContextMessage}
-            </P>
-            )}
-            {audienceBuilderMessage && (
-            <P className="text-xs text-emerald-400 mt-1">
-                {audienceBuilderMessage}
-            </P>
-            )}
-        </DIV>
-
-        {/* ─────────────────────────────────────────────────────
-            1) Creación de campañas
-            ───────────────────────────────────────────────────── */}
-        <DIV className="border border-white/10 rounded-lg p-3 bg-black/30 flex flex-col gap-3">
-            <DIV className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <DIV className="flex items-center gap-2">
-                <H2
-                className="text-lg font-semibold cursor-pointer"
-                onClick={() => setShowCampaignPanel((prev) => !prev)}
-                >
-                {showCampaignPanel ? "▽" : "▷"} Crear / editar campañas
-                </H2>
-            </DIV>
-
-            <BUTTON
-                type="button"
-                disabled={updatingAgentContext}
-                onClick={handleRebuildAllAgentCampaignContexts}
-            >
-                {updatingAgentContext
-                ? "Actualizando contextos AAI…"
-                : "Actualizar contextos AAI (Sales/Info/Support/CX/Other)"}
-            </BUTTON>
-            </DIV>
-
-            {showCampaignPanel && (
-            <>
-                <DIV className="flex flex-col gap-1">
-                <P className="text-xs opacity-70">Nombre de la campaña</P>
-                <INPUT
-                    value={draftName}
-                    onChange={(e) => setDraftName(e.target.value)}
-                />
-                </DIV>
-
-                <DIV className="flex flex-col gap-1">
-                <P className="text-xs opacity-70">
-                    Estrategia (status = active)
-                    <SPAN className="text-red-500 ml-1">*</SPAN>
-                </P>
-                <SELECT
-                    value={draftStrategyId}
-                    onChange={(e) => {
-                    setDraftStrategyId(e.target.value);
-                    setCampaignTouched((prev) => ({ ...prev, strategyId: true }));
-                    }}
-                    className={`${
-                    campaignErrors.strategyId && campaignTouched.strategyId
-                        ? "border-red-500 ring-1 ring-red-500"
-                        : ""
-                    }`}
-                >
-                    <option value="">Selecciona estrategia</option>
-                    {activeStrategies.map((s: any) => (
-                    <option key={s.strategyId} value={s.strategyId}>
-                        {s.name ?? s.strategyId}
-                    </option>
-                    ))}
-                </SELECT>
-                {campaignErrors.strategyId && campaignTouched.strategyId && (
-                    <H1 className="text-[10px] text-red-400">
-                    {campaignErrors.strategyId}
-                    </H1>
-                )}
-                </DIV>
-
-                <DIV className="flex flex-col gap-1">
-                <P className="text-xs opacity-70">
-                    Notificaciones (plantillas en Providers/Notifications)
-                    <SPAN className="text-red-500 ml-1">*</SPAN>
-                </P>
-                <SELECT
-                    multiple
-                    value={draftNotificationIds}
-                    onChange={(e) => {
-                    const select = e.target as HTMLSelectElement;
-                    const values = Array.from(select.selectedOptions).map(
-                        (o) => o.value,
-                    );
-                    setDraftNotificationIds(values);
-                    setCampaignTouched((prev) => ({
-                        ...prev,
-                        notificationIds: true,
-                    }));
-                    }}
-                    className={`${
-                    campaignErrors.notificationIds &&
-                    campaignTouched.notificationIds
-                        ? "border-red-500 ring-1 ring-red-500"
-                        : ""
-                    } min-h-[220px]`}
-                >
-                    {(notificationsDoc?.notifications ?? []).map((n: any) => {
-                    const id = n.notificationId as string | undefined;
-                    if (!id) return null;
-                    return (
-                        <option key={id} value={id}>
-                        {id}
-                        </option>
-                    );
-                    })}
-                </SELECT>
-                {campaignErrors.notificationIds &&
-                    campaignTouched.notificationIds && (
-                    <H1 className="text-[10px] text-red-400">
-                        {campaignErrors.notificationIds}
-                    </H1>
-                    )}
-                <P className="text-[10px] opacity-60">
-                    Puedes elegir varias; se generará una fila por notificación.
-                </P>
-                </DIV>
-
-                {/* Multiselect de audiencias objetivo (kind = "target" + especiales) */}
-                <DIV className="flex flex-col gap-1">
-                <P className="text-xs opacity-70">
-                    Audiencias objetivo de la campaña (Providers/Audiences kind
-                    = target + opciones especiales)
-                </P>
-                <SELECT
-                    multiple
-                    value={draftAudienceIds}
-                    onChange={handleChangeAudienceSelect}
-                    className="min-h-[220px]"
-                >
-                    {/* Opciones especiales */}
-                    {SPECIAL_AUDIENCE_OPTIONS.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                        {opt.label}
-                    </option>
-                    ))}
-
-                    {/* Audiencias objetivo definidas en la sección 2 */}
-                    {targetAudiencesWithClauses.map((a: any) => (
-                    <option
-                        key={a.audienceId}
-                        value={a.audienceId}
-                    >
-                        {a.name ?? a.audienceId}
-                    </option>
-                    ))}
-                </SELECT>
-                <P className="text-[10px] opacity-60">
-                    Estas audiencias se crean y mantienen en la sección
-                    Audiencias objetivo inferior. Aquí solo eliges a quién se
-                    aplica la campaña.
-                </P>
-                </DIV>
-
-                {/* Canales de entrega de la campaña */}
-                <DIV className="flex flex-col gap-1 mt-2">
-                <P className="text-xs opacity-70">
-                    Canales de entrega de la campaña
-                </P>
-                <DIV className="flex flex-wrap gap-4 text-[11px]">
-                    <label className="inline-flex items-center gap-1">
-                    <INPUT
-                        type="checkbox"
-                        checked={draftChannels.includes("inApp")}
-                        onChange={() => toggleDraftChannel("inApp")}
-                    />
-                    <SPAN>In-app</SPAN>
-                    </label>
-
-                    <label className="inline-flex items-center gap-1">
-                    <INPUT
-                        type="checkbox"
-                        checked={draftChannels.includes("push")}
-                        onChange={() => toggleDraftChannel("push")}
-                    />
-                    <SPAN>Push</SPAN>
-                    </label>
-
-                    <label className="inline-flex items-center gap-1">
-                    <INPUT
-                        type="checkbox"
-                        checked={draftChannels.includes("email")}
-                        onChange={() => toggleDraftChannel("email")}
-                    />
-                    <SPAN>Email (meta)</SPAN>
-                    </label>
-
-                    <label className="inline-flex items-center gap-1">
-                    <INPUT
-                        type="checkbox"
-                        checked={draftChannels.includes("sms")}
-                        onChange={() => toggleDraftChannel("sms")}
-                    />
-                    <SPAN>SMS (meta)</SPAN>
-                    </label>
-                </DIV>
-                <P className="text-[10px] opacity-60">
-                    Hoy sólo se entregan in-app / push. Email y SMS se guardan como
-                    metadata para integrarte con Brevo u otros servicios externos.
-                </P>
-                </DIV>
-
-                <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-xs opacity-70">Inicio (fecha)</P>
-                    <INPUT
-                    type="date"
-                    value={draftStartDate}
-                    onChange={(e) => setDraftStartDate(e.target.value)}
-                    />
-                </DIV>
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-xs opacity-70">Inicio (hora)</P>
-                    <INPUT
-                    type="time"
-                    value={draftStartTime}
-                    onChange={(e) => setDraftStartTime(e.target.value)}
-                    />
-                </DIV>
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-xs opacity-70">Fin (fecha)</P>
-                    <INPUT
-                    type="date"
-                    value={draftEndDate}
-                    onChange={(e) => setDraftEndDate(e.target.value)}
-                    />
-                </DIV>
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-xs opacity-70">Fin (hora)</P>
-                    <INPUT
-                    type="time"
-                    value={draftEndTime}
-                    onChange={(e) => setDraftEndTime(e.target.value)}
-                    />
-                </DIV>
-                </DIV>
-
-                <DIV className="flex items-center gap-2 mt-2">
-                <BUTTON
-                    type="button"
-                    disabled={!canCreateCampaign}
-                    onClick={handleCreateQuickCampaign}
-                >
-                    {editingCampaignId
-                    ? "Guardar cambios"
-                    : "Guardar campaña activa"}
-                </BUTTON>
-                {!canCreateCampaign && (
-                    <P className="text-[10px] opacity-60">
-                    Selecciona al menos una estrategia activa y una
-                    notificación.
-                    </P>
-                )}
-                </DIV>
-                {/* Panel de campañas pendientes por horario */}
-                {pendingCampaigns.length > 0 && (
-                <DIV className="mt-4 border border-yellow-500/40 rounded-lg bg-yellow-500/5 p-3">
-                    <DIV className="flex items-center justify-between mb-2 gap-2">
-                    <P className="text-sm font-semibold">
-                        Campañas pendientes por horario ({pendingCampaigns.length})
-                    </P>
-                    <BUTTON
-                        type="button"
-                        disabled={runningCampaignId === "__all__"}
-                        onClick={handleRunAllPending}
-                    >
-                        {runningCampaignId === "__all__"
-                        ? "Ejecutando todas…"
-                        : "Ejecutar todas"}
-                    </BUTTON>
-                    </DIV>
-
-                    <DIV className="flex flex-col gap-2 text-xs">
-                    {pendingCampaigns.map((camp) => (
-                        <DIV
-                        key={camp.id}
-                        className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 border border-white/10 rounded-md px-2 py-1"
-                        >
-                        <DIV>
-                            <P className="font-medium">
-                            {camp.name || camp.campaignId || camp.id}
-                            </P>
-                            <P className="opacity-70">
-                            Inicio: {camp.startDate ?? "—"}{" "}
-                            {camp.startTime ?? ""}
-                            {camp.endDate && (
-                                <>
-                                {" · Fin: "}
-                                {camp.endDate} {camp.endTime ?? ""}
-                                </>
-                            )}
-                            </P>
-                            {Array.isArray((camp as any).deliveryChannels) &&
-                            (camp as any).deliveryChannels.length > 0 && (
-                                <P className="opacity-70">
-                                Canales:{" "}
-                                {(camp as any).deliveryChannels.join(", ")}
-                                </P>
-                            )}
-                        </DIV>
-
-                        <DIV className="flex flex-wrap gap-1">
-                            <BUTTON
-                            type="button"
-                            disabled={runningCampaignId === camp.id}
-                            onClick={() => handleRunCampaignNow(camp.id)}
-                            >
-                            {runningCampaignId === camp.id
-                                ? "Ejecutando…"
-                                : "Ejecutar ahora"}
-                            </BUTTON>
-                            <BUTTON
-                            type="button"
-                            onClick={() =>
-                                handleUpdateCampaignStatus(
-                                camp.id,
-                                "paused",
-                                )
-                            }
-                            >
-                            Pausar
-                            </BUTTON>
-                            <BUTTON
-                            type="button"
-                            onClick={() =>
-                                handleUpdateCampaignStatus(
-                                camp.id,
-                                "finished",
-                                )
-                            }
-                            >
-                            Marcar como finalizada
-                            </BUTTON>
-                        </DIV>
-                        </DIV>
-                    ))}
-                    </DIV>
-                </DIV>
-                )}
-
-                {/* Tabla de campañas normalizadas (campaña + notificación) */}
-                <DIV className="border border-white/10 rounded-lg bg-black/40 overflow-x-auto mt-3">
-                <TABLE className="min-w-full text-sm">
-                    <THEAD>
-                    <TR>
-                        <TH className="px-3 py-2 text-left">notif</TH>
-                        <TH className="px-3 py-2 text-left">Campaña</TH>
-                        <TH className="px-3 py-2 text-left">Estado</TH>
-                        <TH className="px-3 py-2 text-left">Estrategia</TH>
-                        <TH className="px-3 py-2 text-left">Título</TH>
-                        <TH className="px-3 py-2 text-left">Categoría</TH>
-                        <TH className="px-3 py-2 text-left">Prioridad</TH>
-                        <TH className="px-3 py-2 text-left">UI</TH>
-                        <TH className="px-3 py-2 text-left">Canal</TH>
-                        <TH className="px-3 py-2 text-left">Inicio</TH>
-                        <TH className="px-3 py-2 text-left">Fin</TH>
-                        <TH className="px-3 py-2 text-left">Audiencias</TH>
-                        <TH className="px-3 py-2 text-left">Acción</TH>
-                    </TR>
-                    </THEAD>
-                    <TBODY>
-                    {enabledNotifications.length === 0 ? (
-                        <TR>
-                        <TD
-                            colSpan={13}
-                            className="px-3 py-4 text-center text-xs opacity-60"
-                        >
-                            No hay campañas con notificaciones asociadas.
-                        </TD>
-                        </TR>
-                    ) : (
-                        enabledNotifications.map((notif) => (
-                        <TR
-                            key={`${notif.campaignId}:${notif.notificationId}`}
-                            className="border-t border-white/10"
-                        >
-                            <TD className="px-3 py-2 font-mono text-xs">
-                            {notif.notificationId}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {notif.campaignName}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {notif.campaignStatus}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {notif.strategyName ?? "—"}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {notif.title ?? "(sin título)"}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {notif.category ?? "—"}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {notif.priority ?? "—"}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {notif.uiType ??
-                                notif.userInterfaceType ??
-                                "—"}
-                            </TD>
-                            <TD className="px-3 py-2 text-xs">
-                            {notif.deliveryChannels &&
-                            notif.deliveryChannels.length > 0
-                                ? notif.deliveryChannels.join(", ")
-                                : notif.deliveryChannel ?? "—"}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {formatDateTime(
-                                notif.startDate,
-                                notif.startTime,
-                            )}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {formatDateTime(
-                                notif.endDate,
-                                notif.endTime,
-                            )}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            {renderAudienceLabel(notif)}
-                            </TD>
-                            <TD className="px-3 py-2">
-                            <DIV className="flex flex-col gap-1">
-                                <BUTTON
-                                type="button"
-                                disabled={
-                                    sendingId ===
-                                    `${notif.campaignId}:${notif.notificationId}` ||
-                                    !currentUser
-                                }
-                                onClick={() =>
-                                    handleApplyToCurrentUser(notif)
-                                }
-                                >
-                                {sendingId ===
-                                `${notif.campaignId}:${notif.notificationId}`
-                                    ? "Aplicando…"
-                                    : "Aplicar a este usuario"}
-                                </BUTTON>
-
-                                <BUTTON
-                                type="button"
-                                disabled={applyingAudience || !notif.audienceIds.length}
-                                onClick={() => handleApplyToAudience(notif)}
-                                >
-                                {applyingAudience
-                                    ? "Aplicando a audiencia…"
-                                    : "Aplicar a audiencia"}
-                                </BUTTON>
-
-                                <BUTTON
-                                type="button"
-                                onClick={() => handleEditCampaign(notif)}
-                                >
-                                Editar campaña
-                                </BUTTON>
-
-                                <BUTTON
-                                type="button"
-                                onClick={() =>
-                                    handleCloneCampaign(notif)
-                                }
-                                >
-                                Clonar campaña
-                                </BUTTON>
-
-                                <BUTTON
-                                type="button"
-                                onClick={() =>
-                                    handleToggleCampaignStatus(notif)
-                                }
-                                >
-                                {notif.campaignStatus === "active"
-                                    ? "Pausar campaña"
-                                    : "Activar campaña"}
-                                </BUTTON>
-
-                                <BUTTON
-                                type="button"
-                                onClick={() =>
-                                    handleDeleteCampaign(notif)
-                                }
-                                >
-                                Eliminar campaña
-                                </BUTTON>
-                            </DIV>
-                            </TD>
-                        </TR>
-                        ))
-                    )}
-                    </TBODY>
-                </TABLE>
-                </DIV>
-            </>
-            )}
-        </DIV>
-
-        {/* ─────────────────────────────────────────────────────
-            2) Generación de audiencias objetivo
-            ───────────────────────────────────────────────────── */}
-        <DIV className="border border-white/10 rounded-lg p-3 bg-black/30 flex flex-col gap-3">
-            <DIV className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <DIV className="flex items-center gap-2">
-                <H2
-                className="text-lg font-semibold cursor-pointer"
-                onClick={() => setShowAudiencePanel((prev) => !prev)}
-                >
-                {showAudiencePanel ? "▽" : "▷"} Audiencias objetivo
-                (criterios + Cloud Functions)
-                </H2>
-            </DIV>
-            </DIV>
-
-            {showAudiencePanel && (
-            <>
-                <P className="text-xs opacity-70">
-                Aquí defines audiencias objetivo basadas en comportamiento
-                (session behaviour, UTMs, etc.), usando subaudiencias
-                combinadas con <code>AND</code>, <code>OR</code> y{" "}
-                <code>NOT</code>. El resultado se guarda en{" "}
-                <code>Providers/Audiences</code> con{" "}
-                <code>kind = target</code> y luego lo puedes usar en la
-                sección de campañas.
-                </P>
-
-                {/* Filtros para audiencias de comportamiento */}
-                <DIV className="flex flex-col gap-2 border border-white/10 rounded-md p-2 bg-black/40">
-                <P className="text-xs opacity-70">
-                    Filtros de comportamiento (session behaviour / UTMs) para
-                    construir subaudiencias
-                </P>
-
-                <DIV className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                    <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">track</P>
-                    <SELECT
-                        value={audienceFilterTrack}
-                        onChange={(e) =>
-                        setAudienceFilterTrack(e.target.value)
-                        }
-                    >
-                        <option value="">(cualquiera)</option>
-                        {trackOptions.map((t) => (
-                        <option key={t} value={t}>
-                            {t}
-                        </option>
-                        ))}
-                    </SELECT>
-                    </DIV>
-
-                    <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">trigger</P>
-                    <SELECT
-                        value={audienceFilterTrigger}
-                        onChange={(e) =>
-                        setAudienceFilterTrigger(e.target.value)
-                        }
-                    >
-                        <option value="">(cualquiera)</option>
-                        {triggerOptions.map((t) => (
-                        <option key={t} value={t}>
-                            {t}
-                        </option>
-                        ))}
-                    </SELECT>
-                    </DIV>
-
-                    <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">target</P>
-                    <SELECT
-                        value={audienceFilterTarget}
-                        onChange={(e) =>
-                        setAudienceFilterTarget(e.target.value)
-                        }
-                    >
-                        <option value="">(cualquiera)</option>
-                        {targetOptions.map((t) => (
-                        <option key={t} value={t}>
-                            {t}
-                        </option>
-                        ))}
-                    </SELECT>
-                    </DIV>
-
-                    <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                        trackCategory
-                    </P>
-                    <SELECT
-                        value={audienceFilterCategory}
-                        onChange={(e) =>
-                        setAudienceFilterCategory(e.target.value)
-                        }
-                    >
-                        <option value="">(cualquiera)</option>
-                        {categoryOptions.map((t) => (
-                        <option key={t} value={t}>
-                            {t}
-                        </option>
-                        ))}
-                    </SELECT>
-                    </DIV>
-                </DIV>
-
-                <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                    <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                        Desde fecha (createdAt/updatedAt)
-                    </P>
-                    <INPUT
-                        type="date"
-                        value={audienceFromDate}
-                        onChange={(e) =>
-                        setAudienceFromDate(e.target.value)
-                        }
-                    />
-                    </DIV>
-                    <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                        Hasta fecha
-                    </P>
-                    <INPUT
-                        type="date"
-                        value={audienceToDate}
-                        onChange={(e) =>
-                        setAudienceToDate(e.target.value)
-                        }
-                    />
-                    </DIV>
-                </DIV>
-
-                <DIV className="flex justify-between mt-1">
-                    <BUTTON
-                    type="button"
-                    onClick={handleAddSubAudienceClause}
-                    >
-                    Agregar subaudiencia
-                    </BUTTON>
-
-                    <BUTTON
-                    type="button"
-                    onClick={handleClearAudienceFilters}
-                    >
-                    Limpiar filtros
-                    </BUTTON>
-                </DIV>
-                </DIV>
-
-                {/* Subaudiencias definidas + operadores */}
-                <DIV className="flex flex-col gap-1 border border-dashed border-white/20 rounded-md p-2 bg-black/30 mt-2">
-                <P className="text-xs opacity-70">
-                    Subaudiencias que forman la audiencia objetivo. Cada fila
-                    es un conjunto de audiencias de comportamiento que se
-                    combinará con <code>AND</code>, <code>OR</code> o{" "}
-                    <code>NOT</code> al ejecutar el query (Cloud Function).
-                </P>
-
-                {subAudienceClauses.length === 0 ? (
-                    <P className="text-[11px] opacity-60 mt-1">
-                    Aún no se han agregado subaudiencias. Usa el botón{" "}
-                    <strong>Agregar subaudiencia</strong> después de
-                    elegir filtros.
-                    </P>
-                ) : (
-                    <DIV className="border border-white/10 rounded-md bg-black/40 overflow-x-auto mt-1">
-                    <TABLE className="min-w-full text-[11px]">
-                        <THEAD>
-                        <TR>
-                            <TH className="px-2 py-1 text-left">
-                            Subaudiencia (resumen)
-                            </TH>
-                            <TH className="px-2 py-1 text-left">
-                            Operador lógico
-                            </TH>
-                            <TH className="px-2 py-1 text-left">Acción</TH>
-                        </TR>
-                        </THEAD>
-                        <TBODY>
-                        {subAudienceClauses.map((clause) => (
-                            <TR
-                            key={clause.id}
-                            className="border-t border-white/10"
-                            >
-                            <TD className="px-2 py-1">
-                                {clause.label}
-                            </TD>
-                            <TD className="px-2 py-1">
-                                <SELECT
-                                value={clause.operator}
-                                onChange={(e) =>
-                                    handleChangeSubAudienceOperator(
-                                    clause.id,
-                                    e.target
-                                        .value as LogicalOperator,
-                                    )
-                                }
-                                className="text-[11px]"
-                                >
-                                <option value="AND">
-                                    AND (conjuntivo / incluyente)
-                                </option>
-                                <option value="OR">
-                                    OR (alternativo / complementario)
-                                </option>
-                                <option value="NOT">
-                                    NOT (excluir)
-                                </option>
-                                </SELECT>
-                            </TD>
-                            <TD className="px-2 py-1">
-                                <BUTTON
-                                type="button"
-                                onClick={() =>
-                                    handleRemoveSubAudienceClause(
-                                    clause.id,
-                                    )
-                                }
-                                >
-                                Eliminar subaudiencia
-                                </BUTTON>
-                            </TD>
-                            </TR>
-                        ))}
-                        </TBODY>
-                    </TABLE>
-                    </DIV>
-                )}
-                </DIV>
-
-                {/* Nombre y descripción de la audiencia objetivo */}
-                <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-xs opacity-70">
-                    Nombre de la audiencia objetivo
-                    </P>
-                    <INPUT
-                    value={targetAudienceName}
-                    onChange={(e) =>
-                        setTargetAudienceName(e.target.value)
-                    }
-                    />
-                </DIV>
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-xs opacity-70">
-                    Descripción (sólo panel)
-                    </P>
-                    <INPUT
-                    value={targetAudienceDescription}
-                    onChange={(e) =>
-                        setTargetAudienceDescription(e.target.value)
-                    }
-                    />
-                </DIV>
-                </DIV>
-
-                <DIV className="flex items-center gap-2 mt-2">
-                <BUTTON
-                    type="button"
-                    disabled={savingTargetAudience}
-                    onClick={handleSaveTargetAudience}
-                >
-                    {savingTargetAudience
-                    ? "Guardando audiencia…"
-                    : editingTargetAudienceId
-                    ? "Actualizar audiencia objetivo"
-                    : "Guardar nueva audiencia objetivo"}
-                </BUTTON>
-
-                <BUTTON
-                    type="button"
-                    onClick={handleResetAudienceBuilder}
-                >
-                    Limpiar builder
-                </BUTTON>
-                </DIV>
-
-                {/* Listado de audiencias objetivo existentes (acordeón) */}
-                <DIV className="mt-4 border border-white/10 rounded-md bg-black/40 p-2 space-y-2">
-                <P className="text-xs opacity-70 mb-1">
-                    Audiencias objetivo existentes (kind = target)
-                </P>
-
-                {targetAudiencesWithClauses.length === 0 ? (
-                    <P className="text-[11px] opacity-60">
-                    Aún no hay audiencias objetivo creadas.
-                    </P>
-                ) : (
-                    targetAudiencesWithClauses.map((a: any) => {
-                    const audienceId = (a.audienceId ?? a.id) as
-                        | string
-                        | undefined;
-                    if (!audienceId) return null;
-
-                    const isOpen =
-                        openTargetAudienceId === audienceId;
-
-                    const clauses = Array.isArray(a.clauses)
-                        ? (a.clauses as any[])
-                        : [];
-
-                    return (
-                        <DIV
-                        key={audienceId}
-                        className="border border-white/15 rounded-md bg-black/60"
-                        >
-                        <DIV className="flex items-center justify-between px-2 py-1">
-                            <BUTTON
-                            type="button"
-                            className="text-left text-xs md:text-sm font-semibold"
-                            onClick={() =>
-                                setOpenTargetAudienceId((prev) =>
-                                prev === audienceId
-                                    ? null
-                                    : audienceId,
-                                )
-                            }
-                            >
-                            {isOpen ? "▽" : "▷"}{" "}
-                            {a.name ?? audienceId}
-                            </BUTTON>
-                            <DIV className="flex flex-col items-end gap-1">
-                            <P className="text-[10px] opacity-60">
-                                ID:{" "}
-                                <SPAN className="font-mono">
-                                {audienceId}
-                                </SPAN>
-                            </P>
-                            <DIV className="flex flex-wrap gap-1">
-                                <BUTTON
-                                type="button"
-                                onClick={() =>
-                                    handleLoadTargetAudienceToBuilder(
-                                    a,
-                                    )
-                                }
-                                >
-                                Cargar en builder
-                                </BUTTON>
-
-                                <BUTTON
-                                type="button"
-                                onClick={() =>
-                                    handleRebuildTargetAudience(a)
-                                }
-                                >
-                                Recalcular (payload CF)
-                                </BUTTON>
-
-                                <BUTTON
-                                type="button"
-                                onClick={() =>
-                                    handleDeleteTargetAudience(
-                                    audienceId,
-                                    )
-                                }
-                                >
-                                Eliminar audiencia
-                                </BUTTON>
-
-                                {/* NUEVO: Exportar miembros de la audiencia a CSV */}
-                                <BUTTON
-                                type="button"
-                                onClick={async () => {
-                                    try {
-                                    const res = await exportAudienceCsv(audienceId);
-                                    console.log(
-                                        "[CampaignsCenter] CSV exportado",
-                                        res.rows,
-                                        "filas para audiencia",
-                                        audienceId,
-                                    );
-                                    } catch (err) {
-                                    console.error(
-                                        "[CampaignsCenter] Error exportando audiencia",
-                                        err,
-                                    );
-                                    alert("No se pudo exportar el CSV de esta audiencia");
-                                    }
-                                }}
-                                >
-                                Exportar CSV
-                                </BUTTON>
-                            </DIV>
-
-                            </DIV>
-                        </DIV>
-                        {isOpen && (
-                            <DIV className="border-t border-white/15 px-2 py-2 space-y-2">
-                            <P className="text-[11px] opacity-70">
-                                Descripción:
-                            </P>
-                            <P className="text-[11px]">
-                                {a.description || "—"}
-                            </P>
-
-                            <P className="text-[11px] opacity-70 mt-1">
-                                Subaudiencias y criterios:
-                            </P>
-                            {clauses.length === 0 ? (
-                                <P className="text-[11px] opacity-60">
-                                Esta audiencia aún no tiene cláusulas
-                                definidas.
-                                </P>
-                            ) : (
-                                <DIV className="border border-white/10 rounded-md bg-black/50 overflow-x-auto">
-                                <TABLE className="min-w-full text-[11px]">
-                                    <THEAD>
-                                    <TR>
-                                        <TH className="px-2 py-1 text-left">
-                                        Operador
-                                        </TH>
-                                        <TH className="px-2 py-1 text-left">
-                                        Filtros
-                                        </TH>
-                                    </TR>
-                                    </THEAD>
-                                    <TBODY>
-                                    {clauses.map(
-                                        (cl: any, idx: number) => {
-                                        const f = cl.filters ?? {};
-                                        const parts: string[] = [];
-                                        if (f.track)
-                                            parts.push(
-                                            `track=${f.track}`,
-                                            );
-                                        if (f.trigger)
-                                            parts.push(
-                                            `trigger=${f.trigger}`,
-                                            );
-                                        if (f.target)
-                                            parts.push(
-                                            `target=${f.target}`,
-                                            );
-                                        if (f.category)
-                                            parts.push(
-                                            `category=${f.category}`,
-                                            );
-                                        if (f.fromDate)
-                                            parts.push(
-                                            `from=${f.fromDate}`,
-                                            );
-                                        if (f.toDate)
-                                            parts.push(
-                                            `to=${f.toDate}`,
-                                            );
-
-                                        const label =
-                                            parts.length > 0
-                                            ? parts.join(" · ")
-                                            : "Sin filtros (todas)";
-
-                                        return (
-                                            <TR
-                                            key={`${audienceId}-c-${idx}`}
-                                            className="border-t border-white/10"
-                                            >
-                                            <TD className="px-2 py-1">
-                                                {cl.operator ??
-                                                "AND"}
-                                            </TD>
-                                            <TD className="px-2 py-1">
-                                                {label}
-                                            </TD>
-                                            </TR>
-                                        );
-                                        },
-                                    )}
-                                    </TBODY>
-                                </TABLE>
-                                </DIV>
-                            )}
-                            </DIV>
-                        )}
-                        </DIV>
-                    );
-                    })
-                )}
-                </DIV>
-            </>
-            )}
-        </DIV>
-
-        {/* ─────────────────────────────────────────────────────
-            3) Gestor de UTMs (campañas externas)
-            ───────────────────────────────────────────────────── */}
-        <DIV className="border border-white/10 rounded-lg p-3 bg-black/40 space-y-3">
-            <DIV className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <DIV className="flex items-center gap-2">
-                <H2
-                className="text-lg font-semibold cursor-pointer"
-                onClick={() => setShowUtmPanel((prev) => !prev)}
-                >
-                {showUtmPanel ? "▽" : "▷"} UTMs de campañas externas
-                (Facebook / Google / TikTok…)
-                </H2>
-            </DIV>
-            <BUTTON type="button" onClick={resetUtmForm}>
-                Limpiar formulario UTM
-            </BUTTON>
-            </DIV>
-
-            {showUtmPanel && (
-            <>
-                <P className="text-xs opacity-70">
-                Aquí defines combinaciones de <code>utm_source</code>,{" "}
-                <code>utm_medium</code> y <code>utm_campaign</code>. NIXINX
-                genera un <code>utm_id</code> interno (slug) y lo guarda en{" "}
-                <code>Providers/Utms</code>. En tus anuncios deberás usar la
-                URL final que se muestra abajo. Además, estas UTMs se
-                sincronizan como audiencias de tipo <code>kind=utm</code>{" "}
-                en <code>Providers/Audiences</code> para que luego puedas
-                usarlas como criterios de comportamiento.
-                </P>
-
-                <DIV className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                    Origen de la campaña: utm_source
-                    <SPAN className="text-red-500 ml-1">*</SPAN>
-                    </P>
-                    <SELECT
-                    value={utmSource}
-                    onChange={(e) => setUtmSource(e.target.value)}
-                    onBlur={() => markUtmTouched("source")}
-                    className={`${
-                        utmErrors.source && utmTouched.source
-                        ? "border-red-500 ring-1 ring-red-500"
-                        : ""
-                    }`}
-                    >
-                    <option value="">Selecciona origen…</option>
-                    {UTM_SOURCE_OPTIONS.map((src) => (
-                        <option key={src} value={src}>
-                        {src}
-                        </option>
-                    ))}
-                    </SELECT>
-                    {utmErrors.source && utmTouched.source && (
-                    <H1 className="text-[10px] text-red-400">
-                        {utmErrors.source}
-                    </H1>
-                    )}
-                </DIV>
-
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                    Formato de la campaña: utm_medium
-                    <SPAN className="text-red-500 ml-1">*</SPAN>
-                    </P>
-                    <SELECT
-                    value={utmMedium}
-                    onChange={(e) => setUtmMedium(e.target.value)}
-                    onBlur={() => markUtmTouched("medium")}
-                    className={`${
-                        utmErrors.medium && utmTouched.medium
-                        ? "border-red-500 ring-1 ring-red-500"
-                        : ""
-                    }`}
-                    >
-                    <option value="">Selecciona medio…</option>
-                    {UTM_MEDIUM_OPTIONS.map((m) => (
-                        <option key={m} value={m}>
-                        {m}
-                        </option>
-                    ))}
-                    </SELECT>
-                    {utmErrors.medium && utmTouched.medium && (
-                    <H1 className="text-[10px] text-red-400">
-                        {utmErrors.medium}
-                    </H1>
-                    )}
-                </DIV>
-
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                    Nombre de la campaña: utm_campaign
-                    <SPAN className="text-red-500 ml-1">*</SPAN>
-                    </P>
-                    <INPUT
-                    value={utmCampaign}
-                    onChange={(e) => setUtmCampaign(e.target.value)}
-                    onBlur={() => markUtmTouched("campaign")}
-                    className={`${
-                        utmErrors.campaign && utmTouched.campaign
-                        ? "border-red-500 ring-1 ring-red-500"
-                        : ""
-                    }`}
-                    />
-                    {utmErrors.campaign && utmTouched.campaign && (
-                    <H1 className="text-[10px] text-red-400">
-                        {utmErrors.campaign}
-                    </H1>
-                    )}
-                </DIV>
-                </DIV>
-
-                <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                    Palabra clave: utm_term (opcional)
-                    </P>
-                    <INPUT
-                    value={utmTerm}
-                    onChange={(e) => setUtmTerm(e.target.value)}
-                    />
-                </DIV>
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                    Contenido del anuncio: utm_content (opcional)
-                    </P>
-                    <INPUT
-                    value={utmContent}
-                    onChange={(e) => setUtmContent(e.target.value)}
-                    />
-                </DIV>
-                </DIV>
-
-                <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                    Nombre interno legible
-                    <SPAN className="text-red-500 ml-1">*</SPAN>
-                    </P>
-                    <INPUT
-                    value={utmName}
-                    onChange={(e) => setUtmName(e.target.value)}
-                    onBlur={() => markUtmTouched("name")}
-                    className={`${
-                        utmErrors.name && utmTouched.name
-                        ? "border-red-500 ring-1 ring-red-500"
-                        : ""
-                    }`}
-                    />
-                    {utmErrors.name && utmTouched.name && (
-                    <H1 className="text-[10px] text-red-400">
-                        {utmErrors.name}
-                    </H1>
-                    )}
-                </DIV>
-
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">
-                    Path destino en la PWA (ej. <code>/</code>,{" "}
-                    <code>/reservas</code>)
-                    <SPAN className="text-red-500 ml-1">*</SPAN>
-                    </P>
-                    <INPUT
-                    value={utmTargetPath}
-                    onChange={(e) => setUtmTargetPath(e.target.value)}
-                    onBlur={() => markUtmTouched("targetPath")}
-                    className={`${
-                        utmErrors.targetPath && utmTouched.targetPath
-                        ? "border-red-500 ring-1 ring-red-500"
-                        : ""
-                    }`}
-                    />
-                    {utmErrors.targetPath && utmTouched.targetPath && (
-                    <H1 className="text-[10px] text-red-400">
-                        {utmErrors.targetPath}
-                    </H1>
-                    )}
-                </DIV>
-                </DIV>
-
-                <DIV className="flex flex-col gap-1 mt-1">
-                <P className="text-[11px] opacity-70">
-                    Descripción (visible sólo en el panel)
-                    <SPAN className="text-red-500 ml-1">*</SPAN>
-                </P>
-                <INPUT
-                    value={utmDescription}
-                    onChange={(e) => setUtmDescription(e.target.value)}
-                    onBlur={() => markUtmTouched("description")}
-                    className={`${
-                    utmErrors.description && utmTouched.description
-                        ? "border-red-500 ring-1 ring-red-500"
-                        : ""
-                    }`}
-                />
-                {utmErrors.description && utmTouched.description && (
-                    <H1 className="text-[10px] text-red-400">
-                    {utmErrors.description}
-                    </H1>
-                )}
-                </DIV>
-
-                <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">Inicio (fecha)</P>
-                    <INPUT
-                    type="date"
-                    value={utmStartDate}
-                    onChange={(e) => setUtmStartDate(e.target.value)}
-                    />
-                </DIV>
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">Inicio (hora)</P>
-                    <INPUT
-                    type="time"
-                    value={utmStartTime}
-                    onChange={(e) => setUtmStartTime(e.target.value)}
-                    />
-                </DIV>
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">Fin (fecha)</P>
-                    <INPUT
-                    type="date"
-                    value={utmEndDate}
-                    onChange={(e) => setUtmEndDate(e.target.value)}
-                    />
-                </DIV>
-                <DIV className="flex flex-col gap-1">
-                    <P className="text-[11px] opacity-70">Fin (hora)</P>
-                    <INPUT
-                    type="time"
-                    value={utmEndTime}
-                    onChange={(e) => setUtmEndTime(e.target.value)}
-                    />
-                </DIV>
-                </DIV>
-
-                <DIV className="mt-2 p-2 rounded-md border border-white/10 bg-black/50 space-y-1">
-                <P className="text-[11px] opacity-70">
-                    ID interno (utm_id / slug generado)
-                </P>
-                <P className="font-mono text-xs break-all">
-                    {utmSlug || "(completa source, medium y campaign)"}
-                </P>
-
-                <P className="text-[11px] opacity-70 mt-2">
-                    URL de ejemplo para pegar en la campaña de anuncios:
-                </P>
-                <P className="font-mono text-[11px] break-all">
-                    {utmExampleUrl}
-                </P>
-                </DIV>
-
-                <DIV className="flex items-center gap-2 mt-2">
-                <BUTTON
-                    type="button"
-                    onClick={() => {
-                    void handleSaveUtm();
-                    resetUtmForm();
-                    }}
-                    disabled={utmSaving}
-                >
-                    {utmSaving
-                    ? "Guardando UTM…"
-                    : editingUtmId
-                    ? "Guardar UTM y restablecer formulario"
-                    : "Guardar nueva UTM"}
-                </BUTTON>
-                </DIV>
-
-                {utmList.length > 0 && (
-                <>
-                    <DIV className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-3">
-                    <DIV className="flex items-center gap-2 text-[11px] opacity-80">
-                        <SPAN>Filtrar por estado:</SPAN>
-                        <SELECT
-                        value={utmFilterStatus}
-                        onChange={(e) =>
-                            setUtmFilterStatus(
-                            e.target
-                                .value as "all" | "active" | "inactive",
-                            )
-                        }
-                        className="text-xs"
-                        >
-                        <option value="all">Todos</option>
-                        <option value="active">Vigentes</option>
-                        <option value="inactive">Caducadas</option>
-                        </SELECT>
-                    </DIV>
-
-                    <DIV className="flex items-center gap-2 text-[11px] opacity-80">
-                        <SPAN>Ordenar por:</SPAN>
-                        <SELECT
-                        value={utmSortField}
-                        onChange={(e) =>
-                            setUtmSortField(
-                            e.target.value as
-                                | "createdAt"
-                                | "updatedAt"
-                                | "source"
-                                | "medium"
-                                | "campaign"
-                                | "name",
-                            )
-                        }
-                        className="text-xs"
-                        >
-                        <option value="createdAt">Fecha creación</option>
-                        <option value="updatedAt">
-                            Última actualización
-                        </option>
-                        <option value="source">Source</option>
-                        <option value="medium">Medium</option>
-                        <option value="campaign">Campaign</option>
-                        <option value="name">Nombre interno</option>
-                        </SELECT>
-
-                        <SELECT
-                        value={utmSortDir}
-                        onChange={(e) =>
-                            setUtmSortDir(
-                            e.target.value as "asc" | "desc",
-                            )
-                        }
-                        className="text-xs"
-                        >
-                        <option value="desc">Desc</option>
-                        <option value="asc">Asc</option>
-                        </SELECT>
-                    </DIV>
-                    </DIV>
-
-                    <DIV className="border border-white/10 rounded-md bg-black/30 mt-2 overflow-x-auto">
-                    <TABLE className="min-w-full text-xs">
-                        <THEAD>
-                        <TR>
-                            <TH className="px-2 py-1 text-left">utm_id</TH>
-                            <TH className="px-2 py-1 text-left">URL</TH>
-                            <TH className="px-2 py-1 text-left">source</TH>
-                            <TH className="px-2 py-1 text-left">medium</TH>
-                            <TH className="px-2 py-1 text-left">campaign</TH>
-                            <TH className="px-2 py-1 text-left">nombre</TH>
-                            <TH className="px-2 py-1 text-left">path</TH>
-                            <TH className="px-2 py-1 text-left">rango</TH>
-                            <TH className="px-2 py-1 text-left">Estado</TH>
-                            <TH className="px-2 py-1 text-left">Acción</TH>
-                        </TR>
-                        </THEAD>
-                        <TBODY>
-                        {visibleUtms.map((u) => (
-                            <TR
-                            key={u.id}
-                            className="border-t border-white/10"
-                            >
-                            {/* 1ª columna: utm_id */}
-                            <TD className="px-2 py-1 font-mono">
-                                {u.id}
-                            </TD>
-
-                            {/* 2ª columna: URL final */}
-                            <TD className="px-2 py-1 font-mono text-[10px] break-all">
-                                {u.exampleUrl ?? buildExampleUrlFromDef(u)}
-                            </TD>
-
-                            <TD className="px-2 py-1">{u.source}</TD>
-                            <TD className="px-2 py-1">{u.medium}</TD>
-                            <TD className="px-2 py-1">{u.campaign}</TD>
-                            <TD className="px-2 py-1">{u.name}</TD>
-                            <TD className="px-2 py-1">
-                                {u.targetPath}
-                            </TD>
-                            <TD className="px-2 py-1">
-                                {u.startDate || u.startTime
-                                ? `${u.startDate ?? ""} ${
-                                    u.startTime ?? ""
-                                    }`.trim()
-                                : "—"}{" "}
-                                →{" "}
-                                {u.endDate || u.endTime
-                                ? `${u.endDate ?? ""} ${
-                                    u.endTime ?? ""
-                                    }`.trim()
-                                : "—"}
-                            </TD>
-                            <TD className="px-2 py-1">
-                                {u.active === false
-                                ? "Caducada"
-                                : "Vigente"}
-                            </TD>
-                            <TD className="px-2 py-1">
-                                <DIV className="flex flex-col gap-1">
-                                <BUTTON
-                                    type="button"
-                                    onClick={() => handleEditUtm(u)}
-                                >
-                                    Editar
-                                </BUTTON>
-                                <BUTTON
-                                    type="button"
-                                    onClick={() =>
-                                    handleToggleUtmActive(u.id)
-                                    }
-                                >
-                                    {u.active === false
-                                    ? "Marcar como vigente"
-                                    : "Marcar como caducada"}
-                                </BUTTON>
-                                <BUTTON
-                                    type="button"
-                                    onClick={() =>
-                                    handleDeleteUtm(u.id)
-                                    }
-                                >
-                                    Eliminar
-                                </BUTTON>
-                                </DIV>
-                            </TD>
-                            </TR>
-                        ))}
-                        </TBODY>
-                    </TABLE>
-                    </DIV>
-                </>
-                )}
-            </>
-            )}
-        </DIV>
-        </DIV>
-    </AdminGuard>
+
+              <DIV className="flex flex-col gap-1">
+              <H1 className="text-2xl font-semibold">Centro de Campañas</H1>
+              <P className="text-sm opacity-75">
+              Aquí se combinan plantillas de{" "}
+              <code>Providers/Notifications</code> con estrategias de{" "}
+              <code>Providers/Strategies</code> para generar campañas
+              activas. Las campañas se guardan en{" "}
+              <code>notificationCampaigns</code>. Desde aquí puedes probar la
+              entrega <strong>in-app</strong> contra el usuario actual
+              escribiendo en{" "}
+              <code>userNotifications/&lt;uid&gt;/items</code>. Las audiencias
+              se leen de <code>Providers/Audiences</code>.
+              </P>
+
+              <P className="text-xs opacity-70 mt-1">
+              Plantillas (Notifications): {totalTemplates} · Estrategias:{" "}
+              {totalStrategies} · Audiencias totales (todas las clases):{" "}
+              {totalAudiences} · Campañas: {campaigns.length} · Filas
+              (campaña + notificación): {enabledNotifications.length}
+              </P>
+          </DIV>
+
+          <DIV className="border border-white/10 rounded-lg p-3 bg-black/40 space-y-2">
+              <H2 className="text-lg font-semibold">Usuario actual</H2>
+              {currentUser ? (
+              <P className="text-sm">
+                  UID:{" "}
+                  <SPAN className="font-mono text-xs">
+                  {currentUser.uid}
+                  </SPAN>
+              </P>
+              ) : (
+              <P className="text-sm text-yellow-400">
+                  No hay usuario autenticado; inicia sesión para probar
+                  campañas.
+              </P>
+              )}
+
+              {error && (
+              <P className="text-xs text-red-400 mt-1">
+                  Error: <SPAN className="font-mono">{error}</SPAN>
+              </P>
+              )}
+              {lastApplied && (
+              <P className="text-xs text-emerald-400 mt-1">
+                  Última operación:{" "}
+                  <SPAN className="font-mono">{lastApplied}</SPAN>
+              </P>
+              )}
+              {campaignsError && (
+              <P className="text-xs text-red-400 mt-1">
+                  Error campañas:{" "}
+                  <SPAN className="font-mono">{campaignsError}</SPAN>
+              </P>
+              )}
+              {agentContextMessage && (
+              <P className="text-xs text-emerald-400 mt-1">
+                  {agentContextMessage}
+              </P>
+              )}
+              {audienceBuilderMessage && (
+              <P className="text-xs text-emerald-400 mt-1">
+                  {audienceBuilderMessage}
+              </P>
+              )}
+          </DIV>
+
+          {/* ─────────────────────────────────────────────────────
+              1) Creación de campañas
+              ───────────────────────────────────────────────────── */}
+          <DIV className="border border-white/10 rounded-lg p-3 bg-black/30 flex flex-col gap-3">
+              <DIV className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <DIV className="flex items-center gap-2">
+                  <H2
+                  className="text-lg font-semibold cursor-pointer"
+                  onClick={() => setShowCampaignPanel((prev) => !prev)}
+                  >
+                  {showCampaignPanel ? "▽" : "▷"} Crear / editar campañas
+                  </H2>
+              </DIV>
+
+              <BUTTON
+                  type="button"
+                  disabled={updatingAgentContext}
+                  onClick={handleRebuildAllAgentCampaignContexts}
+              >
+                  {updatingAgentContext
+                  ? "Actualizando contextos AAI…"
+                  : "Actualizar contextos AAI (Sales/Info/Support/CX/Other)"}
+              </BUTTON>
+              </DIV>
+
+              {showCampaignPanel && (
+              <>
+                  <DIV className="flex flex-col gap-1">
+                  <P className="text-xs opacity-70">Nombre de la campaña</P>
+                  <INPUT
+                      value={draftName}
+                      onChange={(e) => setDraftName(e.target.value)}
+                  />
+                  </DIV>
+
+                  <DIV className="flex flex-col gap-1">
+                  <P className="text-xs opacity-70">
+                      Estrategia (status = active)
+                      <SPAN className="text-red-500 ml-1">*</SPAN>
+                  </P>
+                  <SELECT
+                      value={draftStrategyId}
+                      onChange={(e) => {
+                      setDraftStrategyId(e.target.value);
+                      setCampaignTouched((prev) => ({ ...prev, strategyId: true }));
+                      }}
+                      className={`${
+                      campaignErrors.strategyId && campaignTouched.strategyId
+                          ? "border-red-500 ring-1 ring-red-500"
+                          : ""
+                      }`}
+                  >
+                      <option value="">Selecciona estrategia</option>
+                      {activeStrategies.map((s: any) => (
+                      <option key={s.strategyId} value={s.strategyId}>
+                          {s.name ?? s.strategyId}
+                      </option>
+                      ))}
+                  </SELECT>
+                  {campaignErrors.strategyId && campaignTouched.strategyId && (
+                      <H1 className="text-[10px] text-red-400">
+                      {campaignErrors.strategyId}
+                      </H1>
+                  )}
+                  </DIV>
+
+                  <DIV className="flex flex-col gap-1">
+                  <P className="text-xs opacity-70">
+                      Notificaciones (plantillas en Providers/Notifications)
+                      <SPAN className="text-red-500 ml-1">*</SPAN>
+                  </P>
+                  <SELECT
+                      multiple
+                      value={draftNotificationIds}
+                      onChange={(e) => {
+                      const select = e.target as HTMLSelectElement;
+                      const values = Array.from(select.selectedOptions).map(
+                          (o) => o.value,
+                      );
+                      setDraftNotificationIds(values);
+                      setCampaignTouched((prev) => ({
+                          ...prev,
+                          notificationIds: true,
+                      }));
+                      }}
+                      className={`${
+                      campaignErrors.notificationIds &&
+                      campaignTouched.notificationIds
+                          ? "border-red-500 ring-1 ring-red-500"
+                          : ""
+                      } min-h-[220px]`}
+                  >
+                      {(notificationsDoc?.notifications ?? []).map((n: any) => {
+                      const id = n.notificationId as string | undefined;
+                      if (!id) return null;
+                      return (
+                          <option key={id} value={id}>
+                          {id}
+                          </option>
+                      );
+                      })}
+                  </SELECT>
+                  {campaignErrors.notificationIds &&
+                      campaignTouched.notificationIds && (
+                      <H1 className="text-[10px] text-red-400">
+                          {campaignErrors.notificationIds}
+                      </H1>
+                      )}
+                  <P className="text-[10px] opacity-60">
+                      Puedes elegir varias; se generará una fila por notificación.
+                  </P>
+                  </DIV>
+
+                  {/* Multiselect de audiencias objetivo (kind = "target" + especiales) */}
+                  <DIV className="flex flex-col gap-1">
+                  <P className="text-xs opacity-70">
+                      Audiencias objetivo de la campaña (Providers/Audiences kind
+                      = target + opciones especiales)
+                  </P>
+                  <SELECT
+                      multiple
+                      value={draftAudienceIds}
+                      onChange={handleChangeAudienceSelect}
+                      className="min-h-[220px]"
+                  >
+                      {/* Opciones especiales */}
+                      {SPECIAL_AUDIENCE_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                      </option>
+                      ))}
+
+                      {/* Audiencias objetivo definidas en la sección 2 */}
+                      {targetAudiencesWithClauses.map((a: any) => (
+                      <option
+                          key={a.audienceId}
+                          value={a.audienceId}
+                      >
+                          {a.name ?? a.audienceId}
+                      </option>
+                      ))}
+                  </SELECT>
+                  <P className="text-[10px] opacity-60">
+                      Estas audiencias se crean y mantienen en la sección
+                      Audiencias objetivo inferior. Aquí solo eliges a quién se
+                      aplica la campaña.
+                  </P>
+                  </DIV>
+
+                  {/* Canales de entrega de la campaña */}
+                  <DIV className="flex flex-col gap-1 mt-2">
+                  <P className="text-xs opacity-70">
+                      Canales de entrega de la campaña
+                  </P>
+                  <DIV className="flex flex-wrap gap-4 text-[11px]">
+                      <label className="inline-flex items-center gap-1">
+                      <INPUT
+                          type="checkbox"
+                          checked={draftChannels.includes("inApp")}
+                          onChange={() => toggleDraftChannel("inApp")}
+                      />
+                      <SPAN>In-app</SPAN>
+                      </label>
+
+                      <label className="inline-flex items-center gap-1">
+                      <INPUT
+                          type="checkbox"
+                          checked={draftChannels.includes("push")}
+                          onChange={() => toggleDraftChannel("push")}
+                      />
+                      <SPAN>Push</SPAN>
+                      </label>
+
+                      <label className="inline-flex items-center gap-1">
+                      <INPUT
+                          type="checkbox"
+                          checked={draftChannels.includes("email")}
+                          onChange={() => toggleDraftChannel("email")}
+                      />
+                      <SPAN>Email (meta)</SPAN>
+                      </label>
+
+                      <label className="inline-flex items-center gap-1">
+                      <INPUT
+                          type="checkbox"
+                          checked={draftChannels.includes("sms")}
+                          onChange={() => toggleDraftChannel("sms")}
+                      />
+                      <SPAN>SMS (meta)</SPAN>
+                      </label>
+                  </DIV>
+                  <P className="text-[10px] opacity-60">
+                      Hoy sólo se entregan in-app / push. Email y SMS se guardan como
+                      metadata para integrarte con Brevo u otros servicios externos.
+                  </P>
+                  </DIV>
+
+                  <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-xs opacity-70">Inicio (fecha)</P>
+                      <INPUT
+                      type="date"
+                      value={draftStartDate}
+                      onChange={(e) => setDraftStartDate(e.target.value)}
+                      />
+                  </DIV>
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-xs opacity-70">Inicio (hora)</P>
+                      <INPUT
+                      type="time"
+                      value={draftStartTime}
+                      onChange={(e) => setDraftStartTime(e.target.value)}
+                      />
+                  </DIV>
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-xs opacity-70">Fin (fecha)</P>
+                      <INPUT
+                      type="date"
+                      value={draftEndDate}
+                      onChange={(e) => setDraftEndDate(e.target.value)}
+                      />
+                  </DIV>
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-xs opacity-70">Fin (hora)</P>
+                      <INPUT
+                      type="time"
+                      value={draftEndTime}
+                      onChange={(e) => setDraftEndTime(e.target.value)}
+                      />
+                  </DIV>
+                  </DIV>
+
+                  <DIV className="flex items-center gap-2 mt-2">
+                  <BUTTON
+                      type="button"
+                      disabled={!canCreateCampaign}
+                      onClick={handleCreateQuickCampaign}
+                  >
+                      {editingCampaignId
+                      ? "Guardar cambios"
+                      : "Guardar campaña activa"}
+                  </BUTTON>
+                  {!canCreateCampaign && (
+                      <P className="text-[10px] opacity-60">
+                      Selecciona al menos una estrategia activa y una
+                      notificación.
+                      </P>
+                  )}
+                  </DIV>
+                  {/* Panel de campañas pendientes por horario */}
+                  {pendingCampaigns.length > 0 && (
+                  <DIV className="mt-4 border border-yellow-500/40 rounded-lg bg-yellow-500/5 p-3">
+                      <DIV className="flex items-center justify-between mb-2 gap-2">
+                      <P className="text-sm font-semibold">
+                          Campañas pendientes por horario ({pendingCampaigns.length})
+                      </P>
+                      <BUTTON
+                          type="button"
+                          disabled={runningCampaignId === "__all__"}
+                          onClick={handleRunAllPending}
+                      >
+                          {runningCampaignId === "__all__"
+                          ? "Ejecutando todas…"
+                          : "Ejecutar todas"}
+                      </BUTTON>
+                      </DIV>
+
+                      <DIV className="flex flex-col gap-2 text-xs">
+                      {pendingCampaigns.map((camp) => (
+                          <DIV
+                          key={camp.id}
+                          className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 border border-white/10 rounded-md px-2 py-1"
+                          >
+                          <DIV>
+                              <P className="font-medium">
+                              {camp.name || camp.campaignId || camp.id}
+                              </P>
+                              <P className="opacity-70">
+                              Inicio: {camp.startDate ?? "—"}{" "}
+                              {camp.startTime ?? ""}
+                              {camp.endDate && (
+                                  <>
+                                  {" · Fin: "}
+                                  {camp.endDate} {camp.endTime ?? ""}
+                                  </>
+                              )}
+                              </P>
+                              {Array.isArray((camp as any).deliveryChannels) &&
+                              (camp as any).deliveryChannels.length > 0 && (
+                                  <P className="opacity-70">
+                                  Canales:{" "}
+                                  {(camp as any).deliveryChannels.join(", ")}
+                                  </P>
+                              )}
+                          </DIV>
+
+                          <DIV className="flex flex-wrap gap-1">
+                              <BUTTON
+                              type="button"
+                              disabled={runningCampaignId === camp.id}
+                              onClick={() => handleRunCampaignNow(camp.id)}
+                              >
+                              {runningCampaignId === camp.id
+                                  ? "Ejecutando…"
+                                  : "Ejecutar ahora"}
+                              </BUTTON>
+                              <BUTTON
+                              type="button"
+                              onClick={() =>
+                                  handleUpdateCampaignStatus(
+                                  camp.id,
+                                  "paused",
+                                  )
+                              }
+                              >
+                              Pausar
+                              </BUTTON>
+                              <BUTTON
+                              type="button"
+                              onClick={() =>
+                                  handleUpdateCampaignStatus(
+                                  camp.id,
+                                  "finished",
+                                  )
+                              }
+                              >
+                              Marcar como finalizada
+                              </BUTTON>
+                          </DIV>
+                          </DIV>
+                      ))}
+                      </DIV>
+                  </DIV>
+                  )}
+
+                  {/* Tabla de campañas normalizadas (campaña + notificación) */}
+                  <DIV className="border border-white/10 rounded-lg bg-black/40 overflow-x-auto mt-3">
+                  <TABLE className="min-w-full text-sm">
+                      <THEAD>
+                      <TR>
+                          <TH className="px-3 py-2 text-left">notif</TH>
+                          <TH className="px-3 py-2 text-left">Campaña</TH>
+                          <TH className="px-3 py-2 text-left">Estado</TH>
+                          <TH className="px-3 py-2 text-left">Estrategia</TH>
+                          <TH className="px-3 py-2 text-left">Título</TH>
+                          <TH className="px-3 py-2 text-left">Categoría</TH>
+                          <TH className="px-3 py-2 text-left">Prioridad</TH>
+                          <TH className="px-3 py-2 text-left">UI</TH>
+                          <TH className="px-3 py-2 text-left">Canal</TH>
+                          <TH className="px-3 py-2 text-left">Inicio</TH>
+                          <TH className="px-3 py-2 text-left">Fin</TH>
+                          <TH className="px-3 py-2 text-left">Audiencias</TH>
+                          <TH className="px-3 py-2 text-left">Acción</TH>
+                      </TR>
+                      </THEAD>
+                      <TBODY>
+                      {enabledNotifications.length === 0 ? (
+                          <TR>
+                          <TD
+                              colSpan={13}
+                              className="px-3 py-4 text-center text-xs opacity-60"
+                          >
+                              No hay campañas con notificaciones asociadas.
+                          </TD>
+                          </TR>
+                      ) : (
+                          enabledNotifications.map((notif) => (
+                          <TR
+                              key={`${notif.campaignId}:${notif.notificationId}`}
+                              className="border-t border-white/10"
+                          >
+                              <TD className="px-3 py-2 font-mono text-xs">
+                              {notif.notificationId}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {notif.campaignName}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {notif.campaignStatus}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {notif.strategyName ?? "—"}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {notif.title ?? "(sin título)"}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {notif.category ?? "—"}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {notif.priority ?? "—"}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {notif.uiType ??
+                                  notif.userInterfaceType ??
+                                  "—"}
+                              </TD>
+                              <TD className="px-3 py-2 text-xs">
+                              {notif.deliveryChannels &&
+                              notif.deliveryChannels.length > 0
+                                  ? notif.deliveryChannels.join(", ")
+                                  : notif.deliveryChannel ?? "—"}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {formatDateTime(
+                                  notif.startDate,
+                                  notif.startTime,
+                              )}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {formatDateTime(
+                                  notif.endDate,
+                                  notif.endTime,
+                              )}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              {renderAudienceLabel(notif)}
+                              </TD>
+                              <TD className="px-3 py-2">
+                              <DIV className="flex flex-col gap-1">
+                                  <BUTTON
+                                  type="button"
+                                  disabled={
+                                      sendingId ===
+                                      `${notif.campaignId}:${notif.notificationId}` ||
+                                      !currentUser
+                                  }
+                                  onClick={() =>
+                                      handleApplyToCurrentUser(notif)
+                                  }
+                                  >
+                                  {sendingId ===
+                                  `${notif.campaignId}:${notif.notificationId}`
+                                      ? "Aplicando…"
+                                      : "Aplicar a este usuario"}
+                                  </BUTTON>
+
+                                  <BUTTON
+                                  type="button"
+                                  disabled={applyingAudience || !notif.audienceIds.length}
+                                  onClick={() => handleApplyToAudience(notif)}
+                                  >
+                                  {applyingAudience
+                                      ? "Aplicando a audiencia…"
+                                      : "Aplicar a audiencia"}
+                                  </BUTTON>
+
+                                  <BUTTON
+                                  type="button"
+                                  onClick={() => handleEditCampaign(notif)}
+                                  >
+                                  Editar campaña
+                                  </BUTTON>
+
+                                  <BUTTON
+                                  type="button"
+                                  onClick={() =>
+                                      handleCloneCampaign(notif)
+                                  }
+                                  >
+                                  Clonar campaña
+                                  </BUTTON>
+
+                                  <BUTTON
+                                  type="button"
+                                  onClick={() =>
+                                      handleToggleCampaignStatus(notif)
+                                  }
+                                  >
+                                  {notif.campaignStatus === "active"
+                                      ? "Pausar campaña"
+                                      : "Activar campaña"}
+                                  </BUTTON>
+
+                                  <BUTTON
+                                  type="button"
+                                  onClick={() =>
+                                      handleDeleteCampaign(notif)
+                                  }
+                                  >
+                                  Eliminar campaña
+                                  </BUTTON>
+                              </DIV>
+                              </TD>
+                          </TR>
+                          ))
+                      )}
+                      </TBODY>
+                  </TABLE>
+                  </DIV>
+              </>
+              )}
+          </DIV>
+
+          {/* ─────────────────────────────────────────────────────
+              2) Generación de audiencias objetivo
+              ───────────────────────────────────────────────────── */}
+          <DIV className="border border-white/10 rounded-lg p-3 bg-black/30 flex flex-col gap-3">
+              <DIV className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <DIV className="flex items-center gap-2">
+                  <H2
+                  className="text-lg font-semibold cursor-pointer"
+                  onClick={() => setShowAudiencePanel((prev) => !prev)}
+                  >
+                  {showAudiencePanel ? "▽" : "▷"} Audiencias objetivo
+                  (criterios + Cloud Functions)
+                  </H2>
+              </DIV>
+              </DIV>
+
+              {showAudiencePanel && (
+              <>
+                  <P className="text-xs opacity-70">
+                  Aquí defines audiencias objetivo basadas en comportamiento
+                  (session behaviour, UTMs, etc.), usando subaudiencias
+                  combinadas con <code>AND</code>, <code>OR</code> y{" "}
+                  <code>NOT</code>. El resultado se guarda en{" "}
+                  <code>Providers/Audiences</code> con{" "}
+                  <code>kind = target</code> y luego lo puedes usar en la
+                  sección de campañas.
+                  </P>
+
+                  {/* Filtros para audiencias de comportamiento */}
+                  <DIV className="flex flex-col gap-2 border border-white/10 rounded-md p-2 bg-black/40">
+                  <P className="text-xs opacity-70">
+                      Filtros de comportamiento (session behaviour / UTMs) para
+                      construir subaudiencias
+                  </P>
+
+                  <DIV className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                      <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">track</P>
+                      <SELECT
+                          value={audienceFilterTrack}
+                          onChange={(e) =>
+                          setAudienceFilterTrack(e.target.value)
+                          }
+                      >
+                          <option value="">(cualquiera)</option>
+                          {trackOptions.map((t) => (
+                          <option key={t} value={t}>
+                              {t}
+                          </option>
+                          ))}
+                      </SELECT>
+                      </DIV>
+
+                      <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">trigger</P>
+                      <SELECT
+                          value={audienceFilterTrigger}
+                          onChange={(e) =>
+                          setAudienceFilterTrigger(e.target.value)
+                          }
+                      >
+                          <option value="">(cualquiera)</option>
+                          {triggerOptions.map((t) => (
+                          <option key={t} value={t}>
+                              {t}
+                          </option>
+                          ))}
+                      </SELECT>
+                      </DIV>
+
+                      <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">target</P>
+                      <SELECT
+                          value={audienceFilterTarget}
+                          onChange={(e) =>
+                          setAudienceFilterTarget(e.target.value)
+                          }
+                      >
+                          <option value="">(cualquiera)</option>
+                          {targetOptions.map((t) => (
+                          <option key={t} value={t}>
+                              {t}
+                          </option>
+                          ))}
+                      </SELECT>
+                      </DIV>
+
+                      <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                          trackCategory
+                      </P>
+                      <SELECT
+                          value={audienceFilterCategory}
+                          onChange={(e) =>
+                          setAudienceFilterCategory(e.target.value)
+                          }
+                      >
+                          <option value="">(cualquiera)</option>
+                          {categoryOptions.map((t) => (
+                          <option key={t} value={t}>
+                              {t}
+                          </option>
+                          ))}
+                      </SELECT>
+                      </DIV>
+                  </DIV>
+
+                  <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                      <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                          Desde fecha (createdAt/updatedAt)
+                      </P>
+                      <INPUT
+                          type="date"
+                          value={audienceFromDate}
+                          onChange={(e) =>
+                          setAudienceFromDate(e.target.value)
+                          }
+                      />
+                      </DIV>
+                      <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                          Hasta fecha
+                      </P>
+                      <INPUT
+                          type="date"
+                          value={audienceToDate}
+                          onChange={(e) =>
+                          setAudienceToDate(e.target.value)
+                          }
+                      />
+                      </DIV>
+                  </DIV>
+
+                  <DIV className="flex justify-between mt-1">
+                      <BUTTON
+                      type="button"
+                      onClick={handleAddSubAudienceClause}
+                      >
+                      Agregar subaudiencia
+                      </BUTTON>
+
+                      <BUTTON
+                      type="button"
+                      onClick={handleClearAudienceFilters}
+                      >
+                      Limpiar filtros
+                      </BUTTON>
+                  </DIV>
+                  </DIV>
+
+                  {/* Subaudiencias definidas + operadores */}
+                  <DIV className="flex flex-col gap-1 border border-dashed border-white/20 rounded-md p-2 bg-black/30 mt-2">
+                  <P className="text-xs opacity-70">
+                      Subaudiencias que forman la audiencia objetivo. Cada fila
+                      es un conjunto de audiencias de comportamiento que se
+                      combinará con <code>AND</code>, <code>OR</code> o{" "}
+                      <code>NOT</code> al ejecutar el query (Cloud Function).
+                  </P>
+
+                  {subAudienceClauses.length === 0 ? (
+                      <P className="text-[11px] opacity-60 mt-1">
+                      Aún no se han agregado subaudiencias. Usa el botón{" "}
+                      <strong>Agregar subaudiencia</strong> después de
+                      elegir filtros.
+                      </P>
+                  ) : (
+                      <DIV className="border border-white/10 rounded-md bg-black/40 overflow-x-auto mt-1">
+                      <TABLE className="min-w-full text-[11px]">
+                          <THEAD>
+                          <TR>
+                              <TH className="px-2 py-1 text-left">
+                              Subaudiencia (resumen)
+                              </TH>
+                              <TH className="px-2 py-1 text-left">
+                              Operador lógico
+                              </TH>
+                              <TH className="px-2 py-1 text-left">Acción</TH>
+                          </TR>
+                          </THEAD>
+                          <TBODY>
+                          {subAudienceClauses.map((clause) => (
+                              <TR
+                              key={clause.id}
+                              className="border-t border-white/10"
+                              >
+                              <TD className="px-2 py-1">
+                                  {clause.label}
+                              </TD>
+                              <TD className="px-2 py-1">
+                                  <SELECT
+                                  value={clause.operator}
+                                  onChange={(e) =>
+                                      handleChangeSubAudienceOperator(
+                                      clause.id,
+                                      e.target
+                                          .value as LogicalOperator,
+                                      )
+                                  }
+                                  className="text-[11px]"
+                                  >
+                                  <option value="AND">
+                                      AND (conjuntivo / incluyente)
+                                  </option>
+                                  <option value="OR">
+                                      OR (alternativo / complementario)
+                                  </option>
+                                  <option value="NOT">
+                                      NOT (excluir)
+                                  </option>
+                                  </SELECT>
+                              </TD>
+                              <TD className="px-2 py-1">
+                                  <BUTTON
+                                  type="button"
+                                  onClick={() =>
+                                      handleRemoveSubAudienceClause(
+                                      clause.id,
+                                      )
+                                  }
+                                  >
+                                  Eliminar subaudiencia
+                                  </BUTTON>
+                              </TD>
+                              </TR>
+                          ))}
+                          </TBODY>
+                      </TABLE>
+                      </DIV>
+                  )}
+                  </DIV>
+
+                  {/* Nombre y descripción de la audiencia objetivo */}
+                  <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-xs opacity-70">
+                      Nombre de la audiencia objetivo
+                      </P>
+                      <INPUT
+                      value={targetAudienceName}
+                      onChange={(e) =>
+                          setTargetAudienceName(e.target.value)
+                      }
+                      />
+                  </DIV>
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-xs opacity-70">
+                      Descripción (sólo panel)
+                      </P>
+                      <INPUT
+                      value={targetAudienceDescription}
+                      onChange={(e) =>
+                          setTargetAudienceDescription(e.target.value)
+                      }
+                      />
+                  </DIV>
+                  </DIV>
+
+                  <DIV className="flex items-center gap-2 mt-2">
+                  <BUTTON
+                      type="button"
+                      disabled={savingTargetAudience}
+                      onClick={handleSaveTargetAudience}
+                  >
+                      {savingTargetAudience
+                      ? "Guardando audiencia…"
+                      : editingTargetAudienceId
+                      ? "Actualizar audiencia objetivo"
+                      : "Guardar nueva audiencia objetivo"}
+                  </BUTTON>
+
+                  <BUTTON
+                      type="button"
+                      onClick={handleResetAudienceBuilder}
+                  >
+                      Limpiar builder
+                  </BUTTON>
+                  </DIV>
+
+                  {/* Listado de audiencias objetivo existentes (acordeón) */}
+                  <DIV className="mt-4 border border-white/10 rounded-md bg-black/40 p-2 space-y-2">
+                  <P className="text-xs opacity-70 mb-1">
+                      Audiencias objetivo existentes (kind = target)
+                  </P>
+
+                  {targetAudiencesWithClauses.length === 0 ? (
+                      <P className="text-[11px] opacity-60">
+                      Aún no hay audiencias objetivo creadas.
+                      </P>
+                  ) : (
+                      targetAudiencesWithClauses.map((a: any) => {
+                      const audienceId = (a.audienceId ?? a.id) as
+                          | string
+                          | undefined;
+                      if (!audienceId) return null;
+
+                      const isOpen =
+                          openTargetAudienceId === audienceId;
+
+                      const clauses = Array.isArray(a.clauses)
+                          ? (a.clauses as any[])
+                          : [];
+
+                      return (
+                          <DIV
+                          key={audienceId}
+                          className="border border-white/15 rounded-md bg-black/60"
+                          >
+                          <DIV className="flex items-center justify-between px-2 py-1">
+                              <BUTTON
+                              type="button"
+                              className="text-left text-xs md:text-sm font-semibold"
+                              onClick={() =>
+                                  setOpenTargetAudienceId((prev) =>
+                                  prev === audienceId
+                                      ? null
+                                      : audienceId,
+                                  )
+                              }
+                              >
+                              {isOpen ? "▽" : "▷"}{" "}
+                              {a.name ?? audienceId}
+                              </BUTTON>
+                              <DIV className="flex flex-col items-end gap-1">
+                              <P className="text-[10px] opacity-60">
+                                  ID:{" "}
+                                  <SPAN className="font-mono">
+                                  {audienceId}
+                                  </SPAN>
+                              </P>
+                              <DIV className="flex flex-wrap gap-1">
+                                  <BUTTON
+                                  type="button"
+                                  onClick={() =>
+                                      handleLoadTargetAudienceToBuilder(
+                                      a,
+                                      )
+                                  }
+                                  >
+                                  Cargar en builder
+                                  </BUTTON>
+
+                                  <BUTTON
+                                  type="button"
+                                  onClick={() =>
+                                      handleRebuildTargetAudience(a)
+                                  }
+                                  >
+                                  Recalcular (payload CF)
+                                  </BUTTON>
+
+                                  <BUTTON
+                                  type="button"
+                                  onClick={() =>
+                                      handleDeleteTargetAudience(
+                                      audienceId,
+                                      )
+                                  }
+                                  >
+                                  Eliminar audiencia
+                                  </BUTTON>
+
+                                  {/* NUEVO: Exportar miembros de la audiencia a CSV */}
+                                  <BUTTON
+                                  type="button"
+                                  onClick={async () => {
+                                      try {
+                                      const res = await exportAudienceCsv(audienceId);
+                                      console.log(
+                                          "[CampaignsCenter] CSV exportado",
+                                          res.rows,
+                                          "filas para audiencia",
+                                          audienceId,
+                                      );
+                                      } catch (err) {
+                                      console.error(
+                                          "[CampaignsCenter] Error exportando audiencia",
+                                          err,
+                                      );
+                                      alert("No se pudo exportar el CSV de esta audiencia");
+                                      }
+                                  }}
+                                  >
+                                  Exportar CSV
+                                  </BUTTON>
+                              </DIV>
+
+                              </DIV>
+                          </DIV>
+                          {isOpen && (
+                              <DIV className="border-t border-white/15 px-2 py-2 space-y-2">
+                              <P className="text-[11px] opacity-70">
+                                  Descripción:
+                              </P>
+                              <P className="text-[11px]">
+                                  {a.description || "—"}
+                              </P>
+
+                              <P className="text-[11px] opacity-70 mt-1">
+                                  Subaudiencias y criterios:
+                              </P>
+                              {clauses.length === 0 ? (
+                                  <P className="text-[11px] opacity-60">
+                                  Esta audiencia aún no tiene cláusulas
+                                  definidas.
+                                  </P>
+                              ) : (
+                                  <DIV className="border border-white/10 rounded-md bg-black/50 overflow-x-auto">
+                                  <TABLE className="min-w-full text-[11px]">
+                                      <THEAD>
+                                      <TR>
+                                          <TH className="px-2 py-1 text-left">
+                                          Operador
+                                          </TH>
+                                          <TH className="px-2 py-1 text-left">
+                                          Filtros
+                                          </TH>
+                                      </TR>
+                                      </THEAD>
+                                      <TBODY>
+                                      {clauses.map(
+                                          (cl: any, idx: number) => {
+                                          const f = cl.filters ?? {};
+                                          const parts: string[] = [];
+                                          if (f.track)
+                                              parts.push(
+                                              `track=${f.track}`,
+                                              );
+                                          if (f.trigger)
+                                              parts.push(
+                                              `trigger=${f.trigger}`,
+                                              );
+                                          if (f.target)
+                                              parts.push(
+                                              `target=${f.target}`,
+                                              );
+                                          if (f.category)
+                                              parts.push(
+                                              `category=${f.category}`,
+                                              );
+                                          if (f.fromDate)
+                                              parts.push(
+                                              `from=${f.fromDate}`,
+                                              );
+                                          if (f.toDate)
+                                              parts.push(
+                                              `to=${f.toDate}`,
+                                              );
+
+                                          const label =
+                                              parts.length > 0
+                                              ? parts.join(" · ")
+                                              : "Sin filtros (todas)";
+
+                                          return (
+                                              <TR
+                                              key={`${audienceId}-c-${idx}`}
+                                              className="border-t border-white/10"
+                                              >
+                                              <TD className="px-2 py-1">
+                                                  {cl.operator ??
+                                                  "AND"}
+                                              </TD>
+                                              <TD className="px-2 py-1">
+                                                  {label}
+                                              </TD>
+                                              </TR>
+                                          );
+                                          },
+                                      )}
+                                      </TBODY>
+                                  </TABLE>
+                                  </DIV>
+                              )}
+                              </DIV>
+                          )}
+                          </DIV>
+                      );
+                      })
+                  )}
+                  </DIV>
+              </>
+              )}
+          </DIV>
+
+          {/* ─────────────────────────────────────────────────────
+              3) Gestor de UTMs (campañas externas)
+              ───────────────────────────────────────────────────── */}
+          <DIV className="border border-white/10 rounded-lg p-3 bg-black/40 space-y-3">
+              <DIV className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <DIV className="flex items-center gap-2">
+                  <H2
+                  className="text-lg font-semibold cursor-pointer"
+                  onClick={() => setShowUtmPanel((prev) => !prev)}
+                  >
+                  {showUtmPanel ? "▽" : "▷"} UTMs de campañas externas
+                  (Facebook / Google / TikTok…)
+                  </H2>
+              </DIV>
+              <BUTTON type="button" onClick={resetUtmForm}>
+                  Limpiar formulario UTM
+              </BUTTON>
+              </DIV>
+
+              {showUtmPanel && (
+              <>
+                  <P className="text-xs opacity-70">
+                  Aquí defines combinaciones de <code>utm_source</code>,{" "}
+                  <code>utm_medium</code> y <code>utm_campaign</code>. NIXINX
+                  genera un <code>utm_id</code> interno (slug) y lo guarda en{" "}
+                  <code>Providers/Utms</code>. En tus anuncios deberás usar la
+                  URL final que se muestra abajo. Además, estas UTMs se
+                  sincronizan como audiencias de tipo <code>kind=utm</code>{" "}
+                  en <code>Providers/Audiences</code> para que luego puedas
+                  usarlas como criterios de comportamiento.
+                  </P>
+
+                  <DIV className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                      Origen de la campaña: utm_source
+                      <SPAN className="text-red-500 ml-1">*</SPAN>
+                      </P>
+                      <SELECT
+                      value={utmSource}
+                      onChange={(e) => setUtmSource(e.target.value)}
+                      onBlur={() => markUtmTouched("source")}
+                      className={`${
+                          utmErrors.source && utmTouched.source
+                          ? "border-red-500 ring-1 ring-red-500"
+                          : ""
+                      }`}
+                      >
+                      <option value="">Selecciona origen…</option>
+                      {UTM_SOURCE_OPTIONS.map((src) => (
+                          <option key={src} value={src}>
+                          {src}
+                          </option>
+                      ))}
+                      </SELECT>
+                      {utmErrors.source && utmTouched.source && (
+                      <H1 className="text-[10px] text-red-400">
+                          {utmErrors.source}
+                      </H1>
+                      )}
+                  </DIV>
+
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                      Formato de la campaña: utm_medium
+                      <SPAN className="text-red-500 ml-1">*</SPAN>
+                      </P>
+                      <SELECT
+                      value={utmMedium}
+                      onChange={(e) => setUtmMedium(e.target.value)}
+                      onBlur={() => markUtmTouched("medium")}
+                      className={`${
+                          utmErrors.medium && utmTouched.medium
+                          ? "border-red-500 ring-1 ring-red-500"
+                          : ""
+                      }`}
+                      >
+                      <option value="">Selecciona medio…</option>
+                      {UTM_MEDIUM_OPTIONS.map((m) => (
+                          <option key={m} value={m}>
+                          {m}
+                          </option>
+                      ))}
+                      </SELECT>
+                      {utmErrors.medium && utmTouched.medium && (
+                      <H1 className="text-[10px] text-red-400">
+                          {utmErrors.medium}
+                      </H1>
+                      )}
+                  </DIV>
+
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                      Nombre de la campaña: utm_campaign
+                      <SPAN className="text-red-500 ml-1">*</SPAN>
+                      </P>
+                      <INPUT
+                      value={utmCampaign}
+                      onChange={(e) => setUtmCampaign(e.target.value)}
+                      onBlur={() => markUtmTouched("campaign")}
+                      className={`${
+                          utmErrors.campaign && utmTouched.campaign
+                          ? "border-red-500 ring-1 ring-red-500"
+                          : ""
+                      }`}
+                      />
+                      {utmErrors.campaign && utmTouched.campaign && (
+                      <H1 className="text-[10px] text-red-400">
+                          {utmErrors.campaign}
+                      </H1>
+                      )}
+                  </DIV>
+                  </DIV>
+
+                  <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                      Palabra clave: utm_term (opcional)
+                      </P>
+                      <INPUT
+                      value={utmTerm}
+                      onChange={(e) => setUtmTerm(e.target.value)}
+                      />
+                  </DIV>
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                      Contenido del anuncio: utm_content (opcional)
+                      </P>
+                      <INPUT
+                      value={utmContent}
+                      onChange={(e) => setUtmContent(e.target.value)}
+                      />
+                  </DIV>
+                  </DIV>
+
+                  <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                      Nombre interno legible
+                      <SPAN className="text-red-500 ml-1">*</SPAN>
+                      </P>
+                      <INPUT
+                      value={utmName}
+                      onChange={(e) => setUtmName(e.target.value)}
+                      onBlur={() => markUtmTouched("name")}
+                      className={`${
+                          utmErrors.name && utmTouched.name
+                          ? "border-red-500 ring-1 ring-red-500"
+                          : ""
+                      }`}
+                      />
+                      {utmErrors.name && utmTouched.name && (
+                      <H1 className="text-[10px] text-red-400">
+                          {utmErrors.name}
+                      </H1>
+                      )}
+                  </DIV>
+
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">
+                      Path destino en la PWA (ej. <code>/</code>,{" "}
+                      <code>/reservas</code>)
+                      <SPAN className="text-red-500 ml-1">*</SPAN>
+                      </P>
+                      <INPUT
+                      value={utmTargetPath}
+                      onChange={(e) => setUtmTargetPath(e.target.value)}
+                      onBlur={() => markUtmTouched("targetPath")}
+                      className={`${
+                          utmErrors.targetPath && utmTouched.targetPath
+                          ? "border-red-500 ring-1 ring-red-500"
+                          : ""
+                      }`}
+                      />
+                      {utmErrors.targetPath && utmTouched.targetPath && (
+                      <H1 className="text-[10px] text-red-400">
+                          {utmErrors.targetPath}
+                      </H1>
+                      )}
+                  </DIV>
+                  </DIV>
+
+                  <DIV className="flex flex-col gap-1 mt-1">
+                  <P className="text-[11px] opacity-70">
+                      Descripción (visible sólo en el panel)
+                      <SPAN className="text-red-500 ml-1">*</SPAN>
+                  </P>
+                  <INPUT
+                      value={utmDescription}
+                      onChange={(e) => setUtmDescription(e.target.value)}
+                      onBlur={() => markUtmTouched("description")}
+                      className={`${
+                      utmErrors.description && utmTouched.description
+                          ? "border-red-500 ring-1 ring-red-500"
+                          : ""
+                      }`}
+                  />
+                  {utmErrors.description && utmTouched.description && (
+                      <H1 className="text-[10px] text-red-400">
+                      {utmErrors.description}
+                      </H1>
+                  )}
+                  </DIV>
+
+                  <DIV className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">Inicio (fecha)</P>
+                      <INPUT
+                      type="date"
+                      value={utmStartDate}
+                      onChange={(e) => setUtmStartDate(e.target.value)}
+                      />
+                  </DIV>
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">Inicio (hora)</P>
+                      <INPUT
+                      type="time"
+                      value={utmStartTime}
+                      onChange={(e) => setUtmStartTime(e.target.value)}
+                      />
+                  </DIV>
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">Fin (fecha)</P>
+                      <INPUT
+                      type="date"
+                      value={utmEndDate}
+                      onChange={(e) => setUtmEndDate(e.target.value)}
+                      />
+                  </DIV>
+                  <DIV className="flex flex-col gap-1">
+                      <P className="text-[11px] opacity-70">Fin (hora)</P>
+                      <INPUT
+                      type="time"
+                      value={utmEndTime}
+                      onChange={(e) => setUtmEndTime(e.target.value)}
+                      />
+                  </DIV>
+                  </DIV>
+
+                  <DIV className="mt-2 p-2 rounded-md border border-white/10 bg-black/50 space-y-1">
+                  <P className="text-[11px] opacity-70">
+                      ID interno (utm_id / slug generado)
+                  </P>
+                  <P className="font-mono text-xs break-all">
+                      {utmSlug || "(completa source, medium y campaign)"}
+                  </P>
+
+                  <P className="text-[11px] opacity-70 mt-2">
+                      URL de ejemplo para pegar en la campaña de anuncios:
+                  </P>
+                  <P className="font-mono text-[11px] break-all">
+                      {utmExampleUrl}
+                  </P>
+                  </DIV>
+
+                  <DIV className="flex items-center gap-2 mt-2">
+                  <BUTTON
+                      type="button"
+                      onClick={() => {
+                      void handleSaveUtm();
+                      resetUtmForm();
+                      }}
+                      disabled={utmSaving}
+                  >
+                      {utmSaving
+                      ? "Guardando UTM…"
+                      : editingUtmId
+                      ? "Guardar UTM y restablecer formulario"
+                      : "Guardar nueva UTM"}
+                  </BUTTON>
+                  </DIV>
+
+                  {utmList.length > 0 && (
+                  <>
+                      <DIV className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-3">
+                      <DIV className="flex items-center gap-2 text-[11px] opacity-80">
+                          <SPAN>Filtrar por estado:</SPAN>
+                          <SELECT
+                          value={utmFilterStatus}
+                          onChange={(e) =>
+                              setUtmFilterStatus(
+                              e.target
+                                  .value as "all" | "active" | "inactive",
+                              )
+                          }
+                          className="text-xs"
+                          >
+                          <option value="all">Todos</option>
+                          <option value="active">Vigentes</option>
+                          <option value="inactive">Caducadas</option>
+                          </SELECT>
+                      </DIV>
+
+                      <DIV className="flex items-center gap-2 text-[11px] opacity-80">
+                          <SPAN>Ordenar por:</SPAN>
+                          <SELECT
+                          value={utmSortField}
+                          onChange={(e) =>
+                              setUtmSortField(
+                              e.target.value as
+                                  | "createdAt"
+                                  | "updatedAt"
+                                  | "source"
+                                  | "medium"
+                                  | "campaign"
+                                  | "name",
+                              )
+                          }
+                          className="text-xs"
+                          >
+                          <option value="createdAt">Fecha creación</option>
+                          <option value="updatedAt">
+                              Última actualización
+                          </option>
+                          <option value="source">Source</option>
+                          <option value="medium">Medium</option>
+                          <option value="campaign">Campaign</option>
+                          <option value="name">Nombre interno</option>
+                          </SELECT>
+
+                          <SELECT
+                          value={utmSortDir}
+                          onChange={(e) =>
+                              setUtmSortDir(
+                              e.target.value as "asc" | "desc",
+                              )
+                          }
+                          className="text-xs"
+                          >
+                          <option value="desc">Desc</option>
+                          <option value="asc">Asc</option>
+                          </SELECT>
+                      </DIV>
+                      </DIV>
+
+                      <DIV className="border border-white/10 rounded-md bg-black/30 mt-2 overflow-x-auto">
+                      <TABLE className="min-w-full text-xs">
+                          <THEAD>
+                          <TR>
+                              <TH className="px-2 py-1 text-left">utm_id</TH>
+                              <TH className="px-2 py-1 text-left">URL</TH>
+                              <TH className="px-2 py-1 text-left">source</TH>
+                              <TH className="px-2 py-1 text-left">medium</TH>
+                              <TH className="px-2 py-1 text-left">campaign</TH>
+                              <TH className="px-2 py-1 text-left">nombre</TH>
+                              <TH className="px-2 py-1 text-left">path</TH>
+                              <TH className="px-2 py-1 text-left">rango</TH>
+                              <TH className="px-2 py-1 text-left">Estado</TH>
+                              <TH className="px-2 py-1 text-left">Acción</TH>
+                          </TR>
+                          </THEAD>
+                          <TBODY>
+                          {visibleUtms.map((u) => (
+                              <TR
+                              key={u.id}
+                              className="border-t border-white/10"
+                              >
+                              {/* 1ª columna: utm_id */}
+                              <TD className="px-2 py-1 font-mono">
+                                  {u.id}
+                              </TD>
+
+                              {/* 2ª columna: URL final */}
+                              <TD className="px-2 py-1 font-mono text-[10px] break-all">
+                                  {u.exampleUrl ?? buildExampleUrlFromDef(u)}
+                              </TD>
+
+                              <TD className="px-2 py-1">{u.source}</TD>
+                              <TD className="px-2 py-1">{u.medium}</TD>
+                              <TD className="px-2 py-1">{u.campaign}</TD>
+                              <TD className="px-2 py-1">{u.name}</TD>
+                              <TD className="px-2 py-1">
+                                  {u.targetPath}
+                              </TD>
+                              <TD className="px-2 py-1">
+                                  {u.startDate || u.startTime
+                                  ? `${u.startDate ?? ""} ${
+                                      u.startTime ?? ""
+                                      }`.trim()
+                                  : "—"}{" "}
+                                  →{" "}
+                                  {u.endDate || u.endTime
+                                  ? `${u.endDate ?? ""} ${
+                                      u.endTime ?? ""
+                                      }`.trim()
+                                  : "—"}
+                              </TD>
+                              <TD className="px-2 py-1">
+                                  {u.active === false
+                                  ? "Caducada"
+                                  : "Vigente"}
+                              </TD>
+                              <TD className="px-2 py-1">
+                                  <DIV className="flex flex-col gap-1">
+                                  <BUTTON
+                                      type="button"
+                                      onClick={() => handleEditUtm(u)}
+                                  >
+                                      Editar
+                                  </BUTTON>
+                                  <BUTTON
+                                      type="button"
+                                      onClick={() =>
+                                      handleToggleUtmActive(u.id)
+                                      }
+                                  >
+                                      {u.active === false
+                                      ? "Marcar como vigente"
+                                      : "Marcar como caducada"}
+                                  </BUTTON>
+                                  <BUTTON
+                                      type="button"
+                                      onClick={() =>
+                                      handleDeleteUtm(u.id)
+                                      }
+                                  >
+                                      Eliminar
+                                  </BUTTON>
+                                  </DIV>
+                              </TD>
+                              </TR>
+                          ))}
+                          </TBODY>
+                      </TABLE>
+                      </DIV>
+                  </>
+                  )}
+              </>
+              )}
+          </DIV>
+          </DIV>
+      </AdminGuard>
+    </CapGuard>
   );
 }

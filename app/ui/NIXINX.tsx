@@ -18,6 +18,7 @@ import NotificationPopupHost from "@/complements/components/Notifications/Notifi
 
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { CctClientProvider } from "@/app/providers/CctClientProvider";
 
 export type NIXINXProps = {
   children: ReactNode;
@@ -49,59 +50,61 @@ export default function NIXINX({
           <SessionBehaviorProvider locale={effectiveLocale}>
             <ContextProvider initialLocale={effectiveLocale}>
               <ThemeProviders>
-                <AuthProvider>
-                  <NotificationsProvider>
-                    {showLangSwitch ? (
-                      <InterComp
-                        Langs={[
-                          {
-                            language: "Español",
-                            locale: "es",
-                            icon: "/Icons/es.png",
-                            country: "MXN",
-                            alt: "Español",
-                            prioritario: true,
-                            width: 35,
-                            height: 35,
-                            fill: false,
-                          },
-                          {
-                            language: "English",
-                            locale: "en",
-                            icon: "/Icons/en.png",
-                            country: "USA",
-                            alt: "English",
-                            prioritario: true,
-                            width: 35,
-                            height: 35,
-                            fill: false,
-                          },
-                          {
-                            language: "French",
-                            locale: "fr",
-                            icon: "/Icons/fr.png",
-                            country: "FR",
-                            alt: "French",
-                            prioritario: true,
-                            width: 40,
-                            height: 40,
-                            fill: false,
-                          },
-                        ]}
-                        Position="fixed"
-                        BackgroundColor="black"
-                        Bottom="1rem"
-                        Left="7px"
-                        ShowLangs="oneBYone"
-                      />
-                    ) : null}
+                <CctClientProvider>
+                  <AuthProvider>
+                    <NotificationsProvider>
+                      {showLangSwitch ? (
+                        <InterComp
+                          Langs={[
+                            {
+                              language: "Español",
+                              locale: "es",
+                              icon: "/Icons/es.png",
+                              country: "MXN",
+                              alt: "Español",
+                              prioritario: true,
+                              width: 35,
+                              height: 35,
+                              fill: false,
+                            },
+                            {
+                              language: "English",
+                              locale: "en",
+                              icon: "/Icons/en.png",
+                              country: "USA",
+                              alt: "English",
+                              prioritario: true,
+                              width: 35,
+                              height: 35,
+                              fill: false,
+                            },
+                            {
+                              language: "French",
+                              locale: "fr",
+                              icon: "/Icons/fr.png",
+                              country: "FR",
+                              alt: "French",
+                              prioritario: true,
+                              width: 40,
+                              height: 40,
+                              fill: false,
+                            },
+                          ]}
+                          Position="fixed"
+                          BackgroundColor="black"
+                          Bottom="1rem"
+                          Left="7px"
+                          ShowLangs="oneBYone"
+                        />
+                      ) : null}
 
-                    <AppHydrators />
-                    {children}
-                    <Analytics />
-                    <NotificationPopupHost />
-                  </NotificationsProvider>
-                </AuthProvider>
+                      <AppHydrators />
+                      {children}
+                      <Analytics />
+                      <NotificationPopupHost />
+                    </NotificationsProvider>
+                  </AuthProvider>
+                </CctClientProvider>
               </ThemeProviders>
             </ContextProvider>
           </SessionBehaviorProvider>

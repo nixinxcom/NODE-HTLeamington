@@ -17,7 +17,7 @@
     "build:lib": "tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json",
     "build:app": "next build",
     "build": "npm run build:lib && npm run build:app",
-    "postbuild": "rimraf dist/seeds/meta.*.json && next-sitemap",
+    "postbuild": "rimraf --glob \"dist/seeds/meta.*.json\" && next-sitemap",
     "build:pkg": "tsc -p tsconfig.pkg.json && npx tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js",
 
     "toscratch": "node -e \"const fs=require('fs');const paths=['.next','.turbo','node_modules','dist','build','coverage','android','ios','www','capacitor-out'];for(const p of paths){try{fs.rmSync(p,{recursive:true,force:true});console.log('removed',p);}catch(e){}}\" && npm run functions:clean",

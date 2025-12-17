@@ -6,7 +6,6 @@ import { NOTIFICATIONS_PANEL_SCHEMA } from './notifications.schema'
 import { STRATEGIES_PANEL_SCHEMA } from './strategy.schema';
 import { AUDIENCES_PANEL_SCHEMA } from './audience.schema';
 
-import { AGREEMENTS_PANEL_SCHEMA } from './agreements.schema';
 import { ENV_PANEL_SCHEMA } from './env.schema';
 
 import {
@@ -26,7 +25,6 @@ export const PANEL_SCHEMAS: PanelSchemasRegistry = {
   strategies: STRATEGIES_PANEL_SCHEMA,
   audiences: AUDIENCES_PANEL_SCHEMA,
 
-  agreements: AGREEMENTS_PANEL_SCHEMA,
   env: ENV_PANEL_SCHEMA,
 
   // Autogenerados para contexto de Agentes AI: NO TOCAR//
