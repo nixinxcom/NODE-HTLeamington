@@ -27,7 +27,7 @@ import {
   SELECT,
 } from "@/complements/components/ui/wrappers";
 import { AdminGuard } from '@/index';
-import { CapGuard } from '@/complements/admin/CapGuard';
+import CapGuard from '@/complements/admin/CapGuard';
 
 type PaymentDoc = {
   id: string;

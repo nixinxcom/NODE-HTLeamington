@@ -54,6 +54,8 @@ export { default as AuthenticationComp } from "./complements/components/Authenti
 export { default as AutoMediaCarousel } from "./complements/components/AutoMediaCarousel/AutoMediaCarousel";
 export { default as BackgroundMediaComp } from "./complements/components/BackgroundMediaComp/BackgroundMediaComp";
 export { default as BlogCardComp } from "./complements/components/BlogCardComp/BlogCardComp";
+export { default as CardElem } from "./complements/components/Cards/CardElem";
+export { default as ControlAccessRoles } from "./complements/components/ControlAccessRoles/ControlAccessRoles";
 export { default as CookiesComp } from "./complements/components/CookiesComp/CookiesComp";
 export { default as FooterComp } from "./complements/components/FooterComp/FooterComp";
 export { default as FormComp } from "./complements/components/FormComp/FormComp";
@@ -64,7 +66,6 @@ export { default as InstallPWAComp } from "./complements/components/InstallPWACo
 
 // i18n switcher (alias doble para evitar rupturas)
 export { default as InterComp } from "./complements/components/InterComp/InterComp";
-
 export { default as MapEmbed } from "./complements/components/Maps/MapEmbed/MapEmbed";
 export { default as MapGoogle } from "./complements/components/Maps/MapGoogle/MapGoogle";
 export { default as NavBar } from "./complements/components/NavBar/NavBar";
@@ -84,12 +85,12 @@ export { default as ThemeToggle } from "./complements/components/ThemeToggle/The
 // ────────────────────
 export { default as AdminGuard } from "./complements/admin/AdminGuard";
 export { default as SuperAdminOnly } from "./complements/admin/SuperAdminOnly";
-export { default as AgreementTab } from "./complements/admin/AgreementTab";
 export { default as CampaignsCenter } from "./complements/admin/CampaignCenter";
+export { default as CapGuard } from "./complements/admin/CapGuard";
 export { default as FDVTest } from "./complements/admin/fdv";
 export { default as PaymentsAdmin } from "./complements/admin/PaymentsAdmin";
-export { default as StylesTab } from "./complements/admin/StylesTab";
 export { default as Settings } from "./complements/admin/Setting";
+export { default as StylesTab } from "./complements/admin/StylesTab";
 
 // ────────────────────
 // EndPoints

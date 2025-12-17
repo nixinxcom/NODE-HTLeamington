@@ -58,7 +58,7 @@ import {
   BEHAVIOR_DOMAINS,
 } from "@/app/lib/audiences/behavior.catalog";
 import AdminGuard from "./AdminGuard";
-import { CapGuard } from "@/complements/admin/CapGuard";
+import CapGuard from "@/complements/admin/CapGuard";
 
 /* ─────────────────────────────────────────────────────────
    Tipos normalizados que usa el Campaigns Center

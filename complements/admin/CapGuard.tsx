@@ -3,7 +3,7 @@
 import React from 'react';
 import { useCct } from '@/app/providers/CctClientProvider';
 
-export function CapGuard({
+export default function CapGuard({
   cap,
   children,
   fallback = null,
