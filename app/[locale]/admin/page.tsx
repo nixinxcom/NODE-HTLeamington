@@ -12,16 +12,34 @@ export default function AdminHome() {
 
   const cards = [
     {
+      key: 'NX Admin Core Panel Test',
+      title: <FM id="NXAdminTest.title" defaultMessage="NX Admin Panel Test" />,
+      desc: <FM id="NXAdminTest.description" defaultMessage="NX Admin Core Panel Test" />,
+      href: L('/admin/test'),
+    },
+    {
+      key: 'Pricing Plans',
+      title: <FM id="pricing.title" defaultMessage="Pricing Plans" />,
+      desc: <FM id="pricing.description" defaultMessage="Pricing Plans" />,
+      href: L('/ClientControlPanel/PricingEmulator'),
+    },
+    {
+      key: 'Capacitor Tokener',
+      title: <FM id="Capacitor.title" defaultMessage="CoreCapsTkns" />,
+      desc: <FM id="Capacitor.description" defaultMessage="Core Capacitor Tokener" />,
+      href: L('/ClientControlPanel/CapacitorTokener'),
+    },
+    {
+      key: 'Control de Accesos',
+      title: <FM id="CAR.title" defaultMessage="Control de Accesos" />,
+      desc: <FM id="CAR.description" defaultMessage="Control de Accesos" />,
+      href: L('/admin/ControlAccessRoles'),
+    },
+    {
       key: 'settings',
       title: <FM id="settings.title" defaultMessage="Configuración" />,
       desc: <FM id="settings.description" defaultMessage="Ajuste de Configuraciones" />,
       href: L('/admin/settings'),
-    },
-    {
-      key: 'styling',
-      title: <FM id="styling.title" defaultMessage="Estilo" />,
-      desc: <FM id="styling.description" defaultMessage="Configuración de Estilos" />,
-      href: L('/admin/styles'),
     },
     {
       key: 'Factory UI',
@@ -36,16 +54,16 @@ export default function AdminHome() {
       href: L('/admin/panel'),
     },
     {
+      key: 'styling',
+      title: <FM id="styling.title" defaultMessage="Estilo" />,
+      desc: <FM id="styling.description" defaultMessage="Configuración de Estilos" />,
+      href: L('/admin/styles'),
+    },
+    {
       key: 'Campaigns Center',
       title: <FM id="campaigns.title" defaultMessage="Administrador de Campañas" />,
       desc: <FM id="campaigns.description" defaultMessage="Administrador de Campañas de Notificaciones" />,
       href: L('/admin/campaigns-center'),
-    },
-    {
-      key: 'Control Access Roles',
-      title: <FM id="car.title" defaultMessage="Control de Accesos" />,
-      desc: <FM id="car.description" defaultMessage="Administrador de Control de Acceso a Usuarios" />,
-      href: L('/admin/ControlAccessRoles'),
     },
     {
       key: 'Payments',
