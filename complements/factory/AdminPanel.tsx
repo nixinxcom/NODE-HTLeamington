@@ -31,8 +31,9 @@ import type {
 
 import {
   syncPwaAssetsIntoDoc,
-  purgePwaIcons,
-  purgePwaScreenshots,
+//  purgePwaIcons,
+//  purgePwaScreenshots,
+  purgeStorageFolder,
 } from './pwa.sync';
 
 import { PANEL_SCHEMAS } from './panelSchemas';
@@ -558,10 +559,16 @@ function FieldControl({
         const path = folder ? `${folder}/${targetFileName}` : targetFileName;
 
         // 3) Purgar SOLO la carpeta correcta antes de subir
-        if (folder === 'manifest/icons') {
-          await purgePwaIcons();
-        } else if (folder === 'manifest/screenshots') {
-          await purgePwaScreenshots();
+        // if (folder === 'manifest/icons') {
+        //   await purgePwaIcons();
+        // } else if (folder === 'manifest/screenshots') {
+        //   await purgePwaScreenshots();
+        // }
+
+        // 3) Purgar SOLO screenshots (por carpeta), para reemplazar.
+        // Icons NO se purgan: necesitas poder subir 192/512/etc.
+        if (folder.startsWith('manifest/screenshots')) {
+          await purgeStorageFolder(folder);
         }
 
         // 4) Subir el archivo
@@ -1158,7 +1165,7 @@ function FieldControl({
 
 // -------------------- Componente principal --------------------
 
-export function AdminPanel({ locale }: AdminPanelProps) {
+export default function AdminPanel({ locale }: AdminPanelProps) {
   const router = useRouter();
   const shortLocale = locale.split('-')[0].toLowerCase();
 

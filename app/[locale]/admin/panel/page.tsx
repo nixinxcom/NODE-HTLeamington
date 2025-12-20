@@ -1,6 +1,6 @@
 // app/[locale]/admin/panel/page.tsx
 import AdminGuard from '@/complements/admin/AdminGuard';
-import { AdminPanel } from '@/complements/factory/AdminPanel';
+import AdminPanel from '@/complements/factory/AdminPanel';
 
 type PageProps = {
   params: Promise<{ locale: string }>;

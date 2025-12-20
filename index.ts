@@ -1,7 +1,17 @@
 // ────────────────────
+// Manifest PWA
+// ────────────────────
+export { pwaManifest, pwaManifestDynamic } from "./lib/pwa/manifest";
+
+// ────────────────────
 // Wrappers
 // ────────────────────
 export * from "./complements/components/ui/wrappers";
+
+// ────────────────────
+// Admin Core Panel
+// ────────────────────
+export { default as AdminCorePanel } from "./complements/admin/AdminCorePanel";
 
 // ────────────────────
 // UIs
@@ -103,6 +113,26 @@ export {
 // FM (wrapper de react-intl)
 export { default as NIXIN } from "./complements/shell/NIXIN";
 export { default as FM } from "./complements/i18n/FM";
+
+// ────────────────────
+// Factory UI (FUI + AdminPanel)
+// ────────────────────
+export { default as FUIPanel } from "./complements/factory/FuiPanel";
+export { default as AdminPanel } from "./complements/factory/AdminPanel";
+
+// Catálogo base de schemas
+export { PANEL_SCHEMAS } from "./complements/factory/panelSchemas";
+
+// Tipos públicos del schema
+export type {
+  PanelSchema,
+  PanelField,
+  PanelFieldType,
+} from "./complements/factory/panelSchema.types";
+
+// Helpers (opcional, pero recomendado)
+export * from "./complements/factory/fui.crud";
+export * from "./complements/factory/pwa.sync";
 
 // Final obligatorio
 export {};

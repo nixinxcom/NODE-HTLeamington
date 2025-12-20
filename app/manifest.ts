@@ -247,6 +247,72 @@ function buildCategories(raw: any, baseLocale: string): string[] | undefined {
   return out.length ? out : undefined;
 }
 
+function buildIconsFromDoc(raw: any): ManifestIcon[] {
+  const arr = asArray<any>(raw);
+  const out: ManifestIcon[] = [];
+
+  for (const it of arr) {
+    if (!it || typeof it !== "object") continue;
+    const src = (it as any).src;
+    if (typeof src !== "string" || !src.trim()) continue;
+
+    const sizes = (it as any).sizes;
+    const type = (it as any).type;
+    const purpose = (it as any).purpose;
+
+    out.push({
+      src,
+      ...(typeof sizes === "string" && sizes.trim() ? { sizes } : {}),
+      ...(typeof type === "string" && type.trim() ? { type } : {}),
+      ...(purpose === "any" || purpose === "maskable" || purpose === "monochrome"
+        ? { purpose }
+        : {}),
+    });
+  }
+
+  return out;
+}
+
+function buildScreenshotsFromDoc(raw: any, appName: string): ManifestScreenshot[] {
+  const arr = asArray<any>(raw);
+  const out: ManifestScreenshot[] = [];
+
+  for (const it of arr) {
+    if (!it || typeof it !== "object") continue;
+    const src = (it as any).src;
+    if (typeof src !== "string" || !src.trim()) continue;
+
+    const sizes = (it as any).sizes;
+    const type = (it as any).type;
+
+    // acepto camelCase (formFactor) y snake (form_factor) por si acaso
+    const ffRaw = (it as any).formFactor ?? (it as any).form_factor;
+    const form_factor = ffRaw === "wide" || ffRaw === "narrow" ? ffRaw : undefined;
+
+    const labelRaw = (it as any).label;
+    const label =
+      typeof labelRaw === "string" && labelRaw.trim()
+        ? labelRaw
+        : form_factor
+        ? `${appName} – ${
+            form_factor === "narrow"
+              ? "Pantalla principal (móvil)"
+              : "Pantalla principal (escritorio)"
+          }`
+        : undefined;
+
+    out.push({
+      src,
+      ...(typeof sizes === "string" && sizes.trim() ? { sizes } : {}),
+      ...(typeof type === "string" && type.trim() ? { type } : {}),
+      ...(form_factor ? { form_factor } : {}),
+      ...(label ? { label } : {}),
+    });
+  }
+
+  return out;
+}
+
 /* ───────────────────────── MANIFEST PRINCIPAL ───────────────────────── */
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
@@ -310,10 +376,26 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const background_color = themeColorFromBg || theme_color;
 
   // 2) Cargar icons + screenshots desde Storage en runtime (si hay permisos)
-  const [icons, screenshots] = await Promise.all([
-    buildIcons(),
-    buildScreenshots(appName),
+  // const [icons, screenshots] = await Promise.all([
+  //   buildIcons(),
+  //   buildScreenshots(appName),
+  // ]);
+
+  // 2) Preferir assets materializados en Providers/pwa (Opción C)
+  const iconsFromDoc = buildIconsFromDoc(pwa.icons);
+  const screenshotsFromDoc = buildScreenshotsFromDoc(pwa.screenshots, appName);
+
+  // Solo si NO hay assets en el doc, intento Storage como último fallback
+  const needStorageIcons = iconsFromDoc.length === 0;
+  const needStorageShots = screenshotsFromDoc.length === 0;
+
+  const [iconsFromStorage, shotsFromStorage] = await Promise.all([
+    needStorageIcons ? buildIcons() : Promise.resolve([]),
+    needStorageShots ? buildScreenshots(appName) : Promise.resolve([]),
   ]);
+
+  const icons = iconsFromDoc.length ? iconsFromDoc : iconsFromStorage;
+  const screenshots = screenshotsFromDoc.length ? screenshotsFromDoc : shotsFromStorage;
 
   // Fallback local (SIEMPRE válido aunque Storage esté bloqueado)
   const safeIcons: ManifestIcon[] =

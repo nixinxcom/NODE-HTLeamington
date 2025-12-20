@@ -2,12 +2,8 @@
 "use client";
 
 import { doc, setDoc } from "firebase/firestore";
-import {
-  ref,
-  listAll,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
+import type { StorageReference } from "firebase/storage";
+import { ref, listAll, getDownloadURL, deleteObject } from "firebase/storage";
 import { FbDB, FbStorage } from "@/app/lib/services/firebase";
 
 /* ──────────────────────────────────────────────
@@ -15,17 +11,17 @@ import { FbDB, FbStorage } from "@/app/lib/services/firebase";
    ────────────────────────────────────────────── */
 
 export type PwaIconDoc = {
-  src: string;                    // URL https pública
-  file: string;                   // ruta lógica (ej: "icons/Logo_192x192.webp")
-  sizes?: string;                 // ej: "192x192"
-  type?: string;                  // ej: "image/webp"
+  src: string; // URL https pública
+  file: string; // "icons/Logo_192x192.webp"
+  sizes?: string; // "192x192"
+  type?: string; // "image/webp"
   purpose?: "any" | "maskable" | "monochrome";
 };
 
 export type PwaScreenshotDoc = {
   src: string;
-  file: string;                   // ej: "screenshots/Banner_700x700.webp"
-  sizes?: string;                 // ej: "700x700"
+  file: string; // "screenshots/narrow/Home_720x1280.webp"
+  sizes?: string;
   type?: string;
   label?: string;
   formFactor?: "wide" | "narrow";
@@ -35,14 +31,13 @@ export type PwaScreenshotDoc = {
    Helpers internos
    ────────────────────────────────────────────── */
 
-/** "Logo_192x192.webp" → "192x192" */
+/** "Logo_192x192.webp" → "192x192" (toma cualquier 123x456 en el path) */
 function inferSizesFromPath(path: string): string | undefined {
   const m = path.match(/(\d+)x(\d+)/);
   if (!m) return undefined;
   return `${m[1]}x${m[2]}`;
 }
 
-/** Inferir mime-type desde la extensión del archivo */
 function inferMimeFromPath(path: string): string {
   const clean = path.split("?")[0];
   const ext = clean.split(".").pop()?.toLowerCase();
@@ -59,63 +54,64 @@ function inferMimeFromPath(path: string): string {
   }
 }
 
+/** listAll NO es recursivo. Esto sí. */
+async function listAllDeep(folderPath: string): Promise<StorageReference[]> {
+  const root = ref(FbStorage, folderPath);
+  const out: StorageReference[] = [];
+  const q: StorageReference[] = [root];
+
+  while (q.length) {
+    const cur = q.shift()!;
+    const res = await listAll(cur);
+    out.push(...res.items);
+    q.push(...res.prefixes);
+  }
+
+  return out;
+}
+
 /* ──────────────────────────────────────────────
-   PURGES: solo Storage, no Firestore
+   PURGE: Storage
    ────────────────────────────────────────────── */
 
-export async function purgePwaIcons(): Promise<void> {
+export async function purgeStorageFolder(folderPath: string): Promise<void> {
   try {
-    const folderRef = ref(FbStorage, "manifest/icons");
-    const list = await listAll(folderRef);
-    await Promise.allSettled(
-      list.items.map((item) => deleteObject(item))
-    );
+    const items = await listAllDeep(folderPath);
+    await Promise.allSettled(items.map((item) => deleteObject(item)));
   } catch (e) {
-    console.warn("[pwa.sync] purgePwaIcons() ignorado:", e);
+    console.warn("[pwa.sync] purgeStorageFolder() ignorado:", e);
   }
 }
 
+// Mantengo estos exports por compatibilidad
+export async function purgePwaIcons(): Promise<void> {
+  // OJO: yo NO lo llamaría automáticamente en upload,
+  // porque necesitas poder acumular varios tamaños.
+  return purgeStorageFolder("manifest/icons");
+}
+
 export async function purgePwaScreenshots(): Promise<void> {
-  try {
-    const folderRef = ref(FbStorage, "manifest/screenshots");
-    const list = await listAll(folderRef);
-    await Promise.allSettled(
-      list.items.map((item) => deleteObject(item))
-    );
-  } catch (e) {
-    console.warn("[pwa.sync] purgePwaScreenshots() ignorado:", e);
-  }
+  return purgeStorageFolder("manifest/screenshots");
 }
 
 /* ──────────────────────────────────────────────
    SYNC: Storage → Providers/pwa
    ────────────────────────────────────────────── */
 
-/**
- * Lee lo que hay actualmente en:
- *   - manifest/icons/*
- *   - manifest/screenshots/*
- * genera:
- *   - icons: PwaIconDoc[]
- *   - screenshots: PwaScreenshotDoc[]
- * y los guarda en Providers/pwa.
- */
 export async function syncPwaAssetsIntoDoc(): Promise<void> {
   const pwaRef = doc(FbDB, "Providers", "pwa");
 
-  const iconsFolderRef = ref(FbStorage, "manifest/icons");
-  const screenshotsFolderRef = ref(FbStorage, "manifest/screenshots");
-
-  const [iconsList, screenshotsList] = await Promise.all([
-    listAll(iconsFolderRef).catch(() => ({ items: [] })),
-    listAll(screenshotsFolderRef).catch(() => ({ items: [] })),
+  const [iconItems, narrowItems, wideItems] = await Promise.all([
+    listAllDeep("manifest/icons").catch(() => []),
+    listAllDeep("manifest/screenshots/narrow").catch(() => []),
+    listAllDeep("manifest/screenshots/wide").catch(() => []),
   ]);
 
   // ───── Icons ─────
   const icons: PwaIconDoc[] = await Promise.all(
-    iconsList.items.map(async (item) => {
+    iconItems.map(async (item) => {
       const fullPath = item.fullPath; // "manifest/icons/Logo_192x192.webp"
-      const src = await getDownloadURL(item); // URL https pública
+      const src = await getDownloadURL(item);
       const sizes = inferSizesFromPath(fullPath);
       const type = inferMimeFromPath(fullPath);
 
@@ -124,26 +120,40 @@ export async function syncPwaAssetsIntoDoc(): Promise<void> {
         file: fullPath.replace(/^manifest\//, ""), // "icons/Logo_192x192.webp"
         ...(sizes ? { sizes } : {}),
         type,
+        purpose: "any",
       };
-    })
+    }),
   );
 
   // ───── Screenshots ─────
-  const screenshots: PwaScreenshotDoc[] = await Promise.all(
-    screenshotsList.items.map(async (item) => {
-      const fullPath = item.fullPath; // "manifest/screenshots/Banner_700x700.webp"
-      const src = await getDownloadURL(item);
-      const sizes = inferSizesFromPath(fullPath);
-      const type = inferMimeFromPath(fullPath);
+  const mapShots = async (
+    items: StorageReference[],
+    formFactor: "narrow" | "wide",
+  ): Promise<PwaScreenshotDoc[]> => {
+    return Promise.all(
+      items.map(async (item) => {
+        const fullPath = item.fullPath; // "manifest/screenshots/narrow/Home_720x1280.webp"
+        const src = await getDownloadURL(item);
+        const sizes = inferSizesFromPath(fullPath);
+        const type = inferMimeFromPath(fullPath);
 
-      return {
-        src,
-        file: fullPath.replace(/^manifest\//, ""), // "screenshots/Banner_700x700.webp"
-        ...(sizes ? { sizes } : {}),
-        type,
-      };
-    })
-  );
+        return {
+          src,
+          file: fullPath.replace(/^manifest\//, ""), // "screenshots/narrow/Home_720x1280.webp"
+          ...(sizes ? { sizes } : {}),
+          type,
+          formFactor,
+        };
+      }),
+    );
+  };
+
+  const [shotsNarrow, shotsWide] = await Promise.all([
+    mapShots(narrowItems, "narrow"),
+    mapShots(wideItems, "wide"),
+  ]);
+
+  const screenshots: PwaScreenshotDoc[] = [...shotsNarrow, ...shotsWide];
 
   await setDoc(
     pwaRef,
@@ -152,6 +162,6 @@ export async function syncPwaAssetsIntoDoc(): Promise<void> {
       screenshots,
       assetsBase: "manifest",
     },
-    { merge: true }
+    { merge: true },
   );
 }

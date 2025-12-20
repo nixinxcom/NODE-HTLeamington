@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
 const withPWA = require('@ducanh2912/next-pwa').default;
 
-const BUCKET = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+const BUCKET = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "";
 const isProd = process.env.NODE_ENV === 'production';
 
 /* ── Permissions-Policy (ADITIVO: evita ReferenceError y silencia sensores) ── */
-const PERMISSIONS_DEV  =
+const PERMISSIONS_DEV =
   'accelerometer=(), gyroscope=(), magnetometer=(), camera=(), microphone=(), geolocation=()';
 const PERMISSIONS_PROD = PERMISSIONS_DEV;
 
@@ -13,7 +13,6 @@ const PERMISSIONS_PROD = PERMISSIONS_DEV;
 const CSP_PROD = [
   "default-src 'self';",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://cdn.brevo.com https://sibautomation.com https://conversations-widget.brevo.com https://conversations-widget.sendinblue.com https://www.gstatic.com https://apis.google.com https://accounts.google.com;",
-  // ⬇️ AQUI AGREGO fonts.googleapis.com y fonts.gstatic.com
   "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://www.google.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://sibautomation.com https://*.brevo.com https://*.sendinblue.com https://www.gstatic.com https://apis.google.com https://accounts.google.com https://fonts.googleapis.com https://fonts.gstatic.com wss: wss://*.brevo.com wss://*.sendinblue.com https://api.emailjs.com;",
   "img-src 'self' data: blob: https:;",
   "style-src 'self' 'unsafe-inline' https:;",
@@ -42,7 +41,12 @@ const withPWAConfig = withPWA({
           /\/manifest\.(?:web)?manifest$/.test(url.pathname) || url.pathname === '/manifest.webmanifest',
         handler: 'NetworkOnly',
       },
-      // Widgets Brevo/Sendinblue: no cachear (para evitar estados raros)
+      // 🔒 NUNCA cachear CCT (tokens/caps cambian)
+      {
+        urlPattern: ({ url }) => url.pathname.startsWith('/api/cct/'),
+        handler: 'NetworkOnly',
+      },
+      // Widgets Brevo/Sendinblue: no cachear
       {
         urlPattern: ({ url }) =>
           url.origin === 'https://cdn.brevo.com' ||
@@ -51,7 +55,7 @@ const withPWAConfig = withPWA({
           url.origin === 'https://conversations-widget.sendinblue.com',
         handler: 'NetworkOnly',
       },
-      // Evitar cache en llamadas de GA/Google APIs y cuando hay params de GTM debug
+      // Evitar cache en GA/Google APIs y cuando hay params de GTM debug
       {
         urlPattern: ({ url }) =>
           url.search.includes('gtm_debug') ||
@@ -64,15 +68,15 @@ const withPWAConfig = withPWA({
       {
         urlPattern: ({ url }) =>
           url.origin === 'https://firebasestorage.googleapis.com' &&
-          url.pathname.startsWith(`/v0/b/${BUCKET}/o/`),
+          (BUCKET ? url.pathname.startsWith(`/v0/b/${BUCKET}/o/`) : false),
         handler: 'CacheFirst',
         options: {
           cacheName: 'images-firebase',
           cacheableResponse: { statuses: [0, 200] },
-          expiration: { maxEntries: 600, maxAgeSeconds: 60 * 24 * 60 * 60 },
+          expiration: { maxEntries: 600, maxAgeSeconds: 60 * 24 * 60 * 60 }, // 60 días
         },
       },
-      // API local: SWR
+      // API local: SWR (para TODO menos /api/cct/*)
       {
         urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
         handler: 'StaleWhileRevalidate',
@@ -93,7 +97,7 @@ module.exports = withPWAConfig({
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com', pathname: '/v0/b/**/o/**' },
     ],
   },
-  transpilePackages: ['mapbox-gl'],
+  transpilePackages: ['mapbox-gl', '@nixinx/core'],
   async headers() {
     return [
       {
