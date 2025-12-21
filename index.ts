@@ -90,6 +90,21 @@ export { default as TableComp } from "./complements/components/TableComp/TableCo
 export { default as ThemeToggle } from "./complements/components/ThemeToggle/ThemeToggle";
 
 // ────────────────────
+// Products (catálogo)
+// ────────────────────
+export { default as ProductCard } from "./complements/components/Products/ProductCard";
+export { default as ProductDetails } from "./complements/components/Products/ProductDetails";
+export type {
+  Product,
+  ProductVariant,
+  ProductPricing,
+  ProductSpec,
+  ProductCTA,
+  ProductLink,
+  ProductSlide,
+} from "./complements/components/Products/product.types";
+
+// ────────────────────
 // Functionalities
 // ────────────────────
 export { default as AdminGuard } from "./complements/admin/AdminGuard";
@@ -100,6 +115,8 @@ export { default as FDVTest } from "./complements/admin/fdv";
 export { default as PaymentsAdmin } from "./complements/admin/PaymentsAdmin";
 export { default as Settings } from "./complements/admin/Setting";
 export { default as StylesTab } from "./complements/admin/StylesTab";
+export { default as ProductsAdmin } from "./complements/admin/ProductsAdmin";
+export { default as ServicesAdmin } from "./complements/admin/ServicesAdmin";
 
 // ────────────────────
 // EndPoints

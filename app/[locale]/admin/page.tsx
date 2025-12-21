@@ -54,6 +54,18 @@ export default function AdminHome() {
       href: L('/admin/panel'),
     },
     {
+      key: 'products',
+      title: <FM id="products.title" defaultMessage="Productos" />,
+      desc: <FM id="products.description" defaultMessage="Dar de alta y editar catálogo de productos" />,
+      href: L('/admin/products'),
+    },
+    {
+      key: 'Services',
+      title: <FM id="services.title" defaultMessage="Servicios" />,
+      desc: <FM id="services.description" defaultMessage="Alta y edición de servicios" />,
+      href: L('/admin/services'),
+    },
+    {
       key: 'styling',
       title: <FM id="styling.title" defaultMessage="Estilo" />,
       desc: <FM id="styling.description" defaultMessage="Configuración de Estilos" />,

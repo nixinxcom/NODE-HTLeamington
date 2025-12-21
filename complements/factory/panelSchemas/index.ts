@@ -5,6 +5,8 @@ import { PWA_PANEL_SCHEMA } from './pwa.schema'
 import { NOTIFICATIONS_PANEL_SCHEMA } from './notifications.schema'
 import { STRATEGIES_PANEL_SCHEMA } from './strategy.schema';
 import { AUDIENCES_PANEL_SCHEMA } from './audience.schema';
+import { PRODUCTS_PANEL_SCHEMA } from './products.schema';
+import { SERVICES_PANEL_SCHEMA } from './services.schema';
 
 import { ENV_PANEL_SCHEMA } from './env.schema';
 
@@ -24,6 +26,9 @@ export const PANEL_SCHEMAS: PanelSchemasRegistry = {
   notifications: NOTIFICATIONS_PANEL_SCHEMA,
   strategies: STRATEGIES_PANEL_SCHEMA,
   audiences: AUDIENCES_PANEL_SCHEMA,
+
+  services: SERVICES_PANEL_SCHEMA,
+  products: PRODUCTS_PANEL_SCHEMA,
 
   env: ENV_PANEL_SCHEMA,
 

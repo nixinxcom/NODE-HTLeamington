@@ -53,6 +53,10 @@ type FieldErrors = Record<string, string | undefined>;
 
 type AdminPanelProps = {
   locale: string;
+  /** Si se especifica, el panel queda fijo en este schema del core (PANEL_SCHEMAS). */
+  lockedSchemaId?: string;
+  /** Oculta selectores (FactorySchemas/Core). Útil cuando lockedSchemaId está presente. */
+  hideSelectors?: boolean;
 };
 
 function buildDefaultValue(field: PanelField): any {
@@ -524,6 +528,29 @@ function FieldControl({
         ? acceptProp.join(',')
         : acceptProp) || 'image/*';
 
+    const accepts = acceptAttr
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const isFileAccepted = (file: File) => {
+      if (accepts.length === 0) return true;
+      for (const a of accepts) {
+        if (a === '*/*') return true;
+        if (a.startsWith('.')) {
+          if (file.name.toLowerCase().endsWith(a.toLowerCase())) return true;
+          continue;
+        }
+        if (a.endsWith('/*')) {
+          const prefix = a.slice(0, a.length - 1); // "image/" | "video/" ...
+          if (file.type.startsWith(prefix)) return true;
+          continue;
+        }
+        if (file.type === a) return true; // mime exacto
+      }
+      return false;
+    };
+
     const handleFileChange = async (
       e: React.ChangeEvent<HTMLInputElement>,
     ) => {
@@ -532,9 +559,9 @@ function FieldControl({
 
       setUploadError(null);
 
-      // 0) Asegurarnos que es imagen
-      if (!file.type.startsWith('image/')) {
-        setUploadError('Solo se permiten archivos de imagen.');
+      // 0) Validar accept (image/*, video/*, etc.)
+      if (!isFileAccepted(file)) {
+        setUploadError('Tipo de archivo no permitido para este campo.');
         return;
       }
 
@@ -555,7 +582,14 @@ function FieldControl({
       try {
         // 2) Construir ruta en Storage
         const folder = (uploadCfg?.storageFolder || '').replace(/\/+$/, '');
-        const targetFileName = uploadCfg?.targetFileName || file.name;
+
+        let targetFileName = uploadCfg?.targetFileName || file.name;
+        if (!uploadCfg?.targetFileName && uploadCfg?.fileNamePrefix) {
+          const prefix = uploadCfg.fileNamePrefix;
+          targetFileName = uploadCfg.multiple
+            ? `${prefix}${Date.now()}_${file.name}`
+            : `${prefix}${file.name}`;
+        }
         const path = folder ? `${folder}/${targetFileName}` : targetFileName;
 
         // 3) Purgar SOLO la carpeta correcta antes de subir
@@ -1165,7 +1199,11 @@ function FieldControl({
 
 // -------------------- Componente principal --------------------
 
-export default function AdminPanel({ locale }: AdminPanelProps) {
+export default function AdminPanel({
+  locale,
+  lockedSchemaId,
+  hideSelectors,
+}: AdminPanelProps) {
   const router = useRouter();
   const shortLocale = locale.split('-')[0].toLowerCase();
 
@@ -1236,6 +1274,19 @@ export default function AdminPanel({ locale }: AdminPanelProps) {
   useEffect(() => {
     if (loadedSchema || savedSchemaId) return;
 
+    // Modo bloqueado: siempre usar schema del core indicado
+    if (lockedSchemaId) {
+      if (selectedId !== lockedSchemaId) {
+        setSelectedId(lockedSchemaId);
+        setData({});
+        setError(null);
+        setSaved(false);
+        setFieldErrors({});
+        setOpenGroups({});
+      }
+      return;
+    }
+
     if (!selectedId && availableSchemas.length > 0) {
       setSelectedId(availableSchemas[0].id);
     } else if (
@@ -1245,7 +1296,14 @@ export default function AdminPanel({ locale }: AdminPanelProps) {
       setSelectedId('');
       setData({});
     }
-  }, [availableSchemas, selectedId, loadedSchema, savedSchemaId]);
+  }, [availableSchemas, selectedId, loadedSchema, savedSchemaId, lockedSchemaId]);
+
+  // Si el panel está bloqueado, no permitir FactorySchemas
+  useEffect(() => {
+    if (!lockedSchemaId) return;
+    if (savedSchemaId) setSavedSchemaId('');
+    if (loadedSchema) setLoadedSchema(null);
+  }, [lockedSchemaId, savedSchemaId, loadedSchema]);
 
 
   const currentSchema: PanelSchema | undefined = useMemo(
@@ -1256,7 +1314,8 @@ export default function AdminPanel({ locale }: AdminPanelProps) {
     [availableSchemas, selectedId, loadedSchema],
   );
 
-    const handleSelectCoreSchema = (id: string) => {
+  const handleSelectCoreSchema = (id: string) => {
+    if (lockedSchemaId) return;
     setSelectedId(id);
     setSavedSchemaId('');
     setLoadedSchema(null);
@@ -1268,6 +1327,7 @@ export default function AdminPanel({ locale }: AdminPanelProps) {
   };
 
   const handleSelectFactorySchema = async (id: string) => {
+    if (lockedSchemaId) return;
     setSavedSchemaId(id);
     setSelectedId('');
     setData({});
@@ -1797,6 +1857,7 @@ export default function AdminPanel({ locale }: AdminPanelProps) {
       </DIV>
 
       {/* Selector de panel: FactorySchemas + Core */}
+      {!hideSelectors && (
       <DIV className="flex flex-col md:flex-row md:items-center gap-3">
         {/* 1) Schema guardado en FactorySchemas */}
         <DIV className="flex-1">
@@ -1851,6 +1912,7 @@ export default function AdminPanel({ locale }: AdminPanelProps) {
           )}
         </DIV>
       </DIV>
+      )}
 
       {/* Estado de carga / errores */}
       {error && (
