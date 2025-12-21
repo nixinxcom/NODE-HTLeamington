@@ -10,6 +10,7 @@
     "audit": "npm audit fix",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
+    
     "check": "npm run lint && npm run typecheck",
     "typecheck": "tsc --noEmit",
 
@@ -17,7 +18,7 @@
     "build:app": "next build",
     "build": "npm run build:lib && npm run build:app",
     "postbuild": "rimraf --glob \"dist/seeds/meta.*.json\" && next-sitemap",
-    "build:pkg": "tsc -p tsconfig.pkg.json && npx tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js && node scripts/write-dist-packagejson.js",
+    "build:pkg": "tsc -p tsconfig.pkg.json && npx tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js",
 
     "toscratch": "node -e \"const fs=require('fs');const paths=['.next','.turbo','node_modules','dist','build','coverage','android','ios','www','capacitor-out'];for(const p of paths){try{fs.rmSync(p,{recursive:true,force:true});console.log('removed',p);}catch(e){}}\" && npm run functions:clean",
     "reinstall": "npm install && npm run functions:install",
@@ -60,7 +61,7 @@
     "functions:deploy:ElPatron": "firebase deploy --project ElPatron --only functions:applyCampaignToAudience,functions:materializeAudienceMembers,functions:runCampaignNow,functions:registerNotificationRun",
     "functions:deploy:HTWindsor": "firebase deploy --project HTWindsor --only functions:applyCampaignToAudience,functions:materializeAudienceMembers,functions:runCampaignNow,functions:registerNotificationRun",
     "functions:deploy:HTLeamington": "firebase deploy --project HTLeamington --only functions:applyCampaignToAudience,functions:materializeAudienceMembers,functions:runCampaignNow,functions:registerNotificationRun",
-
+    
     "functions:deploy:NIXINX:full": "npm run functions:build && npm run functions:deploy:NIXINX",
     "functions:deploy:ElPatron:full": "npm run functions:build && npm run functions:deploy:ElPatron",
     "functions:deploy:HTWindsor:full": "npm run functions:build && npm run functions:deploy:HTWindsor",
@@ -69,15 +70,12 @@
 
     "project:fromscratch": "npm run toscratch && npm install && npm run functions:clean && npm run functions:install && npm run functions:build",
 
-    "publish:dist": "powershell -NoProfile -Command \"Push-Location dist; npm publish --access=restricted; Pop-Location\"",
-
-    "release:patch": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; try { git checkout -- public/sw.js public/sitemap.xml public/sitemap-0.xml public/sitemap-index.xml } catch { }; git pull --rebase origin main; $dirty=(git status --porcelain); if ($dirty) { throw 'Git not clean (commit or stash changes before releasing)' }; npm version patch; git push origin main; git push --tags; npm run build:pkg; Push-Location dist; npm publish --access=restricted; Pop-Location\"",
-    "release:minor": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; try { git checkout -- public/sw.js public/sitemap.xml public/sitemap-0.xml public/sitemap-index.xml } catch { }; git pull --rebase origin main; $dirty=(git status --porcelain); if ($dirty) { throw 'Git not clean (commit or stash changes before releasing)' }; npm version minor; git push origin main; git push --tags; npm run build:pkg; Push-Location dist; npm publish --access=restricted; Pop-Location\"",
-    "release:major": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; try { git checkout -- public/sw.js public/sitemap.xml public/sitemap-0.xml public/sitemap-index.xml } catch { }; git pull --rebase origin main; $dirty=(git status --porcelain); if ($dirty) { throw 'Git not clean (commit or stash changes before releasing)' }; npm version major; git push origin main; git push --tags; npm run build:pkg; Push-Location dist; npm publish --access=restricted; Pop-Location\"",
-
-    "release:patch:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; try { git checkout -- public/sw.js public/sitemap.xml public/sitemap-0.xml public/sitemap-index.xml } catch { }; git pull --rebase origin main; $dirty=(git status --porcelain); if ($dirty) { throw 'Git not clean (commit or stash changes before releasing)' }; npm version patch; git push origin main; git push --tags; npm run build:pkg; Push-Location dist; npm publish --access=restricted; Pop-Location\" && npm run build:app && npm run postbuild && npm run start",
-    "release:minor:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; try { git checkout -- public/sw.js public/sitemap.xml public/sitemap-0.xml public/sitemap-index.xml } catch { }; git pull --rebase origin main; $dirty=(git status --porcelain); if ($dirty) { throw 'Git not clean (commit or stash changes before releasing)' }; npm version minor; git push origin main; git push --tags; npm run build:pkg; Push-Location dist; npm publish --access=restricted; Pop-Location\" && npm run build:app && npm run postbuild && npm run start",
-    "release:major:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; try { git checkout -- public/sw.js public/sitemap.xml public/sitemap-0.xml public/sitemap-index.xml } catch { }; git pull --rebase origin main; $dirty=(git status --porcelain); if ($dirty) { throw 'Git not clean (commit or stash changes before releasing)' }; npm version major; git push origin main; git push --tags; npm run build:pkg; Push-Location dist; npm publish --access=restricted; Pop-Location\" && npm run build:app && npm run postbuild && npm run start",
+    "release:patch": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version patch; git push origin main; git push --tags; npm publish --access=restricted\" ",
+    "release:patch:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version patch; git push origin main; git push --tags; npm publish --access=restricted\" && npm run start",
+    "release:minor": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version minor; git push origin main; git push --tags; npm publish --access=restricted\" ",
+    "release:minor:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version minor; git push origin main; git push --tags; npm publish --access=restricted\" && npm run start",
+    "release:major": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version major; git push origin main; git push --tags; npm publish --access=restricted\" ",
+    "release:major:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version major; git push origin main; git push --tags; npm publish --access=restricted\" && npm run start",
 
     "all:main:dev": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run github && npm run dev",
     "all:main:start": "cls && npm run toscratch && npm run reinstall && npm run rebuild && npm run github && npm run start",
