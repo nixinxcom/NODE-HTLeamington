@@ -1,6 +1,6 @@
 {
   "name": "@nixinx/core",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "private": false,
   "publishConfig": {
     "access": "restricted",
@@ -18,7 +18,7 @@
     "build:app": "next build",
     "build": "npm run build:lib && npm run build:app",
     "postbuild": "rimraf --glob \"dist/seeds/meta.*.json\" && next-sitemap",
-    "build:pkg": "tsc -p tsconfig.pkg.json && npx tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js",
+    "build:pkg": "tsc -p tsconfig.pkg.json && npx tsc-alias -p tsconfig.pkg.json && node scripts/copy-css.js && node scripts/write-dist-packagejson.js",
 
     "toscratch": "node -e \"const fs=require('fs');const paths=['.next','.turbo','node_modules','dist','build','coverage','android','ios','www','capacitor-out'];for(const p of paths){try{fs.rmSync(p,{recursive:true,force:true});console.log('removed',p);}catch(e){}}\" && npm run functions:clean",
     "reinstall": "npm install && npm run functions:install",
@@ -70,7 +70,7 @@
 
     "project:fromscratch": "npm run toscratch && npm install && npm run functions:clean && npm run functions:install && npm run functions:build",
 
-    "release:patch": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version patch; git push origin main; git push --tags; npm publish --access=restricted\" ",
+    "release:patch": "powershell -NoProfile -Command \"...; npm run build:pkg; npm version patch; git push origin main; git push --tags; npm publish dist --access=restricted\"",
     "release:patch:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version patch; git push origin main; git push --tags; npm publish --access=restricted\" && npm run start",
     "release:minor": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version minor; git push origin main; git push --tags; npm publish --access=restricted\" ",
     "release:minor:start": "powershell -NoProfile -Command \"$branch=(git rev-parse --abbrev-ref HEAD); if ($branch -ne 'main') { git switch main }; git pull --rebase origin main; npm run build:pkg; npm version minor; git push origin main; git push --tags; npm publish --access=restricted\" && npm run start",
